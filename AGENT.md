@@ -150,6 +150,70 @@ yarn link react-sequent
 
 ---
 
+## CI/CD
+
+Two separate workflows. One validates every push; one ships.
+
+### Workflow 1: CI (`ci.yml`)
+
+Triggers on every push and pull request. Does not publish.
+
+```yaml
+on:
+  push:
+  pull_request:
+```
+
+Steps: install → lint → typecheck → test → build.
+
+### Workflow 2: Release (`release.yml`)
+
+Triggers when a GitHub Release is published. This is the only publish path.
+
+```yaml
+on:
+  release:
+    types: [published]
+```
+
+Steps: install → lint → typecheck → test → build → `npm publish`.
+
+Publishing authenticates via an npm token stored as a GitHub Actions secret:
+
+```yaml
+- name: Publish to npm
+  run: npm publish
+  env:
+    NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+```
+
+Generate the token once in your npm account settings and add it to the repo under **Settings → Secrets → Actions**.
+
+### Tagging and releasing
+
+Tags are created *through* GitHub Releases, not pushed directly. The flow is:
+
+1. Bump the version in `package.json` and commit
+2. On GitHub, create a new Release — set the tag (e.g. `v1.2.0`), write release notes, publish
+3. Publishing the release fires the `release.yml` workflow, which builds and publishes to npm
+
+The tag should match the `package.json` version. The release workflow does not enforce this automatically — it is a manual convention.
+
+### Pre-release channels
+
+For pre-releases (e.g. `v2.0.0-beta.1`), publish to a dist-tag so it does not become the default `latest` install:
+
+```yaml
+- name: Publish pre-release to npm
+  run: npm publish --tag beta
+  env:
+    NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+```
+
+Consumers opt in explicitly: `npm install react-sequent@beta`. The `latest` tag is untouched until a stable release is published without `--tag`.
+
+---
+
 ## Current Status
 
 - [ ] Core transition logic
