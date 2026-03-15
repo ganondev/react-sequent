@@ -1,0 +1,63 @@
+{
+  "name": "react-sequent",
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Lightweight React utility for building UX flows where each step owns its own transition logic",
+  "license": "MIT",
+  "sideEffects": false,
+  "main": "./dist/react-sequent.cjs",
+  "module": "./dist/react-sequent.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/react-sequent.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/react-sequent.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run --project unit",
+    "test:bdd": "vitest run --project bdd",
+    "test:watch": "vitest",
+    "lint": "biome check src/",
+    "format": "biome check --write src/"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@amiceli/vitest-cucumber": "^6.3.0",
+    "@biomejs/biome": "^2.4.7",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "@vitest/coverage-v8": "^4.1.0",
+    "jsdom": "^29.0.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "typescript": "^5.9.3",
+    "vite": "^8.0.0",
+    "vite-plugin-dts": "^4.5.4",
+    "vitest": "^4.1.0"
+  },
+  "packageManager": "yarn@4.13.0+sha512.5c20ba010c99815433e5c8453112165e673f1c7948d8d2b267f4b5e52097538658388ebc9f9580656d9b75c5cc996f990f611f99304a2197d4c56d21eea370e7"
+}
