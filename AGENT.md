@@ -59,18 +59,52 @@ Two hooks with strictly separated concerns. A step must never be able to access 
 - Returns `context` — the current flow context value
 - Has no access to initializer-level capabilities
 
-These two hooks must not share a public interface. Compartmentalization is a hard requirement, not a preference.
+**`useFlowContext`** — for chrome components and any consumer component inside the outlet's provider boundary
+- Returns the current flow context value, read-only
+- Available to components that are not steps but need to respond to flow state (e.g. a chrome component that displays a dynamic title)
+- Has no transition capabilities
+
+These hooks must not share a public interface beyond what is explicitly listed. Compartmentalization is a hard requirement, not a preference.
 
 ### Outlet
 
-`<FlowOutlet />` is a component the consumer renders wherever they want flow output to appear. It:
+`<FlowOutlet />` is a component the consumer renders wherever they want flow output to appear. It has two states: **idle** and **active**.
+
+- **Idle** — renders nothing. The outlet is inert until a flow is initialized against it via `initFlow`.
+- **Active** — renders the chrome child (if provided) and the active step inside it. Teardown (via `resolve` or `abort`) returns the outlet to idle.
+
+The outlet's active/idle state is derived entirely from whether a flow has been initialized against it. The consumer never manages this boolean directly.
+
+`<FlowOutlet />`:
 
 - Invisibly owns the internal React context provider
-- Acts as the Suspense boundary for async step loading
-- Accepts a `fallback` prop for the loading state (passed through to Suspense)
+- Owns both the Suspense boundary and the error boundary for the active step
+- Accepts a `fallback` prop for the async step loading state (passed through to Suspense)
+- Accepts an `errorFallback` prop for the error boundary, analogous to `fallback`
+- Accepts an optional **chrome child** — a consumer-supplied component rendered outside the Suspense boundary but inside the provider boundary, so it remains stable across async step transitions
 - Has no opinions about layout or visual structure
 
-The consumer controls placement. The library controls nothing above the outlet.
+The chrome child is optional. Outlets with no chrome child simply render the active step directly when initialized. The consumer controls placement. The library controls nothing above the outlet.
+
+#### Chrome and `useFlowContext`
+
+Steps should never include chrome. Chrome belongs to the outlet so that it remains visually stable across step transitions — a modal header should not flicker when an async step loads, and animated transitions between steps should not affect the surrounding shell.
+
+To allow chrome to respond to per-step concerns (e.g. a dynamic title, a conditionally hidden close button), the library exposes **`useFlowContext`** — a read-only hook available to any component inside the outlet's provider boundary. Steps write chrome-relevant state into context via `advance`'s `contextPatch`; the chrome component reads it via `useFlowContext`.
+
+The library defines no chrome slots. The consumer owns both the shape of the context and the chrome component itself, keeping the library generic. Common outlet patterns (modal, drawer, wizard) are left to the consumer or their own codebase to define as reusable compositions.
+
+The tree structure during an active flow with chrome:
+
+```
+<FlowOutlet>               ← provider, error boundary
+  <ConsumerChrome>         ← stable across transitions; reads useFlowContext
+    <Suspense>             ← fallback shown during async step loads
+      <ActiveStep />       ← swaps on each transition
+    </Suspense>
+  </ConsumerChrome>
+</FlowOutlet>
+```
 
 ### Async Step Loading & Suspense
 
@@ -162,6 +196,45 @@ yarn link react-sequent
 - [ ] Build / publish setup
 - [ ] README / docs
 
+### Projected Examples
+
+This is an example of what a minimal use case could look like.
+
+```tsx
+
+function Step1() {
+    
+    const { advance } = useStep();
+
+    // this callback isn't async because it doesn't need to be
+    // but it could be if necessary without changing the API
+    const next = () => { advance(<Step2/> )};
+
+    return <>
+        step 1 content
+        <button onClick={next}>Next</button>
+    </>
+
+}
+
+function Step2() { return <>step 2 content</> }
+
+function SomeComponent() {
+
+    const outletRef = useRef();
+    const { initFlow } = useFlow();
+
+    const onClick = () => {
+        initFlow(<Step />, outletRef);
+    }
+
+    // is ref the right call here (see Open Questions) — Resolved, see Outlet Association in Open Questions
+    return <FlowOutlet ref={outletRef} />
+
+}
+
+```
+
 > Update this section as work progresses. It is the fastest way for an agent to orient itself at the start of a session.
 
 ---
@@ -173,8 +246,10 @@ yarn link react-sequent
 - ~~**History / back-navigation**~~ — Resolved. See *On retreat and state persistence* in API Constraints.
 - ~~**Async step loading**~~ — Resolved. Suspense at the outlet boundary; sync steps bypass it entirely.
 - ~~**Hooks API shape**~~ — Resolved. `useFlowInit` + `useStep`, strictly compartmentalized.
-- How does `useFlowInit` associate a flow with a specific `<FlowOutlet />`? (e.g. a ref, a `useId`-based key, or something else)
-- What does `advance` look like when the next step is conditional? Does the step pass a loader directly, or a function that returns a loader?
-- Should `resolve` and `abort` carry typed payloads, and if so, how does that interact with TypeScript generics on `useFlowInit`?
-- How should multiple concurrent flows be handled — is that in scope for v1?
-- What's the error boundary story for a step that throws?
+- ~~**Outlet association**~~ — Resolved. `useFlowInit` returns a ref that is passed to `<FlowOutlet ref={...} />`. Idiomatic React; the library absorbs the `forwardRef` ceremony so consumers don't have to.
+- ~~**Conditional advance / branching**~~ — Resolved. `advance` takes a loader directly; branching is just an if-statement in the step. No special API needed — the "step decides what comes next" paradigm *is* the branching mechanism.
+- ~~**Typed `resolve`/`abort` payloads**~~ — Resolved. Generic goes on `useFlowInit<ResultType>()`, which types the return value of `initFlow` (the promise/callback the consumer handles) and carries a typed `resolve` through internal context to `useStep`. This is best-effort — TypeScript cannot verify at compile time that a step is rendered inside the correct outlet, so the type is trustworthy in practice but not airtight. A step used across flows with different resolve types would silently get the wrong type; this is an acceptable trade-off given that steps are designed to be portable. If the generic approach proves unworkable, the fallback is `resolve` accepting `unknown` in `useStep` with type safety living exclusively at the `initFlow` return value.
+- ~~**Multiple concurrent flows — v1 scope**~~ — Resolved. Out of scope for v1. Multiple outlets can coexist naturally via separate `useFlowInit` + `<FlowOutlet />` pairs; coordinating flows is a different problem deferred to a later version.
+- ~~**Error boundary story**~~ — Resolved. `<FlowOutlet />` owns an error boundary alongside its Suspense boundary. Accepts an `errorFallback` prop analogous to `fallback`, keeping broken step blast radius contained to the outlet.
+- ~~**Chrome / outlet composition**~~ — Resolved. See *Outlet* and *Chrome and `useFlowContext`* in Architecture. `<FlowOutlet />` is idle until `initFlow` activates it. An optional chrome child is rendered outside the Suspense boundary (stable across transitions) but inside the provider boundary (can call `useFlowContext`). Steps remain chrome-free and fully portable. `useFlowContext` is a read-only hook for non-step components that need to respond to flow state.
+- ~~**Outlet association by ref**~~ — Resolved. See *Outlet association* above.

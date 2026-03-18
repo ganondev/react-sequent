@@ -4,7 +4,105 @@
  * Owns the internal React context provider, acts as the Suspense
  * boundary for async step loading, and accepts a `fallback` prop.
  */
-export function FlowOutlet(_props: { fallback?: React.ReactNode }) {
-  // TODO: implement
-  return null;
+import {
+  type ComponentType,
+  forwardRef,
+  type ReactNode,
+  useCallback,
+  useImperativeHandle,
+  useState,
+} from "react";
+import { FlowContext, type FlowContextValue } from "../internal/context";
+
+/** Imperative handle exposed by FlowOutlet via its forwarded ref. */
+export interface FlowOutletHandle {
+  /** Activate a flow, rendering the given step component in this outlet. */
+  activate: (stepLoader: ComponentType, initialContext?: unknown) => void;
 }
+
+interface FlowState {
+  history: ComponentType[];
+  activeStep: ComponentType;
+  consumerContext: unknown;
+}
+
+export const FlowOutlet = forwardRef<FlowOutletHandle, { fallback?: ReactNode }>(
+  function FlowOutlet(_props, ref) {
+    const [flowState, setFlowState] = useState<FlowState | null>(null);
+
+    const deactivate = useCallback(() => {
+      setFlowState(null);
+    }, []);
+
+    const advance = useCallback((nextStep: ComponentType, contextPatch?: unknown) => {
+      setFlowState((prev) => {
+        if (prev === null) return null;
+        const newContext =
+          contextPatch !== undefined
+            ? typeof prev.consumerContext === "object" &&
+              prev.consumerContext !== null &&
+              typeof contextPatch === "object" &&
+              contextPatch !== null
+              ? {
+                  ...(prev.consumerContext as Record<string, unknown>),
+                  ...(contextPatch as Record<string, unknown>),
+                }
+              : contextPatch
+            : prev.consumerContext;
+        return {
+          history: [...prev.history, prev.activeStep],
+          activeStep: nextStep,
+          consumerContext: newContext,
+        };
+      });
+    }, []);
+
+    const retreat = useCallback(() => {
+      setFlowState((prev) => {
+        if (prev === null || prev.history.length === 0) return prev;
+        const previousStep = prev.history[prev.history.length - 1];
+        return {
+          history: prev.history.slice(0, -1),
+          activeStep: previousStep,
+          consumerContext: prev.consumerContext,
+        };
+      });
+    }, []);
+
+    useImperativeHandle(
+      ref,
+      () => ({
+        activate(stepLoader: ComponentType, initialContext?: unknown) {
+          setFlowState({
+            history: [],
+            activeStep: stepLoader,
+            consumerContext: initialContext,
+          });
+        },
+      }),
+      [],
+    );
+
+    if (flowState === null) {
+      return null;
+    }
+
+    const ActiveStep = flowState.activeStep;
+
+    const contextValue: FlowContextValue = {
+      history: flowState.history,
+      activeStep: flowState.activeStep,
+      consumerContext: flowState.consumerContext,
+      resolve: deactivate,
+      abort: deactivate,
+      advance,
+      retreat,
+    };
+
+    return (
+      <FlowContext.Provider value={contextValue}>
+        <ActiveStep />
+      </FlowContext.Provider>
+    );
+  },
+);

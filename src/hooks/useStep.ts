@@ -4,7 +4,16 @@
  * Returns advance, retreat, resolve, abort, and context.
  * Has no access to initializer-level capabilities.
  */
+import { useFlowInternalContext } from "../internal/context";
+
 export function useStep() {
-  // TODO: implement
-  throw new Error("useStep is not yet implemented");
+  const { advance, retreat, resolve, abort, consumerContext } = useFlowInternalContext();
+
+  return {
+    advance,
+    retreat,
+    resolve,
+    abort,
+    context: consumerContext,
+  };
 }
