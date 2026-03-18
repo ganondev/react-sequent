@@ -18,6 +18,10 @@ export interface FlowContextValue<TResult = unknown> {
   resolve: (value?: TResult) => void;
   /** Call when the flow exits without completing. */
   abort: (reason?: unknown) => void;
+  /** Push the current step to history and render the next step. */
+  advance: (nextStep: StepLoader, contextPatch?: unknown) => void;
+  /** Pop the last step from history and render it. */
+  retreat: () => void;
 }
 
 export const FlowContext = createContext<FlowContextValue | null>(null);

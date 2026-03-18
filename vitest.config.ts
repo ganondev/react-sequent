@@ -19,7 +19,7 @@ export default defineConfig({
       test: {
         name: "bdd",
         environment: "jsdom",
-        include: ["src/**/*.spec.ts"],
+        include: ["src/**/*.spec.{ts,tsx}"],
         exclude: ["node_modules", "dist"],
         setupFiles: ["./vitest.bdd-setup.ts"]
       }
