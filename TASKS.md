@@ -39,6 +39,7 @@ First fully working user-facing slice: initialize a flow, advance/retreat throug
 3. Implement `useStep` in `src/hooks/useStep.ts`: `advance(nextLoader, contextPatch?)` pushes to history; `retreat()` pops; `resolve(value?)` and `abort(reason?)` tear down and return to idle; `context` exposes current consumer context value
 4. Write unit tests in `src/hooks/__tests__/useFlowInit.test.ts` (init, resolve, abort, advance, retreat)
 5. Implement BDD step bodies in `src/features/flow-init.spec.ts` to replace all `expect(true).toBe(true)` placeholders; all scenarios green
+6. Add a `BasicFlow` storybook story in `src/stories/BasicFlow.stories.tsx` showing a two-step sync flow
 
 ---
 
@@ -51,7 +52,7 @@ Allow consumers to pass dynamic imports as step loaders without changing the API
 3. Wrap the active step render in `<FlowOutlet />` with `<Suspense fallback={props.fallback}>` — only around the step, not the future chrome slot
 4. Write `src/features/async-step-loading.feature` with scenarios: async loader shows `fallback` during suspension then renders the step; sync loader renders immediately with no fallback shown
 5. Implement step bindings in `src/features/async-step-loading.spec.ts`; all scenarios green
-6. Set up Storybook in the repo (Vite builder, React); add a `BasicFlow` story in `src/stories/BasicFlow.stories.tsx` showing a two-step sync flow and a two-step async flow with a visible `fallback` state
+6. Add an `AsyncFlow` story in `src/stories/AsyncFlow.stories.tsx` showing a two-step async flow with a visible `fallback` state
 
 ---
 
