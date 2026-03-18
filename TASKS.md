@@ -14,6 +14,22 @@ Define the shape that wires the whole system together before writing any public-
 
 ---
 
+### Milestone 1 — Completion Notes
+
+- Implemented `FlowContextValue` in [src/internal/context.ts](src/internal/context.ts):
+  - `history: StepLoader[]` — stack of loaded step components
+  - `activeStep: StepLoader | null` — currently rendered step
+  - `consumerContext: unknown` — consumer-owned context value
+  - `resolve: (value?: TResult) => void` — callback for successful flow completion
+  - `abort: (reason?: unknown) => void` — callback for flow exit without completion
+- Created `FlowContext` via `createContext<FlowContextValue | null>(null)` with a stable default
+- Added `useFlowInternalContext()` accessor that throws a descriptive error if used outside a provider
+- No public API changes; verified with `yarn typecheck` and `yarn lint` (zero errors/violations)
+
+Milestone 1 is fully complete and verified.
+
+---
+
 ## Milestone 2 — End-to-End Sync Flow
 
 First fully working user-facing slice: initialize a flow, advance/retreat through sync steps, resolve or abort.
