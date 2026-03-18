@@ -43,6 +43,23 @@ First fully working user-facing slice: initialize a flow, advance/retreat throug
 
 ---
 
+## Milestone 2 — Completion Notes
+
+- Implemented `useFlowInit` in [src/hooks/useFlowInit.ts](src/hooks/useFlowInit.ts): returns `initFlow(stepLoader, ref, initialContext?)` and validates the outlet ref before activation.
+- Implemented `<FlowOutlet />` in [src/components/FlowOutlet.tsx](src/components/FlowOutlet.tsx): a `forwardRef` outlet that owns the internal provider, manages `history`, `activeStep`, and `consumerContext`, and exposes an imperative `activate` handle.
+- Implemented `useStep` in [src/hooks/useStep.ts](src/hooks/useStep.ts): returns `advance(nextLoader, contextPatch?)`, `retreat()`, `resolve(value?)`, `abort(reason?)`, and read-only `context`.
+- Added unit tests in [src/hooks/__tests__/useFlowInit.test.tsx](src/hooks/__tests__/useFlowInit.test.tsx) covering init, resolve, abort, advance, retreat, context patching, error handling, and re-initialization.
+- Replaced BDD placeholders with real step bodies in [src/features/flow-init.spec.tsx](src/features/flow-init.spec.tsx) (paired with `src/features/flow-init.feature`).
+- Added a `BasicFlow` Storybook story in [src/stories/BasicFlow.stories.tsx](src/stories/BasicFlow.stories.tsx) demonstrating a simple two-step sync flow using Mantine for styling.
+- Verified local checks: `yarn typecheck`, `yarn lint`, `yarn test:unit`, and `yarn test:bdd` all pass in the current environment.
+
+Notes:
+- The outlet is associated by a consumer-created ref passed to both `initFlow` and `<FlowOutlet ref={...} />`.
+- `advance` shallow-merges `contextPatch` into the existing consumer context when both are objects; otherwise it replaces the context.
+- No async/suspense behavior was added in this milestone — that is Milestone 3.
+
+---
+
 ## Milestone 3 — Async Step Loading
 
 Allow consumers to pass dynamic imports as step loaders without changing the API shape.
