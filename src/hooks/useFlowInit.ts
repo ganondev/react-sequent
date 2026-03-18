@@ -7,13 +7,14 @@
  *
  * Has no knowledge of step internals.
  */
-import { type ComponentType, type RefObject, useCallback } from "react";
+import { type RefObject, useCallback } from "react";
 import type { FlowOutletHandle } from "../components/FlowOutlet";
+import { normalizeStepLoader, type StepLoader } from "../internal/normalizer";
 
 export function useFlowInit() {
   const initFlow = useCallback(
     (
-      stepLoader: ComponentType,
+      stepLoader: StepLoader,
       ref: RefObject<FlowOutletHandle | null>,
       initialContext?: unknown,
     ): void => {
@@ -22,7 +23,7 @@ export function useFlowInit() {
           "FlowOutlet ref is not attached. Ensure <FlowOutlet ref={...} /> is mounted before calling initFlow.",
         );
       }
-      ref.current.activate(stepLoader, initialContext);
+      ref.current.activate(normalizeStepLoader(stepLoader), initialContext);
     },
     [],
   );

@@ -8,16 +8,19 @@ import {
   type ComponentType,
   forwardRef,
   type ReactNode,
+  Suspense,
   useCallback,
   useImperativeHandle,
   useState,
 } from "react";
 import { FlowContext, type FlowContextValue } from "../internal/context";
+import type { StepLoader } from "../internal/normalizer";
+import { normalizeStepLoader } from "../internal/normalizer";
 
 /** Imperative handle exposed by FlowOutlet via its forwarded ref. */
 export interface FlowOutletHandle {
   /** Activate a flow, rendering the given step component in this outlet. */
-  activate: (stepLoader: ComponentType, initialContext?: unknown) => void;
+  activate: (stepLoader: StepLoader, initialContext?: unknown) => void;
 }
 
 interface FlowState {
@@ -27,14 +30,14 @@ interface FlowState {
 }
 
 export const FlowOutlet = forwardRef<FlowOutletHandle, { fallback?: ReactNode }>(
-  function FlowOutlet(_props, ref) {
+  function FlowOutlet(props, ref) {
     const [flowState, setFlowState] = useState<FlowState | null>(null);
 
     const deactivate = useCallback(() => {
       setFlowState(null);
     }, []);
 
-    const advance = useCallback((nextStep: ComponentType, contextPatch?: unknown) => {
+    const advance = useCallback((nextStep: StepLoader, contextPatch?: unknown) => {
       setFlowState((prev) => {
         if (prev === null) return null;
         const newContext =
@@ -51,7 +54,7 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, { fallback?: ReactNode }>
             : prev.consumerContext;
         return {
           history: [...prev.history, prev.activeStep],
-          activeStep: nextStep,
+          activeStep: normalizeStepLoader(nextStep),
           consumerContext: newContext,
         };
       });
@@ -72,10 +75,10 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, { fallback?: ReactNode }>
     useImperativeHandle(
       ref,
       () => ({
-        activate(stepLoader: ComponentType, initialContext?: unknown) {
+        activate(stepLoader: StepLoader, initialContext?: unknown) {
           setFlowState({
             history: [],
-            activeStep: stepLoader,
+            activeStep: normalizeStepLoader(stepLoader),
             consumerContext: initialContext,
           });
         },
@@ -101,7 +104,9 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, { fallback?: ReactNode }>
 
     return (
       <FlowContext.Provider value={contextValue}>
-        <ActiveStep />
+        <Suspense fallback={props.fallback ?? null}>
+          <ActiveStep />
+        </Suspense>
       </FlowContext.Provider>
     );
   },

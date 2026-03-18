@@ -3,15 +3,13 @@
  * Consumers never interact with this directly.
  */
 import { type ComponentType, createContext, useContext } from "react";
-
-/** Internal type alias for a React component that renders a single step. */
-type StepLoader = ComponentType;
+import type { StepLoader } from "./normalizer";
 
 export interface FlowContextValue<TResult = unknown> {
   /** Stack of step components that have been loaded (most recent last). */
-  history: StepLoader[];
+  history: ComponentType[];
   /** The step currently being rendered, or null when idle. */
-  activeStep: StepLoader | null;
+  activeStep: ComponentType | null;
   /** Opaque consumer-owned context value carried through the flow. */
   consumerContext: unknown;
   /** Call when the flow completes successfully. */
