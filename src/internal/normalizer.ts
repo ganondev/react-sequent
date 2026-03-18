@@ -18,6 +18,8 @@ export type StepLoader =
  * Sync components are returned as-is (no lazy wrapper, no Suspense flash).
  * Async factories are wrapped with React.lazy.
  */
+// TODO torture tests for these scenarios - try to simulate a user attempting to break the utility by passing nonsense
+// Is the handling (e.g. silent exception) sensible?
 export function normalizeStepLoader(loader: StepLoader): ComponentType {
   // If it's a plain component (function or class), return as-is.
   // Async factories are distinguishable because they return a Promise when called,
