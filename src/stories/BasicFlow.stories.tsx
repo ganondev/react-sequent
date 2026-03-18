@@ -1,3 +1,4 @@
+import { Button, Group, Paper, Stack, Text, Title } from "@mantine/core";
 import { useRef } from "react";
 import { FlowOutlet, type FlowOutletHandle } from "../components/FlowOutlet";
 import { useFlowInit } from "../hooks/useFlowInit";
@@ -7,30 +8,34 @@ export default {
   title: "Flow/BasicFlow",
 };
 
-function Step2() {
-  const { retreat, resolve } = useStep();
-  return (
-    <div style={{ padding: 16, display: "flex", gap: 8 }}>
-      <p>Step 2</p>
-      <button type="button" onClick={() => retreat()}>
-        Back
-      </button>
-      <button type="button" onClick={() => resolve()}>
-        Finish
-      </button>
-    </div>
-  );
-}
-
 function Step1() {
   const { advance } = useStep();
   return (
-    <div style={{ padding: 16 }}>
-      <p>Step 1</p>
-      <button type="button" onClick={() => advance(Step2)}>
-        Next
-      </button>
-    </div>
+    <Stack>
+      <Title order={4}>Step 1 — Welcome</Title>
+      <Text c="dimmed">This is the first step of the flow.</Text>
+      <Group justify="flex-end">
+        <Button onClick={() => advance(Step2)}>Next →</Button>
+      </Group>
+    </Stack>
+  );
+}
+
+function Step2() {
+  const { retreat, resolve } = useStep();
+  return (
+    <Stack>
+      <Title order={4}>Step 2 — Confirm</Title>
+      <Text c="dimmed">Review and confirm before finishing.</Text>
+      <Group justify="space-between">
+        <Button variant="subtle" onClick={() => retreat()}>
+          ← Back
+        </Button>
+        <Button color="green" onClick={() => resolve()}>
+          Finish ✓
+        </Button>
+      </Group>
+    </Stack>
   );
 }
 
@@ -39,12 +44,14 @@ function Host() {
   const { initFlow } = useFlowInit();
 
   return (
-    <div style={{ padding: 16 }}>
-      <button type="button" onClick={() => initFlow(Step1, ref)}>
-        Start Flow
-      </button>
-      <FlowOutlet ref={ref} />
-    </div>
+    <Paper withBorder p="xl" maw={400} mx="auto" mt="xl" radius="md">
+      <Stack>
+        <FlowOutlet ref={ref} />
+        <Button variant="light" fullWidth onClick={() => initFlow(Step1, ref)}>
+          Start Flow
+        </Button>
+      </Stack>
+    </Paper>
   );
 }
 
