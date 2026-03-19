@@ -98,6 +98,16 @@ Contain broken step blast radius to the outlet.
 
 ---
 
+### Milestone 4 — Completion Notes
+
+- Created `FlowErrorBoundary` class component in [src/internal/FlowErrorBoundary.tsx](src/internal/FlowErrorBoundary.tsx): a minimal React error boundary with `getDerivedStateFromError`, `componentDidCatch` (no-op), and a `resetError()` method for future recovery. Accepts `errorFallback?: ReactNode` — renders it on error, or `null` if not provided.
+- Wired into [src/components/FlowOutlet.tsx](src/components/FlowOutlet.tsx): `FlowErrorBoundary` wraps the `<Suspense>` + `<ActiveStep />` subtree inside the `<FlowContext.Provider>` but outside `<Suspense>`, matching the AGENT.md tree structure. Added `errorFallback?: ReactNode` prop to `FlowOutlet`.
+- Added BDD feature + spec: [src/features/error-boundary.feature](src/features/error-boundary.feature) and [src/features/error-boundary.spec.tsx](src/features/error-boundary.spec.tsx) — scenarios verify that a throwing step renders `errorFallback` (and the broken step is not visible), and that the outlet remains mounted after the error.
+- Added a Storybook story [src/stories/ErrorBoundary.stories.tsx](src/stories/ErrorBoundary.stories.tsx) demonstrating a two-step flow where Step 2 throws and the `errorFallback` (a Mantine Alert) is rendered in place of the outlet content.
+- Verification: `yarn test:bdd` — 21 tests pass (7 new). `yarn test:unit` — 37 tests pass. `yarn lint` — zero new violations. `yarn typecheck` — only pre-existing normalizer type errors (no new errors introduced).
+
+---
+
 ## Milestone 5 — Chrome + `useFlowContext`
 
 Allow stable chrome components (modal headers, progress indicators) to coexist with async step transitions.

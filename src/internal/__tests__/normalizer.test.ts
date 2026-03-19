@@ -1,7 +1,7 @@
-import { memo, forwardRef, Component, lazy } from "react";
-import { describe, it, expect, vi } from "vitest";
-import { normalizeStepLoader } from "../normalizer";
 import type { ComponentType } from "react";
+import { Component, forwardRef, lazy, memo } from "react";
+import { describe, expect, it, vi } from "vitest";
+import { normalizeStepLoader } from "../normalizer";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -66,21 +66,15 @@ describe("normalizeStepLoader – torture tests", () => {
   it("handles a non-function, non-object value (null coerced to ComponentType) without throwing", () => {
     // null has no $$typeof and no prototype.isReactComponent; it is not a
     // function, so it falls into the 'return loader' branch.
-    expect(() =>
-      normalizeStepLoader(null as unknown as ComponentType),
-    ).not.toThrow();
+    expect(() => normalizeStepLoader(null as unknown as ComponentType)).not.toThrow();
   });
 
   it("handles undefined without throwing", () => {
-    expect(() =>
-      normalizeStepLoader(undefined as unknown as ComponentType),
-    ).not.toThrow();
+    expect(() => normalizeStepLoader(undefined as unknown as ComponentType)).not.toThrow();
   });
 
   it("handles a plain object without throwing", () => {
-    expect(() =>
-      normalizeStepLoader({} as unknown as ComponentType),
-    ).not.toThrow();
+    expect(() => normalizeStepLoader({} as unknown as ComponentType)).not.toThrow();
   });
 
   it("returns a non-function value as-is (passthrough for object-like components)", () => {
@@ -95,9 +89,7 @@ describe("normalizeStepLoader – torture tests", () => {
       throw new Error("boom");
     };
     // Should NOT propagate the error
-    expect(() =>
-      normalizeStepLoader(throwingFactory as unknown as ComponentType),
-    ).not.toThrow();
+    expect(() => normalizeStepLoader(throwingFactory as unknown as ComponentType)).not.toThrow();
     // Falls back to returning the function itself
     expect(normalizeStepLoader(throwingFactory as unknown as ComponentType)).toBe(throwingFactory);
   });
@@ -142,7 +134,9 @@ describe("normalizeStepLoader – torture tests", () => {
   it("wraps a factory returning a promise (pending/rejected) without throwing during normalization", () => {
     // Use a never-settling promise so no unhandled rejection noise occurs while
     // still validating that normalizeStepLoader does not throw synchronously.
-    const pending = new Promise<{ default: ComponentType }>(() => {/* never settles */});
+    const pending = new Promise<{ default: ComponentType }>(() => {
+      /* never settles */
+    });
     const pendingFactory = () => pending;
     expect(() => normalizeStepLoader(pendingFactory)).not.toThrow();
     const result = normalizeStepLoader(pendingFactory);
@@ -166,9 +160,7 @@ describe("normalizeStepLoader – torture tests", () => {
     function weirdFn(_a: unknown, _b: unknown, _c: unknown, _d: unknown, _e: unknown) {
       throw new Error("need more args");
     }
-    expect(() =>
-      normalizeStepLoader(weirdFn as unknown as ComponentType),
-    ).not.toThrow();
+    expect(() => normalizeStepLoader(weirdFn as unknown as ComponentType)).not.toThrow();
   });
 
   // ---- class component without isReactComponent marker ----
@@ -177,9 +169,7 @@ describe("normalizeStepLoader – torture tests", () => {
     class PlainClass {}
     // When called as a function without `new`, a class throws a TypeError.
     // normalizeStepLoader should catch and fall back to sync component.
-    expect(() =>
-      normalizeStepLoader(PlainClass as unknown as ComponentType),
-    ).not.toThrow();
+    expect(() => normalizeStepLoader(PlainClass as unknown as ComponentType)).not.toThrow();
   });
 
   // ---- circular / recursive oddities ----
