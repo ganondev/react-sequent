@@ -27,3 +27,6 @@ Feature: Error boundary
     When  the flow is torn down by resolving
     And   the outlet is activated with a healthy step
     Then  the healthy step is rendered
+
+# TODO give error boundary context about the failing transition
+# Should be able to demonstrate an error fallback recovering to the previous step or retrying the same transition
