@@ -73,6 +73,19 @@ Allow consumers to pass dynamic imports as step loaders without changing the API
 
 ---
 
+### Milestone 3 — Completion Notes
+
+- Implemented `normalizeStepLoader` in [src/internal/normalizer.ts](src/internal/normalizer.ts): accepts a `StepLoader` (a `ComponentType` or an async factory) and returns a sync component as-is or a `React.lazy`-wrapped component for async factories; exports the `StepLoader` type.
+- Applied the normalizer in the initializer and transition paths:
+  - `useFlowInit` ([src/hooks/useFlowInit.ts](src/hooks/useFlowInit.ts)) normalizes the initial loader before activating the outlet.
+  - `useStep` ([src/hooks/useStep.ts](src/hooks/useStep.ts)) wraps `advance` to normalize next-step loaders before forwarding to the outlet.
+  - `FlowOutlet` ([src/components/FlowOutlet.tsx](src/components/FlowOutlet.tsx)) normalizes in both `activate` and internal `advance` handlers.
+- Wrapped the active step render in a `Suspense` boundary inside `FlowOutlet` (`<Suspense fallback={props.fallback}>`) so consumer-provided `fallback` UI is shown only while async steps load; sync steps render immediately with no loading flash. The Suspense wraps only the active step (chrome remains outside, per Milestone 5 plan).
+- Added BDD feature + spec: [src/features/async-step-loading.feature](src/features/async-step-loading.feature) and [src/features/async-step-loading.spec.tsx](src/features/async-step-loading.spec.tsx) — scenarios verify that async loaders show the `fallback` during suspension and then render, and that sync loaders render immediately with no fallback.
+- Added a Storybook story [src/stories/AsyncFlow.stories.tsx](src/stories/AsyncFlow.stories.tsx) demonstrating a two-step async flow with a visible fallback (simulated load delay).
+- Verification notes: `yarn test:bdd` and the updated unit tests pass for the new/changed files. `yarn typecheck` reports pre-existing `.ts` test files containing JSX (no new type errors introduced). `yarn lint` flagged only pre-existing formatting issues; new files were formatted where needed.
+
+
 ## Milestone 4 — Error Boundary
 
 Contain broken step blast radius to the outlet.
