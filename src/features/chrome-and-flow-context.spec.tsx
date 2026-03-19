@@ -214,4 +214,26 @@ describeFeature(feature, ({ Scenario }) => {
       expect(screen.queryByText("Chrome Header")).not.toBeInTheDocument();
     });
   });
+
+  // ── Scenario 5 ─────────────────────────────────────────────────────
+  Scenario("Chrome is not visible before the flow is initialized", ({ Given, Then }) => {
+    Given("a host with FlowOutlet configured with a chrome component", () => {
+      cleanup();
+
+      function TestHost() {
+        const ref = useRef<FlowOutletHandle>(null);
+        return (
+          <FlowOutlet ref={ref} fallback={<div>Loading…</div>}>
+            <ChromeHeader />
+          </FlowOutlet>
+        );
+      }
+
+      render(<TestHost />);
+    });
+
+    Then("the chrome is not visible before the flow is initialized", () => {
+      expect(screen.queryByText("Chrome Header")).not.toBeInTheDocument();
+    });
+  });
 });
