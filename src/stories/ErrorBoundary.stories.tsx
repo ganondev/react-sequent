@@ -25,6 +25,15 @@ function BrokenStep(): never {
   throw new Error("Oops — this step is broken!");
 }
 
+function RecoveryStep(): React.ReactElement {
+  return (
+    <Stack>
+      <Title order={4}>Recovered</Title>
+      <Text c="dimmed">The flow recovered to a safe step.</Text>
+    </Stack>
+  );
+}
+
 function Host() {
   const ref = useRef<FlowOutletHandle>(null);
   const { initFlow } = useFlowInit();
@@ -35,7 +44,10 @@ function Host() {
           ref={ref}
           errorFallback={
             <Alert color="red" title="Something went wrong">
-              A step encountered an error. The flow cannot continue.
+              <Text size="sm" mb="sm">A step encountered an error.</Text>
+              <Button size="xs" variant="white" color="red" onClick={() => ref.current?.activate(RecoveryStep)}>
+                Recover
+              </Button>
             </Alert>
           }
         />

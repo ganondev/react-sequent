@@ -13,6 +13,7 @@ import {
   Suspense,
   useCallback,
   useImperativeHandle,
+  useRef,
   useState,
 } from "react";
 import { FlowContext, type FlowContextValue } from "../internal/context";
@@ -36,13 +37,14 @@ export const FlowOutlet = forwardRef<
   FlowOutletHandle,
   { fallback?: ReactNode; errorFallback?: ReactNode }
 >(function FlowOutlet(props, ref) {
-  const [flowState, setFlowState] = useState<FlowState | null>(null);
+  const [flowState, setFlowState] = useState<FlowState | null>(null);  const errorBoundaryRef = useRef<FlowErrorBoundary>(null);
 
   const deactivate = useCallback(() => {
     setFlowState(null);
   }, []);
 
   const advance = useCallback((nextStep: StepLoader, contextPatch?: unknown) => {
+    errorBoundaryRef.current?.resetError();
     setFlowState((prev) => {
       if (prev === null) return null;
       const newContext =
@@ -66,6 +68,7 @@ export const FlowOutlet = forwardRef<
   }, []);
 
   const retreat = useCallback(() => {
+    errorBoundaryRef.current?.resetError();
     setFlowState((prev) => {
       if (prev === null || prev.history.length === 0) return prev;
       const previousStep = prev.history[prev.history.length - 1];
@@ -81,6 +84,7 @@ export const FlowOutlet = forwardRef<
     ref,
     () => ({
       activate(stepLoader: StepLoader, initialContext?: unknown) {
+        errorBoundaryRef.current?.resetError();
         setFlowState({
           history: [],
           activeStep: normalizeStepLoader(stepLoader),
@@ -109,7 +113,7 @@ export const FlowOutlet = forwardRef<
 
   return (
     <FlowContext.Provider value={contextValue}>
-      <FlowErrorBoundary errorFallback={props.errorFallback}>
+      <FlowErrorBoundary ref={errorBoundaryRef} errorFallback={props.errorFallback}>
         <Suspense fallback={props.fallback ?? null}>
           <ActiveStep />
         </Suspense>
