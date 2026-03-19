@@ -44,8 +44,15 @@ function Host() {
           ref={ref}
           errorFallback={
             <Alert color="red" title="Something went wrong">
-              <Text size="sm" mb="sm">A step encountered an error.</Text>
-              <Button size="xs" variant="white" color="red" onClick={() => ref.current?.activate(RecoveryStep)}>
+              <Text size="sm" mb="sm">
+                A step encountered an error.
+              </Text>
+              <Button
+                size="xs"
+                variant="white"
+                color="red"
+                onClick={() => ref.current?.activate(RecoveryStep)}
+              >
                 Recover
               </Button>
             </Alert>

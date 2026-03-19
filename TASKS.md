@@ -117,7 +117,7 @@ Allow stable chrome components (modal headers, progress indicators) to coexist w
 3. Update `<FlowOutlet />` to accept an optional chrome child (rendered between provider and Suspense boundary, matching the tree structure in AGENT.md)
 4. Write `src/features/chrome-and-flow-context.feature` with scenarios: chrome renders alongside the active step; chrome stays mounted when the step advances; chrome reads updated context via `useFlowContext` after a `contextPatch`; a step renders without chrome when none is provided
 5. Implement step bindings in `src/features/chrome-and-flow-context.spec.ts`; all scenarios green
-6. Add a `ChromeFlow` story in `src/stories/ChromeFlow.stories.tsx` showing a modal-style outlet with a header chrome component that displays a title driven by `useFlowContext`; title updates visibly as steps advance
+6. Add a `ChromeFlow` story in `src/stories/ChromeFlow.stories.tsx` showing a modal-style outlet with a header chrome component that displays a title driven by `useFlowContext`; title updates visibly as steps advance, but does not flicker on async transitions of different lengths - chrome remains static despite fallback
 
 ---
 

@@ -106,93 +106,99 @@ describeFeature(feature, ({ Scenario }) => {
   });
 
   // ── Scenario 3 ─────────────────────────────────────────────────────
-  Scenario("Re-activating after an error resets the error boundary", ({ Given, And, When, Then }) => {
-    let capturedRef: React.RefObject<FlowOutletHandle | null>;
-    let capturedInitFlow: ReturnType<typeof useFlowInit>["initFlow"];
-    let consoleSpy: ReturnType<typeof vi.spyOn>;
+  Scenario(
+    "Re-activating after an error resets the error boundary",
+    ({ Given, And, When, Then }) => {
+      let capturedRef: React.RefObject<FlowOutletHandle | null>;
+      let capturedInitFlow: ReturnType<typeof useFlowInit>["initFlow"];
+      let consoleSpy: ReturnType<typeof vi.spyOn>;
 
-    Given("a host with FlowOutlet configured with an errorFallback", () => {
-      cleanup();
-      consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      Given("a host with FlowOutlet configured with an errorFallback", () => {
+        cleanup();
+        consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-      function TestHost() {
-        const ref = useRef<FlowOutletHandle>(null);
-        const { initFlow } = useFlowInit();
-        capturedRef = ref;
-        capturedInitFlow = initFlow;
-        return <FlowOutlet ref={ref} errorFallback={<div>Something went wrong</div>} />;
-      }
+        function TestHost() {
+          const ref = useRef<FlowOutletHandle>(null);
+          const { initFlow } = useFlowInit();
+          capturedRef = ref;
+          capturedInitFlow = initFlow;
+          return <FlowOutlet ref={ref} errorFallback={<div>Something went wrong</div>} />;
+        }
 
-      render(<TestHost />);
-    });
-
-    And("the flow has been activated with a step that throws during render", () => {
-      act(() => {
-        capturedInitFlow(ThrowingStep, capturedRef);
+        render(<TestHost />);
       });
-      expect(screen.getByText("Something went wrong")).toBeInTheDocument();
-    });
 
-    When("the outlet is re-activated with a healthy step", () => {
-      act(() => {
-        capturedRef.current?.activate(HealthyStep);
+      And("the flow has been activated with a step that throws during render", () => {
+        act(() => {
+          capturedInitFlow(ThrowingStep, capturedRef);
+        });
+        expect(screen.getByText("Something went wrong")).toBeInTheDocument();
       });
-    });
 
-    Then("the healthy step is rendered", () => {
-      expect(screen.getByText("Healthy step rendered")).toBeInTheDocument();
-    });
+      When("the outlet is re-activated with a healthy step", () => {
+        act(() => {
+          capturedRef.current?.activate(HealthyStep);
+        });
+      });
 
-    And("the errorFallback is no longer visible", () => {
-      expect(screen.queryByText("Something went wrong")).not.toBeInTheDocument();
-      consoleSpy.mockRestore();
-    });
-  });
+      Then("the healthy step is rendered", () => {
+        expect(screen.getByText("Healthy step rendered")).toBeInTheDocument();
+      });
+
+      And("the errorFallback is no longer visible", () => {
+        expect(screen.queryByText("Something went wrong")).not.toBeInTheDocument();
+        consoleSpy.mockRestore();
+      });
+    },
+  );
 
   // ── Scenario 4 ─────────────────────────────────────────────────────
-  Scenario("Tearing down after an error and re-activating shows the new step", ({ Given, And, When, Then }) => {
-    let capturedRef: React.RefObject<FlowOutletHandle | null>;
-    let capturedInitFlow: ReturnType<typeof useFlowInit>["initFlow"];
-    let consoleSpy: ReturnType<typeof vi.spyOn>;
+  Scenario(
+    "Tearing down after an error and re-activating shows the new step",
+    ({ Given, And, When, Then }) => {
+      let capturedRef: React.RefObject<FlowOutletHandle | null>;
+      let capturedInitFlow: ReturnType<typeof useFlowInit>["initFlow"];
+      let consoleSpy: ReturnType<typeof vi.spyOn>;
 
-    Given("a host with FlowOutlet configured with an errorFallback", () => {
-      cleanup();
-      consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      Given("a host with FlowOutlet configured with an errorFallback", () => {
+        cleanup();
+        consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-      function TestHost() {
-        const ref = useRef<FlowOutletHandle>(null);
-        const { initFlow } = useFlowInit();
-        capturedRef = ref;
-        capturedInitFlow = initFlow;
-        return <FlowOutlet ref={ref} errorFallback={<div>Something went wrong</div>} />;
-      }
+        function TestHost() {
+          const ref = useRef<FlowOutletHandle>(null);
+          const { initFlow } = useFlowInit();
+          capturedRef = ref;
+          capturedInitFlow = initFlow;
+          return <FlowOutlet ref={ref} errorFallback={<div>Something went wrong</div>} />;
+        }
 
-      render(<TestHost />);
-    });
-
-    And("the flow has been activated with a step that throws during render", () => {
-      act(() => {
-        capturedInitFlow(ThrowingStep, capturedRef);
+        render(<TestHost />);
       });
-      expect(screen.getByText("Something went wrong")).toBeInTheDocument();
-    });
 
-    When("the flow is torn down by resolving", () => {
-      // Activate a step that immediately calls resolve(), setting flowState to null
-      act(() => {
-        capturedRef.current?.activate(ResolvingStep);
+      And("the flow has been activated with a step that throws during render", () => {
+        act(() => {
+          capturedInitFlow(ThrowingStep, capturedRef);
+        });
+        expect(screen.getByText("Something went wrong")).toBeInTheDocument();
       });
-    });
 
-    And("the outlet is activated with a healthy step", () => {
-      act(() => {
-        capturedRef.current?.activate(HealthyStep);
+      When("the flow is torn down by resolving", () => {
+        // Activate a step that immediately calls resolve(), setting flowState to null
+        act(() => {
+          capturedRef.current?.activate(ResolvingStep);
+        });
       });
-    });
 
-    Then("the healthy step is rendered", () => {
-      expect(screen.getByText("Healthy step rendered")).toBeInTheDocument();
-      consoleSpy.mockRestore();
-    });
-  });
+      And("the outlet is activated with a healthy step", () => {
+        act(() => {
+          capturedRef.current?.activate(HealthyStep);
+        });
+      });
+
+      Then("the healthy step is rendered", () => {
+        expect(screen.getByText("Healthy step rendered")).toBeInTheDocument();
+        consoleSpy.mockRestore();
+      });
+    },
+  );
 });
