@@ -119,6 +119,16 @@ Allow stable chrome components (modal headers, progress indicators) to coexist w
 5. Implement step bindings in `src/features/chrome-and-flow-context.spec.ts`; all scenarios green
 6. Add a `ChromeFlow` story in `src/stories/ChromeFlow.stories.tsx` showing a modal-style outlet with a header chrome component that displays a title driven by `useFlowContext`; title updates visibly as steps advance, but does not flicker on async transitions of different lengths - chrome remains static despite fallback
 
+### Milestone 5 — Completion Notes
+
+- Implemented `useFlowContext` in [src/hooks/useFlowContext.ts](src/hooks/useFlowContext.ts): a read-only hook that returns the consumer-owned `context` value and throws a clear error when used outside a `FlowOutlet` provider boundary.
+- Exported `useFlowContext` from [src/index.ts](src/index.ts) so it is part of the public API.
+- Updated `<FlowOutlet />` ([src/components/FlowOutlet.tsx](src/components/FlowOutlet.tsx)) to accept an optional chrome child (`children?: ReactNode`) and render it inside the `FlowContext.Provider` but outside the `Suspense` + `FlowErrorBoundary` subtree so chrome remains stable across async step transitions.
+- Added BDD feature + spec: [src/features/chrome-and-flow-context.feature](src/features/chrome-and-flow-context.feature) and [src/features/chrome-and-flow-context.spec.tsx](src/features/chrome-and-flow-context.spec.tsx). Scenarios cover: chrome renders with the active step; chrome persists across advances; chrome reads updated context after a `contextPatch`; outlet behavior when no chrome is provided. All step bindings pass.
+- Added Storybook story [src/stories/ChromeFlow.stories.tsx](src/stories/ChromeFlow.stories.tsx) demonstrating a modal-style outlet with a chrome header driven by `useFlowContext` and async steps with differing delays to show chrome stability during loading.
+- Verification: `yarn test:bdd` — all BDD tests pass (including 15 tests for Milestone 5). `yarn test:unit` — unit tests pass with no regressions. `yarn lint` and `yarn typecheck` show only pre-existing issues (related to the internal normalizer tests/implementation); no new lint or type errors were introduced by Milestone 5 changes.
+
+
 ---
 
 ## Milestone 6 — TypeScript Generics

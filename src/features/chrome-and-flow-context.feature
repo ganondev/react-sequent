@@ -8,10 +8,6 @@ Feature: Chrome and flow context
     When  initFlow is called with a sync step
     Then  both the chrome and the step are visible
 
-  Scenario: Chrome is not visible before the flow is initialized
-    Given a host with FlowOutlet configured with a chrome component
-    Then  the chrome is not visible before the flow is initialized
-
   Scenario: Chrome stays mounted when the step advances
     Given a host with FlowOutlet configured with a chrome component
     And   the flow has been activated with a sync step

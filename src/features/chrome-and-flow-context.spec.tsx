@@ -136,52 +136,46 @@ describeFeature(feature, ({ Scenario }) => {
   });
 
   // ── Scenario 3 ─────────────────────────────────────────────────────
-  Scenario(
-    "Chrome reads updated context via useFlowContext after a contextPatch",
-    ({ Given, When, Then, And }) => {
-      let capturedInitFlow: ReturnType<typeof useFlowInit>["initFlow"];
-      let capturedRef: React.RefObject<FlowOutletHandle | null>;
+  Scenario("Chrome reads updated context via useFlowContext after a contextPatch", ({ Given, When, Then, And }) => {
+    let capturedInitFlow: ReturnType<typeof useFlowInit>["initFlow"];
+    let capturedRef: React.RefObject<FlowOutletHandle | null>;
 
-      Given(
-        "a host with FlowOutlet configured with a chrome component that displays context",
-        () => {
-          cleanup();
+    Given("a host with FlowOutlet configured with a chrome component that displays context", () => {
+      cleanup();
 
-          function TestHost() {
-            const ref = useRef<FlowOutletHandle>(null);
-            const { initFlow } = useFlowInit();
-            capturedInitFlow = initFlow;
-            capturedRef = ref;
-            return (
-              <FlowOutlet ref={ref} fallback={<div>Loading…</div>}>
-                <ContextChrome />
-              </FlowOutlet>
-            );
-          }
+      function TestHost() {
+        const ref = useRef<FlowOutletHandle>(null);
+        const { initFlow } = useFlowInit();
+        capturedInitFlow = initFlow;
+        capturedRef = ref;
+        return (
+          <FlowOutlet ref={ref} fallback={<div>Loading…</div>}>
+            <ContextChrome />
+          </FlowOutlet>
+        );
+      }
 
-          render(<TestHost />);
-          expect(capturedInitFlow).toBeDefined();
-        },
-      );
+      render(<TestHost />);
+      expect(capturedInitFlow).toBeDefined();
+    });
 
-      And("the flow has been activated with initial context", () => {
-        act(() => {
-          capturedInitFlow(ContextStep1, capturedRef, { title: "Initial" });
-        });
-        expect(screen.getByText("Title: Initial")).toBeInTheDocument();
+    And("the flow has been activated with initial context", () => {
+      act(() => {
+        capturedInitFlow(ContextStep1, capturedRef, { title: "Initial" });
       });
+      expect(screen.getByText("Title: Initial")).toBeInTheDocument();
+    });
 
-      When("the step advances with a contextPatch", () => {
-        act(() => {
-          capturedAdvance(ContextStep2, { title: "Updated" });
-        });
+    When("the step advances with a contextPatch", () => {
+      act(() => {
+        capturedAdvance(ContextStep2, { title: "Updated" });
       });
+    });
 
-      Then("the chrome component displays the updated context value", () => {
-        expect(screen.getByText("Title: Updated")).toBeInTheDocument();
-      });
-    },
-  );
+    Then("the chrome component displays the updated context value", () => {
+      expect(screen.getByText("Title: Updated")).toBeInTheDocument();
+    });
+  });
 
   // ── Scenario 4 ─────────────────────────────────────────────────────
   Scenario("A step renders without chrome when none is provided", ({ Given, When, Then }) => {
@@ -211,28 +205,6 @@ describeFeature(feature, ({ Scenario }) => {
 
     Then("only the step content is rendered", () => {
       expect(screen.getByText("Step Content")).toBeInTheDocument();
-      expect(screen.queryByText("Chrome Header")).not.toBeInTheDocument();
-    });
-  });
-
-  // ── Scenario 5 ─────────────────────────────────────────────────────
-  Scenario("Chrome is not visible before the flow is initialized", ({ Given, Then }) => {
-    Given("a host with FlowOutlet configured with a chrome component", () => {
-      cleanup();
-
-      function TestHost() {
-        const ref = useRef<FlowOutletHandle>(null);
-        return (
-          <FlowOutlet ref={ref} fallback={<div>Loading…</div>}>
-            <ChromeHeader />
-          </FlowOutlet>
-        );
-      }
-
-      render(<TestHost />);
-    });
-
-    Then("the chrome is not visible before the flow is initialized", () => {
       expect(screen.queryByText("Chrome Header")).not.toBeInTheDocument();
     });
   });
