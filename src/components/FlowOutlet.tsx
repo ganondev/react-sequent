@@ -35,9 +35,10 @@ interface FlowState {
 
 export const FlowOutlet = forwardRef<
   FlowOutletHandle,
-  { fallback?: ReactNode; errorFallback?: ReactNode }
+  { fallback?: ReactNode; errorFallback?: ReactNode; children?: ReactNode }
 >(function FlowOutlet(props, ref) {
-  const [flowState, setFlowState] = useState<FlowState | null>(null);  const errorBoundaryRef = useRef<FlowErrorBoundary>(null);
+  const [flowState, setFlowState] = useState<FlowState | null>(null);
+  const errorBoundaryRef = useRef<FlowErrorBoundary>(null);
 
   const deactivate = useCallback(() => {
     setFlowState(null);
@@ -113,6 +114,7 @@ export const FlowOutlet = forwardRef<
 
   return (
     <FlowContext.Provider value={contextValue}>
+      {props.children}
       <FlowErrorBoundary ref={errorBoundaryRef} errorFallback={props.errorFallback}>
         <Suspense fallback={props.fallback ?? null}>
           <ActiveStep />
