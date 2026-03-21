@@ -156,13 +156,7 @@ Thread result type safety from `useFlowInit` through to `resolve`/`abort`.
 
 ---
 
-## Milestone 7 — Build & Publish Setup
-
-Verify the library is distributable as a proper dual-format package.
-
-1. Run `yarn build`; confirm `dist/` contains ESM + CJS + `.d.ts` outputs
-2. Verify `package.json` `exports` field covers `import`, `require`, and `types` conditions
-3. Test local consumption via `yarn link` in a throwaway consumer app using the projected examples
+## Milestone 7 — SKIPPED
 
 ---
 
