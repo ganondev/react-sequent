@@ -68,6 +68,24 @@ function StepWithRetreat() {
   );
 }
 
+function StepWithResolveValue() {
+  const { resolve } = useStep();
+  return (
+    <button type="button" onClick={() => resolve("success-value")}>
+      ResolveValue
+    </button>
+  );
+}
+
+function StepWithAbortReason() {
+  const { abort } = useStep();
+  return (
+    <button type="button" onClick={() => abort("abort-reason")}>
+      AbortReason
+    </button>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Host component that wires useFlowInit + FlowOutlet together
 // ---------------------------------------------------------------------------
@@ -85,6 +103,31 @@ function TestHost({
   return (
     <>
       <button type="button" onClick={() => onInit?.(initFlow, ref)}>
+        Init
+      </button>
+      <FlowOutlet ref={ref} />
+    </>
+  );
+}
+
+function TestHostWithPromise({
+  step,
+  onPromise,
+}: {
+  step: Parameters<ReturnType<typeof useFlowInit>["initFlow"]>[0];
+  onPromise?: (promise: Promise<unknown>) => void;
+}) {
+  const ref = useRef<FlowOutletHandle>(null);
+  const { initFlow } = useFlowInit();
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          const p = initFlow(step, ref);
+          onPromise?.(p);
+        }}
+      >
         Init
       </button>
       <FlowOutlet ref={ref} />
@@ -174,6 +217,29 @@ describe("useFlowInit", () => {
       // Outlet should be idle — no step content rendered
       expect(screen.queryByText("Resolve")).not.toBeInTheDocument();
     });
+
+    it("resolves the initFlow promise with the value passed to resolve()", async () => {
+      let promise: Promise<unknown> | undefined;
+
+      render(
+        <TestHostWithPromise
+          step={StepWithResolveValue}
+          onPromise={(p) => {
+            promise = p;
+          }}
+        />,
+      );
+
+      await act(async () => {
+        screen.getByText("Init").click();
+      });
+
+      await act(async () => {
+        screen.getByText("ResolveValue").click();
+      });
+
+      await expect(promise).resolves.toBe("success-value");
+    });
   });
 
   // ── Abort ───────────────────────────────────────────────────────────────
@@ -198,6 +264,29 @@ describe("useFlowInit", () => {
       });
 
       expect(screen.queryByText("Abort")).not.toBeInTheDocument();
+    });
+
+    it("rejects the initFlow promise with the reason passed to abort()", async () => {
+      let promise: Promise<unknown> | undefined;
+
+      render(
+        <TestHostWithPromise
+          step={StepWithAbortReason}
+          onPromise={(p) => {
+            promise = p;
+          }}
+        />,
+      );
+
+      await act(async () => {
+        screen.getByText("Init").click();
+      });
+
+      await act(async () => {
+        screen.getByText("AbortReason").click();
+      });
+
+      await expect(promise).rejects.toBe("abort-reason");
     });
   });
 

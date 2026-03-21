@@ -142,6 +142,20 @@ Thread result type safety from `useFlowInit` through to `resolve`/`abort`.
 
 ---
 
+### Milestone 6 — Completion Notes
+
+- Made `useFlowInit` generic: `useFlowInit<TResult = unknown>()` in [src/hooks/useFlowInit.ts](src/hooks/useFlowInit.ts). `initFlow` now returns `Promise<TResult>`, wired via `onResolve`/`onAbort` callbacks passed to the outlet's imperative `activate` handle. Fire-and-forget usage is safe — an internal `.catch(() => {})` prevents unhandled rejections when the consumer ignores the promise.
+- Made `useStep` generic: `useStep<TResult = unknown>()` in [src/hooks/useStep.ts](src/hooks/useStep.ts). `resolve(value?: TResult)` is typed through to the consumer.
+- Made `useFlowContext` generic: `useFlowContext<TContext = unknown>()` in [src/hooks/useFlowContext.ts](src/hooks/useFlowContext.ts) for typed consumer context access.
+- Made `useFlowInternalContext` generic in [src/internal/context.ts](src/internal/context.ts) with a type assertion from the runtime `unknown`-typed context.
+- Updated [src/components/FlowOutlet.tsx](src/components/FlowOutlet.tsx): extended `FlowOutletHandle.activate` with `onResolve`/`onAbort` callbacks; replaced the monolithic `deactivate` with separate `handleResolve` and `handleAbort` that invoke stored callbacks via `useRef` before clearing flow state.
+- Exported `FlowOutletHandle` type from [src/index.ts](src/index.ts).
+- Documented the type safety trade-off in AGENT.md under a new "Type Safety Trade-offs" subsection and updated the "Current Status" checklist.
+- Fixed pre-existing type errors in `normalizer.ts` (type assertions on narrowed branches) and `normalizer.test.ts` (unused import, biome-ignore for intentional `noThenProperty` usage).
+- Verification: `yarn typecheck` — zero errors. `yarn lint` — zero violations. `yarn test:unit` — 37 tests pass. `yarn test:bdd` — 46 tests pass. No regressions.
+
+---
+
 ## Milestone 7 — Build & Publish Setup
 
 Verify the library is distributable as a proper dual-format package.

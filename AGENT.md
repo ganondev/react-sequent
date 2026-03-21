@@ -186,15 +186,28 @@ yarn link react-sequent
 
 ## Current Status
 
-- [ ] Core transition logic
-- [ ] `useFlowInit` hook
-- [ ] `useStep` hook
-- [ ] `<FlowOutlet />` component
-- [ ] Suspense / async step normalization
-- [ ] TypeScript types
-- [ ] Tests
+- [x] Core transition logic
+- [x] `useFlowInit` hook
+- [x] `useStep` hook
+- [x] `<FlowOutlet />` component
+- [x] Suspense / async step normalization
+- [x] TypeScript types
 - [ ] Build / publish setup
 - [ ] README / docs
+
+### Type Safety Trade-offs
+
+`useFlowInit<TResult>()` threads a generic through to `initFlow`, which returns `Promise<TResult>`. The `FlowOutletHandle.activate` accepts `onResolve` / `onAbort` callbacks, wiring the promise lifecycle to the outlet's `resolve` / `abort` context functions.
+
+`useStep<TResult>()` and `useFlowContext<TContext>()` also accept generics, casting the internally `unknown`-typed context values to the consumer-specified type.
+
+**Acknowledged limitation:** TypeScript cannot verify at compile time that a step component is rendered inside the correct outlet. A step reused across flows with different `TResult` types would silently receive the wrong type. This is an acceptable trade-off because:
+
+1. Steps are designed to be portable — the paradigm encourages step-level transition logic, not global type coordination
+2. The generic is most valuable at the `initFlow` call site, where the consumer controls both the flow shape and the result handling
+3. Runtime behavior is unaffected — the generic is erased at compile time and the library uses `unknown` internally
+
+If a consumer needs airtight type safety between `initFlow` and `useStep`, they can create a thin typed wrapper hook around `useStep<MyResultType>()` co-located with the flow definition.
 
 ### Projected Examples
 

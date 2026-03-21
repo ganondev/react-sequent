@@ -24,7 +24,12 @@ import { normalizeStepLoader } from "../internal/normalizer";
 /** Imperative handle exposed by FlowOutlet via its forwarded ref. */
 export interface FlowOutletHandle {
   /** Activate a flow, rendering the given step component in this outlet. */
-  activate: (stepLoader: StepLoader, initialContext?: unknown) => void;
+  activate: (
+    stepLoader: StepLoader,
+    initialContext?: unknown,
+    onResolve?: (value?: unknown) => void,
+    onAbort?: (reason?: unknown) => void,
+  ) => void;
 }
 
 interface FlowState {
@@ -39,9 +44,25 @@ export const FlowOutlet = forwardRef<
 >(function FlowOutlet(props, ref) {
   const [flowState, setFlowState] = useState<FlowState | null>(null);
   const errorBoundaryRef = useRef<FlowErrorBoundary>(null);
+  const resolveRef = useRef<((value?: unknown) => void) | null>(null);
+  const abortRef = useRef<((reason?: unknown) => void) | null>(null);
+  /** Monotonically increasing token — invalidates stale resolve/abort closures. */
+  const flowIdRef = useRef(0);
 
-  const deactivate = useCallback(() => {
+  const handleResolve = useCallback((value?: unknown) => {
+    const cb = resolveRef.current;
+    resolveRef.current = null;
+    abortRef.current = null;
     setFlowState(null);
+    cb?.(value);
+  }, []);
+
+  const handleAbort = useCallback((reason?: unknown) => {
+    const cb = abortRef.current;
+    resolveRef.current = null;
+    abortRef.current = null;
+    setFlowState(null);
+    cb?.(reason);
   }, []);
 
   const advance = useCallback((nextStep: StepLoader, contextPatch?: unknown) => {
@@ -84,8 +105,16 @@ export const FlowOutlet = forwardRef<
   useImperativeHandle(
     ref,
     () => ({
-      activate(stepLoader: StepLoader, initialContext?: unknown) {
+      activate(
+        stepLoader: StepLoader,
+        initialContext?: unknown,
+        onResolve?: (value?: unknown) => void,
+        onAbort?: (reason?: unknown) => void,
+      ) {
         errorBoundaryRef.current?.resetError();
+        flowIdRef.current += 1;
+        resolveRef.current = onResolve ?? null;
+        abortRef.current = onAbort ?? null;
         setFlowState({
           history: [],
           activeStep: normalizeStepLoader(stepLoader),
@@ -102,12 +131,23 @@ export const FlowOutlet = forwardRef<
 
   const ActiveStep = flowState.activeStep;
 
+  // Capture the current flow ID so that stale closures (e.g. async
+  // callbacks from a previous flow's step) no-op instead of resolving
+  // or aborting the wrong flow.
+  const capturedFlowId = flowIdRef.current;
+
   const contextValue: FlowContextValue = {
     history: flowState.history,
     activeStep: flowState.activeStep,
     consumerContext: flowState.consumerContext,
-    resolve: deactivate,
-    abort: deactivate,
+    resolve: (value?: unknown) => {
+      if (flowIdRef.current !== capturedFlowId) return;
+      handleResolve(value);
+    },
+    abort: (reason?: unknown) => {
+      if (flowIdRef.current !== capturedFlowId) return;
+      handleAbort(reason);
+    },
     advance,
     retreat,
   };
