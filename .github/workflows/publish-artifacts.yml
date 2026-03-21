@@ -70,7 +70,15 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           tgz=$(ls *.tgz | head -n1)
-          npm publish "$tgz" --access public
+          version=$(tar -xOf "$tgz" package/package.json | node -e "process.stdout.write(JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).version)")
+          if echo "$version" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+-'; then
+            tag=$(echo "$version" | sed 's/^[0-9]*\.[0-9]*\.[0-9]*-\([a-zA-Z][a-zA-Z0-9]*\).*/\1/')
+            echo "Prerelease version '$version' detected — publishing with --tag $tag"
+            npm publish "$tgz" --access public --tag "$tag"
+          else
+            echo "Stable version '$version' detected — publishing with default (latest) tag"
+            npm publish "$tgz" --access public
+          fi
 
       - name: Attach tarball to GitHub Release
         uses: softprops/action-gh-release@v2
