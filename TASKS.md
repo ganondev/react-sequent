@@ -160,12 +160,24 @@ Thread result type safety from `useFlowInit` through to `resolve`/`abort`.
 
 ---
 
-## Milestone 8 — README & Docs
+## Milestone 8 — Docs
 
-1. Write root-level `README.md` covering: install, minimal example (matching projected examples in AGENT.md), full API reference for `useFlowInit`, `useStep`, `useFlowContext`, and `<FlowOutlet />`
-2. Update the *Current Status* checklist in AGENT.md to reflect completed items
+1. Create full interactive API reference for `useFlowInit`, `useStep`, `useFlowContext`, and `<FlowOutlet />`, published as a static Github Pages site to the repo, or a wiki
+  - determine right fit for documentation - requirements:
+    - Documentation sections should have interactive demonstrations of their use. 
+    - Demonstrations should be accompanied with exact code snippets, ideally dynamically coupled to the implementation
+    - Sleek "main" page for pitching the library
+  - implement docs generation->publish pipeline
 
 ---
+
+## Milestone 9 - Repo touchup
+
+1. Fill out repository README.md, mentioning docs page
+2. Update AGENT.md to reflect completion state and any missing information
+
+---
+
 
 ## Verification (overall)
 
@@ -173,7 +185,7 @@ Thread result type safety from `useFlowInit` through to `resolve`/`abort`.
 - `yarn typecheck` — zero errors
 - `yarn lint` — zero Biome violations
 - `yarn build` — clean dist output
-- Manual smoke test in a local consumer app using `yarn link`
+- Manual smoke test in a local consumer app using `yarn add`
 
 ---
 
