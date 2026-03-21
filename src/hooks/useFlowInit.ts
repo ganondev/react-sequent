@@ -11,19 +11,32 @@ import { type RefObject, useCallback } from "react";
 import type { FlowOutletHandle } from "../components/FlowOutlet";
 import { normalizeStepLoader, type StepLoader } from "../internal/normalizer";
 
-export function useFlowInit() {
+export function useFlowInit<TResult = unknown>() {
   const initFlow = useCallback(
     (
       stepLoader: StepLoader,
       ref: RefObject<FlowOutletHandle | null>,
       initialContext?: unknown,
-    ): void => {
-      if (!ref.current) {
+    ): Promise<TResult> => {
+      const outlet = ref.current;
+      if (!outlet) {
         throw new Error(
           "FlowOutlet ref is not attached. Ensure <FlowOutlet ref={...} /> is mounted before calling initFlow.",
         );
       }
-      ref.current.activate(normalizeStepLoader(stepLoader), initialContext);
+      const promise = new Promise<TResult>((resolve, reject) => {
+        outlet.activate(
+          normalizeStepLoader(stepLoader),
+          initialContext,
+          (value) => resolve(value as TResult),
+          (reason) => reject(reason),
+        );
+      });
+      // Prevent unhandled rejection when the consumer ignores the returned
+      // promise (e.g. fire-and-forget usage). The consumer can still
+      // await/catch the returned promise normally.
+      promise.catch(() => {});
+      return promise;
     },
     [],
   );

@@ -24,10 +24,10 @@ export interface FlowContextValue<TResult = unknown> {
 
 export const FlowContext = createContext<FlowContextValue | null>(null);
 
-export function useFlowInternalContext(): FlowContextValue {
+export function useFlowInternalContext<TResult = unknown>(): FlowContextValue<TResult> {
   const ctx = useContext(FlowContext);
   if (ctx === null) {
     throw new Error("useFlowInternalContext must be used within a FlowOutlet");
   }
-  return ctx;
+  return ctx as FlowContextValue<TResult>;
 }

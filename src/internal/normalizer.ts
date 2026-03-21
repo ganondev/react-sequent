@@ -48,17 +48,17 @@ export function normalizeStepLoader(loader: StepLoader): ComponentType {
 
   if (typeof loader !== "function") {
     // It's an object like React.memo() result — already a ComponentType
-    return loader;
+    return loader as ComponentType;
   }
 
   // Class component
-  if (loader.prototype && loader.prototype.isReactComponent) {
-    return loader;
+  if (loader.prototype?.isReactComponent) {
+    return loader as ComponentType;
   }
 
   // React internals mark memo/forwardRef/lazy with $$typeof
   if ("$$typeof" in loader) {
-    return loader;
+    return loader as ComponentType;
   }
 
   // At this point it's a plain function. It could be a function component

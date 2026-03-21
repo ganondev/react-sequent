@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import { Component, forwardRef, lazy, memo } from "react";
+import { Component, forwardRef, memo } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { normalizeStepLoader } from "../normalizer";
 
@@ -125,6 +125,7 @@ describe("normalizeStepLoader – torture tests", () => {
 
   it("wraps a factory returning a non-standard thenable with React.lazy", () => {
     // A fake thenable: has a 'then' property but it's not a real Promise
+    // biome-ignore lint/suspicious/noThenProperty: intentional — testing thenable detection
     const fakeThenable = { then: vi.fn() };
     const thenableFactory = () => fakeThenable as unknown as Promise<ComponentType>;
     const result = normalizeStepLoader(thenableFactory);
@@ -175,6 +176,7 @@ describe("normalizeStepLoader – torture tests", () => {
   // ---- circular / recursive oddities ----
 
   it("handles a factory whose 'then' property is not a function (non-standard thenable)", () => {
+    // biome-ignore lint/suspicious/noThenProperty: intentional — testing non-standard thenable
     const weirdObj = { then: 42 };
     const factory = () => weirdObj as unknown as Promise<ComponentType>;
     // 'then' in result is true, so the code tries result.then(...) which throws
