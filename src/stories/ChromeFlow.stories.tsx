@@ -113,33 +113,37 @@ function Host() {
   const { initFlow } = useFlowInit();
 
   return (
-    <Paper withBorder p="xl" maw={440} mx="auto" mt="xl" radius="md">
-      <Stack>
-        <FlowOutlet
-          ref={ref}
-          fallback={
-            <Center py="xl">
-              <Stack align="center" gap="sm">
-                <Loader size="md" />
-                <Text c="dimmed" size="sm">
-                  Loading step…
-                </Text>
-              </Stack>
-            </Center>
-          }
-        >
-          <ModalHeader />
-        </FlowOutlet>
+    <Stack maw={440} mx="auto" mt="xl">
+      <FlowOutlet
+        ref={ref}
+        fallback={
+          <Center py="xl">
+            <Stack align="center" gap="sm">
+              <Loader size="md" />
+              <Text c="dimmed" size="sm">
+                Loading step…
+              </Text>
+            </Stack>
+          </Center>
+        }
+        chrome={(children) => (
+          <Paper withBorder p="xl" radius="md">
+            <Stack>
+              <ModalHeader />
+              {children}
+            </Stack>
+          </Paper>
+        )}
+      />
 
-        <Button
-          variant="light"
-          fullWidth
-          onClick={() => initFlow(loadStepWelcome, ref, { title: "Welcome" })}
-        >
-          Start Flow
-        </Button>
-      </Stack>
-    </Paper>
+      <Button
+        variant="light"
+        fullWidth
+        onClick={() => initFlow(loadStepWelcome, ref, { title: "Welcome" })}
+      >
+        Start Flow
+      </Button>
+    </Stack>
   );
 }
 

@@ -52,11 +52,11 @@ const feature = await loadFeature("src/features/chrome-and-flow-context.feature"
 
 describeFeature(feature, ({ Scenario }) => {
   // ── Scenario 1 ─────────────────────────────────────────────────────
-  Scenario("Chrome renders alongside the active step", ({ Given, When, Then }) => {
+  Scenario("Chrome receives step slot and renders it", ({ Given, When, Then }) => {
     let capturedInitFlow: ReturnType<typeof useFlowInit>["initFlow"];
     let capturedRef: React.RefObject<FlowOutletHandle | null>;
 
-    Given("a host with FlowOutlet configured with a chrome component", () => {
+    Given("a host with FlowOutlet configured with a chrome render prop", () => {
       cleanup();
 
       function TestHost() {
@@ -65,9 +65,16 @@ describeFeature(feature, ({ Scenario }) => {
         capturedInitFlow = initFlow;
         capturedRef = ref;
         return (
-          <FlowOutlet ref={ref} fallback={<div>Loading…</div>}>
-            <ChromeHeader />
-          </FlowOutlet>
+          <FlowOutlet
+            ref={ref}
+            fallback={<div>Loading…</div>}
+            chrome={(slot) => (
+              <>
+                <ChromeHeader />
+                {slot}
+              </>
+            )}
+          />
         );
       }
 
@@ -88,11 +95,11 @@ describeFeature(feature, ({ Scenario }) => {
   });
 
   // ── Scenario 2 ─────────────────────────────────────────────────────
-  Scenario("Chrome stays mounted when the step advances", ({ Given, When, Then, And }) => {
+  Scenario("Chrome persists across step advancement", ({ Given, When, Then, And }) => {
     let capturedInitFlow: ReturnType<typeof useFlowInit>["initFlow"];
     let capturedRef: React.RefObject<FlowOutletHandle | null>;
 
-    Given("a host with FlowOutlet configured with a chrome component", () => {
+    Given("a host with FlowOutlet configured with a chrome render prop", () => {
       cleanup();
 
       function TestHost() {
@@ -101,9 +108,16 @@ describeFeature(feature, ({ Scenario }) => {
         capturedInitFlow = initFlow;
         capturedRef = ref;
         return (
-          <FlowOutlet ref={ref} fallback={<div>Loading…</div>}>
-            <ChromeHeader />
-          </FlowOutlet>
+          <FlowOutlet
+            ref={ref}
+            fallback={<div>Loading…</div>}
+            chrome={(slot) => (
+              <>
+                <ChromeHeader />
+                {slot}
+              </>
+            )}
+          />
         );
       }
 
@@ -137,13 +151,13 @@ describeFeature(feature, ({ Scenario }) => {
 
   // ── Scenario 3 ─────────────────────────────────────────────────────
   Scenario(
-    "Chrome reads updated context via useFlowContext after a contextPatch",
+    "Chrome reads patched consumer context",
     ({ Given, When, Then, And }) => {
       let capturedInitFlow: ReturnType<typeof useFlowInit>["initFlow"];
       let capturedRef: React.RefObject<FlowOutletHandle | null>;
 
       Given(
-        "a host with FlowOutlet configured with a chrome component that displays context",
+        "a host with FlowOutlet configured with a chrome render prop that displays context",
         () => {
           cleanup();
 
@@ -153,9 +167,16 @@ describeFeature(feature, ({ Scenario }) => {
             capturedInitFlow = initFlow;
             capturedRef = ref;
             return (
-              <FlowOutlet ref={ref} fallback={<div>Loading…</div>}>
-                <ContextChrome />
-              </FlowOutlet>
+              <FlowOutlet
+                ref={ref}
+                fallback={<div>Loading…</div>}
+                chrome={(slot) => (
+                  <>
+                    <ContextChrome />
+                    {slot}
+                  </>
+                )}
+              />
             );
           }
 
@@ -184,7 +205,7 @@ describeFeature(feature, ({ Scenario }) => {
   );
 
   // ── Scenario 4 ─────────────────────────────────────────────────────
-  Scenario("A step renders without chrome when none is provided", ({ Given, When, Then }) => {
+  Scenario("Outlet renders without chrome", ({ Given, When, Then }) => {
     let capturedInitFlow: ReturnType<typeof useFlowInit>["initFlow"];
     let capturedRef: React.RefObject<FlowOutletHandle | null>;
 

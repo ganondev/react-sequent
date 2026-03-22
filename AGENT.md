@@ -71,7 +71,7 @@ These hooks must not share a public interface beyond what is explicitly listed. 
 `<FlowOutlet />` is a component the consumer renders wherever they want flow output to appear. It has two states: **idle** and **active**.
 
 - **Idle** — renders nothing. The outlet is inert until a flow is initialized against it via `initFlow`.
-- **Active** — renders the chrome child (if provided) and the active step inside it. Teardown (via `resolve` or `abort`) returns the outlet to idle.
+- **Active** — renders the result of calling the chrome render prop (if provided) with the step slot, or the step slot directly. Teardown (via `resolve` or `abort`) returns the outlet to idle.
 
 The outlet's active/idle state is derived entirely from whether a flow has been initialized against it. The consumer never manages this boolean directly.
 
@@ -81,10 +81,10 @@ The outlet's active/idle state is derived entirely from whether a flow has been 
 - Owns both the Suspense boundary and the error boundary for the active step
 - Accepts a `fallback` prop for the async step loading state (passed through to Suspense)
 - Accepts an `errorFallback` prop for the error boundary, analogous to `fallback`
-- Accepts an optional **chrome child** — a consumer-supplied component rendered outside the Suspense boundary but inside the provider boundary, so it remains stable across async step transitions
+- Accepts an optional **chrome render prop** (`chrome?: (children: ReactNode) => ReactNode`) — a function that receives the step slot (error boundary + Suspense + active step) and returns JSX; chrome renders outside the Suspense boundary but inside the provider boundary, so it remains stable across async step transitions
 - Has no opinions about layout or visual structure
 
-The chrome child is optional. Outlets with no chrome child simply render the active step directly when initialized. The consumer controls placement. The library controls nothing above the outlet.
+The chrome render prop is optional. Outlets with no chrome render prop simply render the step slot directly when initialized. The consumer controls placement. The library controls nothing above the outlet.
 
 #### Chrome and `useFlowContext`
 
@@ -97,12 +97,15 @@ The library defines no chrome slots. The consumer owns both the shape of the con
 The tree structure during an active flow with chrome:
 
 ```
-<FlowOutlet>               ← provider, error boundary
-  <ConsumerChrome>         ← stable across transitions; reads useFlowContext
-    <Suspense>             ← fallback shown during async step loads
-      <ActiveStep />       ← swaps on each transition
-    </Suspense>
-  </ConsumerChrome>
+<FlowOutlet chrome={chrome}>   ← provider
+  {chrome(
+    <FlowErrorBoundary>        ← error boundary
+      <Suspense>               ← fallback shown during async step loads
+        <ActiveStep />         ← swaps on each transition
+      </Suspense>
+    </FlowErrorBoundary>
+  )}
+  // chrome wraps and composes around the step slot
 </FlowOutlet>
 ```
 

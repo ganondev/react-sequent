@@ -69,9 +69,15 @@ function Host() {
 
   return (
     <div>
-      <FlowOutlet ref={ref}>
-        <ModalHeader />
-      </FlowOutlet>
+      <FlowOutlet
+        ref={ref}
+        chrome={(children) => (
+          <>
+            <ModalHeader />
+            {children}
+          </>
+        )}
+      />
       <button onClick={start}>Start</button>
     </div>
   );
@@ -86,13 +92,16 @@ The chrome component (`<ModalHeader>` above) is rendered **inside** the outlet's
 - Chrome does **not** unmount or flicker when an async step is loading — the Suspense fallback only affects the step area.
 
 ```
-<FlowOutlet>               ← provider
-  <ModalHeader />           ← reads useFlowContext, stable across transitions
-  <FlowErrorBoundary>
-    <Suspense fallback={…}> ← only wraps the step
-      <ActiveStep />
-    </Suspense>
-  </FlowErrorBoundary>
+<FlowOutlet chrome={chrome}>   ← provider
+  {chrome(
+    <FlowErrorBoundary>
+      <Suspense fallback={…}>   ← only wraps the step
+        <ActiveStep />
+      </Suspense>
+    </FlowErrorBoundary>
+  )}
+  // inside chrome:
+  <ModalHeader />              ← reads useFlowContext, stable across transitions
 </FlowOutlet>
 ```
 

@@ -4,23 +4,33 @@ const sidebars: SidebarsConfig = {
   docsSidebar: [
     "getting-started",
     "concepts",
-  ],
-  apiSidebar: [
     {
       type: "category",
-      label: "Hooks",
+      label: "API",
+      collapsed: false,
       items: [
-        "api/use-flow-init",
-        "api/use-step",
-        "api/use-flow-context",
+        {
+          type: "category",
+          label: "Hooks",
+          items: [
+            "api/use-flow-init",
+            "api/use-step",
+            "api/use-flow-context",
+          ],
+        },
+        {
+          type: "category",
+          label: "Components",
+          items: ["api/flow-outlet"],
+        },
+        "api/types",
       ],
     },
-    {
-      type: "category",
-      label: "Components",
-      items: ["api/flow-outlet"],
-    },
-    "api/types",
+  ],
+  examplesSidebar: [
+    "examples/subsection-flow",
+    "examples/modal",
+    "examples/wizard",
   ],
 };
 

@@ -14,7 +14,7 @@ The mount point where flows render. Idle (invisible) until `initFlow` activates 
 | `ref` | `Ref<FlowOutletHandle>` | — | **Required.** Imperative handle used by `initFlow` to activate the outlet. |
 | `fallback` | `ReactNode` | `null` | Shown while an async step is loading (passed to the internal `<Suspense>`). |
 | `errorFallback` | `ReactNode` | `null` | Shown when a step throws during rendering (caught by the internal error boundary). |
-| `children` | `ReactNode` | — | **Chrome**: stable UI rendered inside the provider but outside the Suspense boundary. Only rendered when the flow is active. |
+| `chrome` | `(children: ReactNode) => ReactNode` | — | **Chrome**: a render prop that receives the step slot (error boundary + Suspense + active step) and returns JSX. Called only when the flow is active. |
 
 ## `FlowOutletHandle`
 
@@ -28,6 +28,8 @@ interface FlowOutletHandle {
     onResolve?: (value?: unknown) => void,
     onAbort?: (reason?: unknown) => void,
   ) => void;
+  /** Abort the active flow imperatively. No-op when the outlet is idle. */
+  abort: (reason?: unknown) => void;
 }
 ```
 
@@ -57,12 +59,13 @@ When `initFlow` is called against this outlet, it renders:
 
 ```
 <FlowContext.Provider>
-  {children}                     ← chrome (stable)
-  <FlowErrorBoundary>
-    <Suspense fallback={…}>
-      <ActiveStep />             ← swaps on transition
-    </Suspense>
-  </FlowErrorBoundary>
+  {chrome(                         ← chrome wraps the step slot
+    <FlowErrorBoundary>
+      <Suspense fallback={…}>
+        <ActiveStep />             ← swaps on transition
+      </Suspense>
+    </FlowErrorBoundary>
+  )}
 </FlowContext.Provider>
 ```
 
@@ -140,16 +143,20 @@ function App() {
         ref={ref}
         fallback={<div>Loading…</div>}
         errorFallback={<div>Error in step</div>}
-      >
-        <ProgressChrome />
-      </FlowOutlet>
+        chrome={(children) => (
+          <>
+            <ProgressChrome />
+            {children}
+          </>
+        )}
+      />
       <button onClick={start}>Start</button>
     </div>
   );
 }
 ```
 
-Chrome (`<ProgressChrome>`) stays mounted across step transitions. It reads context via `useFlowContext` and updates when steps patch the context via `advance(NextStep, { step: 2 })`.
+Chrome (`<ProgressChrome>`) stays mounted across step transitions. It reads context via `useFlowContext` and updates when steps patch the context via `advance(NextStep, { step: 2 })`. The `children` argument passed to chrome is the rendered error boundary + Suspense + active step subtree.
 
 ## Multiple outlets
 

@@ -31,6 +31,8 @@ export interface FlowOutletHandle {
     onResolve?: (value?: unknown) => void,
     onAbort?: (reason?: unknown) => void,
   ) => void;
+  /** Abort the active flow. No-op when the outlet is idle. */
+  abort: (reason?: unknown) => void;
 }
 // #endregion doc:handle
 
@@ -43,7 +45,7 @@ interface FlowState {
 // #region doc:props
 export const FlowOutlet = forwardRef<
   FlowOutletHandle,
-  { fallback?: ReactNode; errorFallback?: ReactNode; children?: ReactNode }
+  { fallback?: ReactNode; errorFallback?: ReactNode; chrome?: (children: ReactNode) => ReactNode }
 >(function FlowOutlet(props, ref) {
 // #endregion doc:props
   const [flowState, setFlowState] = useState<FlowState | null>(null);
@@ -125,8 +127,11 @@ export const FlowOutlet = forwardRef<
           consumerContext: initialContext,
         });
       },
+      abort(reason?: unknown) {
+        handleAbort(reason);
+      },
     }),
-    [],
+    [handleAbort],
   );
 
   if (flowState === null) {
@@ -156,14 +161,17 @@ export const FlowOutlet = forwardRef<
     retreat,
   };
 
+  const stepSlot = (
+    <FlowErrorBoundary ref={errorBoundaryRef} errorFallback={props.errorFallback}>
+      <Suspense fallback={props.fallback ?? null}>
+        <ActiveStep />
+      </Suspense>
+    </FlowErrorBoundary>
+  );
+
   return (
     <FlowContext.Provider value={contextValue}>
-      {props.children}
-      <FlowErrorBoundary ref={errorBoundaryRef} errorFallback={props.errorFallback}>
-        <Suspense fallback={props.fallback ?? null}>
-          <ActiveStep />
-        </Suspense>
-      </FlowErrorBoundary>
+      {props.chrome ? props.chrome(stepSlot) : stepSlot}
     </FlowContext.Provider>
   );
 });

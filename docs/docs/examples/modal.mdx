@@ -1,0 +1,210 @@
+---
+sidebar_position: 2
+title: Modal Flow
+---
+
+# Modal Flow
+
+A flow rendered inside a **shared singleton modal** — a single `<FlowOutlet>` lives at the top of the tree inside a context provider. Any component in the subtree calls `useModal()` to open a flow without ever touching a ref or rendering an outlet itself.
+
+Click **Open Setup Flow** below to try it.
+
+```jsx live
+function SharedModalDemo() {
+  // ── Modal infrastructure (would live in its own module in a real app) ─────
+
+  const ModalContext = React.createContext(null);
+
+  function ModalChrome({ children }) {
+    const ctx = useFlowContext();
+    return (
+      <div style={{ background: "#fff", borderRadius: 10, minWidth: 340, boxShadow: "0 8px 32px rgba(0,0,0,0.18)", overflow: "hidden", pointerEvents: "auto" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 20px", borderBottom: "1px solid #eee" }}>
+          <strong>{ctx.title}</strong>
+          <button onClick={ctx.onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, lineHeight: 1 }}>✕</button>
+        </div>
+        <div style={{ padding: 24 }}>{children}</div>
+      </div>
+    );
+  }
+
+  function ModalProvider({ children }) {
+    const ref = useRef(null);
+    const { initFlow } = useFlowInit();
+
+    function closeModal() { ref.current?.abort(); }
+
+    async function openModal(firstStep, ctx) {
+      return initFlow(firstStep, ref, { onClose: closeModal, ...ctx });
+    }
+
+    return (
+      <ModalContext.Provider value={{ openModal, closeModal }}>
+        {children}
+        <div style={{ pointerEvents: "auto" }}>
+            <FlowOutlet
+                ref={ref}
+                chrome={(slot) => (
+                    <div style={{
+                        position: "fixed", inset: 0,
+                        background: "rgba(0,0,0,0.45)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        zIndex: 1000,
+                        pointerEvents: "none",
+                    }}>
+                        <ModalChrome>{slot}</ModalChrome>
+                    </div>
+                )}
+            />
+        </div>
+      </ModalContext.Provider>
+    );
+  }
+
+  function useModal() { return React.useContext(ModalContext); }
+
+  // ── Steps ─────────────────────────────────────────────────────────────────
+
+  function StepWelcome() {
+    const { advance } = useStep();
+    const { closeModal } = useModal();
+    return (
+      <div>
+        <p style={{ margin: "0 0 16px" }}>Welcome to the setup flow. This will only take a minute.</p>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={() => advance(StepDetails, { title: "Details", onClose: closeModal })}>
+            Get Started →
+          </button>
+          <button onClick={closeModal} style={{ background: "none", color: "#888", border: "1px solid #ddd", borderRadius: 4, padding: "4px 12px", cursor: "pointer" }}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  function StepDetails() {
+    const { retreat, advance } = useStep();
+    const { closeModal } = useModal();
+    return (
+      <div>
+        <p style={{ margin: "0 0 16px" }}>Fill in your details below.</p>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={retreat} style={{ background: "none", border: "1px solid #ddd", borderRadius: 4, padding: "4px 12px", cursor: "pointer" }}>← Back</button>
+          <button onClick={() => advance(StepDone, { title: "All done!", onClose: closeModal })}>
+            Continue →
+          </button>
+          <button onClick={closeModal} style={{ background: "none", color: "#888", border: "1px solid #ddd", borderRadius: 4, padding: "4px 12px", cursor: "pointer" }}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  function StepDone() {
+    const { resolve } = useStep();
+    return (
+      <div>
+        <p style={{ margin: "0 0 16px" }}>You're all set! 🎉</p>
+        <button onClick={() => resolve("setup-complete")}>Close</button>
+      </div>
+    );
+  }
+
+  // ── Consumer ──────────────────────────────────────────────────────────────
+
+  function SetupButton() {
+    const { openModal } = useModal();
+    const [log, setLog] = useState("");
+
+    async function handleOpen() {
+      setLog("");
+      try {
+        const result = await openModal(StepWelcome, { title: "Welcome" });
+        setLog(`Flow completed: "${result}"`);
+      } catch {
+        setLog("Flow aborted.");
+      }
+    }
+
+    return (
+      <div style={{ padding: 8 }}>
+        <button onClick={handleOpen}>Open Setup Flow</button>
+        {log && <p style={{ marginTop: 12, color: "#555" }}>{log}</p>}
+      </div>
+    );
+  }
+
+  // ── Root ──────────────────────────────────────────────────────────────────
+
+  return (
+    <ModalProvider>
+      <SetupButton />
+    </ModalProvider>
+  );
+}
+```
+
+## How the singleton pattern works
+
+The modal infrastructure (backdrop, centering, chrome) is provided by an outer wrapper that owns the `<FlowOutlet>` ref and `<ModalChrome>`. It exposes two things through context:
+
+| Value | Purpose |
+|---|---|
+| `openModal(firstStep, ctx)` | Starts a flow; returns the same promise as `initFlow` |
+| `closeModal()` | Aborts the active flow; safe to call when idle |
+
+`useModal()` is a thin wrapper around `React.useContext` that gives any descendant access to both without prop drilling or refs.
+
+```jsx
+// infrastructure (ModalProvider.tsx)
+function ModalProvider({ children }) {
+  const ref = useRef(null);
+  const { initFlow } = useFlowInit();
+
+  function closeModal() { ref.current?.abort(); }
+  async function openModal(firstStep, ctx) {
+    return initFlow(firstStep, ref, { onClose: closeModal, ...ctx });
+  }
+
+  return (
+    <ModalContext.Provider value={{ openModal, closeModal }}>
+      {children}
+      <div style={{ pointerEvents: "auto" }}>
+        <FlowOutlet
+          ref={ref}
+          chrome={(slot) => (
+            <div style={{
+              position: "fixed", inset: 0,
+              background: "rgba(0,0,0,0.45)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              zIndex: 1000,
+              pointerEvents: "none",
+            }}>
+              <ModalChrome>{slot}</ModalChrome>
+            </div>
+          )}
+        />
+      </div>
+    </ModalContext.Provider>
+  );
+}
+
+function useModal() { return React.useContext(ModalContext); }
+```
+
+```jsx
+// consumer (anywhere in the tree)
+function SetupButton() {
+  const { openModal } = useModal();
+  const result = await openModal(StepWelcome, { title: "Welcome" });
+}
+```
+
+## Key points
+
+- **Single outlet, zero consumer boilerplate** — no `useRef`, no `<FlowOutlet>`, no `useFlowInit` outside the provider.
+- **`closeModal` from anywhere** — steps call `const { closeModal } = useModal()` and pass it as `onClose` to `advance`, so the close button in the chrome always works.
+- **Chrome is stable** — `ModalChrome` stays mounted for the full lifetime of the flow; `useFlowContext()` reflects the context set by the latest `initFlow` or `advance` call.
+- **Context flows down** — `openModal` seeds context; `advance(NextStep, newCtx)` replaces it. `useFlowContext()` always reads the latest value.

@@ -81,15 +81,18 @@ The outlet's `<Suspense>` boundary shows the consumer-provided `fallback` prop w
 
 ## Chrome
 
-Chrome is stable UI that wraps the step — modal headers, progress indicators, close buttons. Chrome is rendered **inside** the outlet's provider but **outside** the Suspense boundary, so it stays mounted across async step transitions without flickering.
+Chrome is stable UI that wraps the step — modal headers, progress indicators, close buttons. Chrome is provided as a **render prop** to `<FlowOutlet chrome={...} />`. It receives the step slot (error boundary + Suspense + active step) as an argument and returns JSX. Chrome stays mounted across async step transitions without flickering because it renders outside the Suspense boundary.
 
 ```
-<FlowOutlet>                ← provider + error boundary
-  <ConsumerChrome>          ← stable across transitions
-    <Suspense fallback={…}> ← loading state for async steps
-      <ActiveStep />        ← swaps on each transition
-    </Suspense>
-  </ConsumerChrome>
+<FlowOutlet chrome={chrome}>   ← provider
+  {chrome(
+    <FlowErrorBoundary>
+      <Suspense fallback={…}>   ← loading state for async steps
+        <ActiveStep />           ← swaps on each transition
+      </Suspense>
+    </FlowErrorBoundary>
+  )}
+  // chrome can wrap, layout, or compose around the step slot
 </FlowOutlet>
 ```
 

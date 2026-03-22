@@ -1,0 +1,87 @@
+---
+sidebar_position: 1
+title: Subsection Flow
+---
+
+# Subsection Flow
+
+A flow that lives **inline inside a page** — no modal, no overlay. Useful for multi-step forms, inline confirmations, or collapsible wizards embedded in a larger UI.
+
+Click **Begin Checkout** below to start the flow directly on this page.
+
+```jsx live
+function CheckoutSection() {
+  const ref = useRef(null);
+  const { initFlow } = useFlowInit();
+  const [status, setStatus] = React.useState(null);
+
+  function StepAddress() {
+    const { advance } = useStep();
+    return (
+      <div style={{ padding: 16 }}>
+        <strong>Step 1 — Shipping Address</strong>
+        <p style={{ margin: "8px 0" }}>Enter your address details here.</p>
+        <button onClick={() => advance(StepPayment)}>Next →</button>
+      </div>
+    );
+  }
+
+  function StepPayment() {
+    const { retreat, advance } = useStep();
+    return (
+      <div style={{ padding: 16 }}>
+        <strong>Step 2 — Payment</strong>
+        <p style={{ margin: "8px 0" }}>Enter your payment details here.</p>
+        <button onClick={() => retreat()} style={{ marginRight: 8 }}>← Back</button>
+        <button onClick={() => advance(StepReview)}>Next →</button>
+      </div>
+    );
+  }
+
+  function StepReview() {
+    const { retreat, resolve } = useStep();
+    return (
+      <div style={{ padding: 16 }}>
+        <strong>Step 3 — Review & Confirm</strong>
+        <p style={{ margin: "8px 0" }}>Everything looks good?</p>
+        <button onClick={() => retreat()} style={{ marginRight: 8 }}>← Back</button>
+        <button onClick={() => resolve({ confirmed: true })}>Place Order ✓</button>
+      </div>
+    );
+  }
+
+  async function start() {
+    setStatus(null);
+    const result = await initFlow(StepAddress, ref);
+    setStatus(`Order placed! confirmed=${result.confirmed}`);
+  }
+
+  return (
+    <div style={{ border: "1px solid #ddd", borderRadius: 8, overflow: "hidden", maxWidth: 400 }}>
+      <div style={{ padding: "12px 16px", borderBottom: "1px solid #ddd", background: "#f9f9f9" }}>
+        <strong>Checkout</strong>
+      </div>
+      <FlowOutlet ref={ref} />
+      {status
+        ? <div style={{ padding: 16, color: "green" }}>{status}</div>
+        : <div style={{ padding: 16 }}>
+            <button onClick={start}>Begin Checkout</button>
+          </div>
+      }
+    </div>
+  );
+}
+```
+
+## How it works
+
+1. `<FlowOutlet ref={ref} />` is mounted inline — it renders nothing until a flow is active.
+2. Clicking **Begin Checkout** calls `initFlow(StepAddress, ref)`, which mounts `StepAddress` inside the outlet.
+3. Each step calls `advance(NextStep)` to move forward or `retreat()` to go back.
+4. `StepReview` calls `resolve(value)` — the `await initFlow(...)` promise resolves with that value and the outlet clears.
+
+## Key points
+
+- **No central state** — each step decides what comes next via `advance(NextStep)`.
+- **History is automatic** — `retreat()` pops the history stack with no manual bookkeeping.
+- **The outlet is reusable** — the same `ref` can be passed to a new `initFlow` call to start a fresh flow.
