@@ -7,6 +7,7 @@
 import { useFlowInternalContext } from "../internal/context";
 import { normalizeStepLoader, type StepLoader } from "../internal/normalizer";
 
+// #region doc:full
 export function useStep<TResult = unknown>() {
   const {
     advance: rawAdvance,
@@ -27,3 +28,4 @@ export function useStep<TResult = unknown>() {
     context: consumerContext,
   };
 }
+// #endregion doc:full

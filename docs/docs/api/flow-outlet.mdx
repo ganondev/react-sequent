@@ -1,0 +1,178 @@
+---
+sidebar_position: 4
+title: FlowOutlet
+---
+
+# `<FlowOutlet />`
+
+The mount point where flows render. Idle (invisible) until `initFlow` activates it. Owns the internal context provider, Suspense boundary, and error boundary.
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `ref` | `Ref<FlowOutletHandle>` | — | **Required.** Imperative handle used by `initFlow` to activate the outlet. |
+| `fallback` | `ReactNode` | `null` | Shown while an async step is loading (passed to the internal `<Suspense>`). |
+| `errorFallback` | `ReactNode` | `null` | Shown when a step throws during rendering (caught by the internal error boundary). |
+| `children` | `ReactNode` | — | **Chrome**: stable UI rendered inside the provider but outside the Suspense boundary. Only rendered when the flow is active. |
+
+## `FlowOutletHandle`
+
+The imperative handle type exposed via the forwarded ref.
+
+```typescript
+interface FlowOutletHandle {
+  activate: (
+    stepLoader: StepLoader,
+    initialContext?: unknown,
+    onResolve?: (value?: unknown) => void,
+    onAbort?: (reason?: unknown) => void,
+  ) => void;
+}
+```
+
+You don't call `activate` directly — `useFlowInit().initFlow` does it for you. The handle type is exported for typing your ref:
+
+```tsx
+import { useRef } from "react";
+import type { FlowOutletHandle } from "react-sequent";
+
+const ref = useRef<FlowOutletHandle>(null);
+```
+
+## Lifecycle
+
+### Idle
+
+When no flow is active, the outlet renders **nothing** — it's completely invisible in the DOM. This is the initial state and the state after `resolve()` or `abort()` is called.
+
+### Active
+
+When `initFlow` is called against this outlet, it renders:
+
+1. **Chrome children** (if provided) — inside the context provider
+2. **Error boundary** — catches step render errors
+3. **Suspense boundary** — handles async step loading
+4. **Active step** — the current step component
+
+```
+<FlowContext.Provider>
+  {children}                     ← chrome (stable)
+  <FlowErrorBoundary>
+    <Suspense fallback={…}>
+      <ActiveStep />             ← swaps on transition
+    </Suspense>
+  </FlowErrorBoundary>
+</FlowContext.Provider>
+```
+
+## Examples
+
+### Minimal
+
+```tsx
+import { useRef } from "react";
+import { FlowOutlet, useFlowInit } from "react-sequent";
+import type { FlowOutletHandle } from "react-sequent";
+
+function App() {
+  const ref = useRef<FlowOutletHandle>(null);
+  const { initFlow } = useFlowInit();
+
+  return (
+    <div>
+      <FlowOutlet ref={ref} />
+      <button onClick={() => initFlow(Step1, ref)}>Go</button>
+    </div>
+  );
+}
+```
+
+### With async fallback
+
+```tsx
+<FlowOutlet
+  ref={ref}
+  fallback={<div className="spinner">Loading step…</div>}
+/>
+```
+
+When a step is loaded via a dynamic import (e.g. `advance(() => import("./HeavyStep"))`), the fallback is shown until the module resolves. Sync steps render immediately — the fallback is never shown.
+
+### With error boundary
+
+```tsx
+<FlowOutlet
+  ref={ref}
+  errorFallback={
+    <div className="error-panel">
+      <p>Something went wrong in this step.</p>
+    </div>
+  }
+/>
+```
+
+If a step component throws during render, the error boundary catches it and displays `errorFallback`. The outlet itself remains mounted — the flow is not torn down.
+
+### With chrome
+
+```tsx
+function ProgressChrome() {
+  const ctx = useFlowContext<{ step: number; total: number }>();
+  return (
+    <div className="progress-bar">
+      Step {ctx.step} of {ctx.total}
+    </div>
+  );
+}
+
+function App() {
+  const ref = useRef<FlowOutletHandle>(null);
+  const { initFlow } = useFlowInit();
+
+  const start = () => {
+    initFlow(Step1, ref, { step: 1, total: 3 });
+  };
+
+  return (
+    <div>
+      <FlowOutlet
+        ref={ref}
+        fallback={<div>Loading…</div>}
+        errorFallback={<div>Error in step</div>}
+      >
+        <ProgressChrome />
+      </FlowOutlet>
+      <button onClick={start}>Start</button>
+    </div>
+  );
+}
+```
+
+Chrome (`<ProgressChrome>`) stays mounted across step transitions. It reads context via `useFlowContext` and updates when steps patch the context via `advance(NextStep, { step: 2 })`.
+
+## Multiple outlets
+
+Each `useFlowInit` + `<FlowOutlet />` pair is independent. You can have multiple outlets on the same page:
+
+```tsx
+function App() {
+  const ref1 = useRef<FlowOutletHandle>(null);
+  const ref2 = useRef<FlowOutletHandle>(null);
+  const { initFlow: initFlow1 } = useFlowInit();
+  const { initFlow: initFlow2 } = useFlowInit();
+
+  return (
+    <div>
+      <FlowOutlet ref={ref1} />
+      <FlowOutlet ref={ref2} />
+      <button onClick={() => initFlow1(WizardStep1, ref1)}>
+        Start Wizard
+      </button>
+      <button onClick={() => initFlow2(OnboardingStep1, ref2)}>
+        Start Onboarding
+      </button>
+    </div>
+  );
+}
+```

@@ -1,0 +1,135 @@
+---
+sidebar_position: 1
+title: useFlowInit
+---
+
+# useFlowInit
+
+Hook for **flow entry points** — initializes a flow against an outlet. Has no knowledge of step internals.
+
+## Signature
+
+```typescript
+function useFlowInit<TResult = unknown>(): {
+  initFlow: (
+    stepLoader: StepLoader,
+    ref: RefObject<FlowOutletHandle | null>,
+    initialContext?: unknown,
+  ) => Promise<TResult>;
+};
+```
+
+## Returns
+
+| Property | Type | Description |
+|---|---|---|
+| `initFlow` | `(stepLoader, ref, initialContext?) => Promise<TResult>` | Starts a flow. The returned promise resolves when the flow calls `resolve(value)` or rejects when it calls `abort(reason)`. |
+
+## Parameters (of `initFlow`)
+
+| Parameter | Type | Description |
+|---|---|---|
+| `stepLoader` | `StepLoader` | A component (`ComponentType`) or async factory (`() => Promise<{ default: ComponentType }>`) for the first step. |
+| `ref` | `RefObject<FlowOutletHandle \| null>` | Ref attached to the `<FlowOutlet />` that should render this flow. Must be mounted before calling `initFlow`. |
+| `initialContext` | `unknown` (optional) | Initial consumer-owned context value available to all steps via `useStep().context`. |
+
+## Generic: `TResult`
+
+`useFlowInit<TResult>()` types the promise returned by `initFlow`. When a step calls `resolve(value)`, the promise resolves with `value` typed as `TResult`.
+
+```tsx
+const { initFlow } = useFlowInit<{ confirmed: boolean }>();
+
+const result = await initFlow(ConfirmStep, ref);
+// result is typed as { confirmed: boolean }
+console.log(result.confirmed);
+```
+
+:::tip Fire-and-forget
+You don't have to `await` the promise. An internal `.catch(() => {})` prevents unhandled rejection warnings when the promise is ignored.
+:::
+
+## Examples
+
+### Basic flow initialization
+
+```tsx
+import { useRef } from "react";
+import { FlowOutlet, useFlowInit } from "react-sequent";
+import type { FlowOutletHandle } from "react-sequent";
+
+function Host() {
+  const ref = useRef<FlowOutletHandle>(null);
+  const { initFlow } = useFlowInit();
+
+  return (
+    <div>
+      <FlowOutlet ref={ref} />
+      <button onClick={() => initFlow(WelcomeStep, ref)}>
+        Start
+      </button>
+    </div>
+  );
+}
+```
+
+### Awaiting a result
+
+```tsx
+function Host() {
+  const ref = useRef<FlowOutletHandle>(null);
+  const { initFlow } = useFlowInit<string>();
+  const [result, setResult] = useState<string | null>(null);
+
+  const start = async () => {
+    try {
+      const value = await initFlow(Step1, ref);
+      setResult(value); // typed as string
+    } catch (reason) {
+      console.log("Flow aborted:", reason);
+    }
+  };
+
+  return (
+    <div>
+      <FlowOutlet ref={ref} />
+      <button onClick={start}>Start</button>
+      {result && <p>Result: {result}</p>}
+    </div>
+  );
+}
+```
+
+### With initial context
+
+```tsx
+function Host({ user }: { user: User }) {
+  const ref = useRef<FlowOutletHandle>(null);
+  const { initFlow } = useFlowInit();
+
+  const start = () => {
+    initFlow(OnboardingStep1, ref, {
+      userName: user.name,
+      plan: user.plan,
+    });
+  };
+
+  return (
+    <div>
+      <FlowOutlet ref={ref} />
+      <button onClick={start}>Start Onboarding</button>
+    </div>
+  );
+}
+```
+
+## Error handling
+
+`initFlow` throws synchronously if the outlet ref is not attached:
+
+```
+FlowOutlet ref is not attached. Ensure <FlowOutlet ref={...} />
+is mounted before calling initFlow.
+```
+
+Make sure the `<FlowOutlet ref={ref} />` is rendered and mounted **before** calling `initFlow`.

@@ -1,0 +1,71 @@
+/**
+ * react-sequent docs — custom theme overrides.
+ * Built on Infima (Docusaurus default CSS framework).
+ */
+
+:root {
+  /* Indigo-ish primary — stands out from default green */
+  --ifm-color-primary: #5b5ef6;
+  --ifm-color-primary-dark: #3d41f4;
+  --ifm-color-primary-darker: #2f33f3;
+  --ifm-color-primary-darkest: #0d12d9;
+  --ifm-color-primary-light: #7578f8;
+  --ifm-color-primary-lighter: #8386f9;
+  --ifm-color-primary-lightest: #aaacfb;
+  --ifm-code-font-size: 92%;
+  --docusaurus-highlighted-code-line-bg: rgba(91, 94, 246, 0.1);
+  --ifm-font-family-base: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+[data-theme="dark"] {
+  --ifm-color-primary: #8587f9;
+  --ifm-color-primary-dark: #6264f7;
+  --ifm-color-primary-darker: #5052f6;
+  --ifm-color-primary-darkest: #2023f3;
+  --ifm-color-primary-light: #a8a9fb;
+  --ifm-color-primary-lighter: #babcfc;
+  --ifm-color-primary-lightest: #eff0fe;
+  --docusaurus-highlighted-code-line-bg: rgba(133, 135, 249, 0.15);
+}
+
+/* Hero section on the landing page */
+.hero--primary {
+  background: linear-gradient(135deg, #5b5ef6 0%, #8587f9 100%);
+}
+
+[data-theme="dark"] .hero--primary {
+  background: linear-gradient(135deg, #2a2d8a 0%, #5b5ef6 100%);
+}
+
+/* Feature cards */
+.feature-card {
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  transition: box-shadow 0.2s ease;
+}
+
+.feature-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] .feature-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+/* Tighten live playground spacing */
+.playgroundContainer {
+  margin-bottom: 1.5rem;
+}
+
+/* Install badge on landing */
+.install-badge {
+  display: inline-block;
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.9rem;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 0.4rem 1rem;
+  border-radius: 6px;
+  margin-top: 0.75rem;
+  user-select: all;
+}

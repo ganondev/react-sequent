@@ -1,0 +1,48 @@
+/**
+ * Landing page styles — CSS modules scoped locally.
+ */
+
+.heroBanner {
+  padding: 5rem 0 4rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+@media screen and (max-width: 996px) {
+  .heroBanner {
+    padding: 3rem 1.5rem;
+  }
+}
+
+.installBadge {
+  display: inline-block;
+  font-size: 0.95rem;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  padding: 0.4rem 1.2rem;
+  border-radius: 6px;
+  margin-top: 0.5rem;
+  user-select: all;
+}
+
+.buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1.5rem;
+  gap: 1rem;
+}
+
+.features {
+  padding: 3rem 0;
+}
+
+.paradigm {
+  padding: 3rem 0;
+  background: var(--ifm-color-emphasis-100);
+}
+
+.example {
+  padding: 3rem 0 4rem;
+}

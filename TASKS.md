@@ -162,12 +162,56 @@ Thread result type safety from `useFlowInit` through to `resolve`/`abort`.
 
 ## Milestone 8 — Docs
 
-1. Create full interactive API reference for `useFlowInit`, `useStep`, `useFlowContext`, and `<FlowOutlet />`, published as a static Github Pages site to the repo, or a wiki
-  - determine right fit for documentation - requirements:
-    - Documentation sections should have interactive demonstrations of their use. 
-    - Demonstrations should be accompanied with exact code snippets, ideally dynamically coupled to the implementation
-    - Sleek "main" page for pitching the library
-  - implement docs generation->publish pipeline
+Docusaurus 3 site in `docs/` with interactive demos, source-coupled code snippets, a custom landing page, and a GitHub Actions pipeline to deploy to GitHub Pages.
+
+### Phase 1 — Scaffold + CI
+
+1. Scaffold Docusaurus 3 project inside `docs/` (classic template, TypeScript); create standalone `yarn.lock` so it is treated as a separate project by Yarn 4
+2. Add root `package.json` convenience scripts: `docs:dev`, `docs:build`, `docs:serve`
+3. Add `.github/workflows/docs.yml` — builds `docs/` and deploys via `actions/deploy-pages` on push to `main`
+4. Strip default template content (tutorial pages, blog, default components); configure `docusaurus.config.ts` with project metadata, `baseUrl: /react-sequent/`, GitHub Pages org/project, disable blog
+
+### Phase 2 — Live code + snippet extraction
+
+5. Install `@docusaurus/theme-live-codeblock`; register in `docusaurus.config.ts` themes array; configure `liveCodeBlock.playgroundPosition`
+6. Write `docs/plugins/source-snippets.js` — a Docusaurus plugin that reads `// #region doc:<name>` / `// #endregion doc:<name>` markers from library source at build time and exposes them via `setGlobalData`
+7. Annotate key regions in source files with `#region doc:` markers:
+   - `src/hooks/useFlowInit.ts`: `doc:signature`
+   - `src/hooks/useStep.ts`: `doc:full`
+   - `src/hooks/useFlowContext.ts`: `doc:full`
+   - `src/components/FlowOutlet.tsx`: `doc:handle`, `doc:props`
+
+### Phase 3 — Landing page
+
+8. Replace `docs/src/pages/index.tsx` with a custom landing page: hero section (title + tagline + install badge + Get Started / API CTA buttons), three-card feature grid (Zero Config, Async-First, Chrome-Stable), "The Paradigm" prose section, and a static code block showing a minimal two-step flow
+
+### Phase 4 — Content pages
+
+9. `docs/docs/getting-started.mdx` — install, prerequisites, quick-start two-step flow, key concepts (step-owned transitions, async steps, flow context), links to API pages
+10. `docs/docs/concepts.mdx` — the paradigm, vocabulary table, hook separation, outlet lifecycle, history/retreat, async loading, chrome architecture
+11. `docs/docs/api/use-flow-init.mdx` — signature, returns table, params table, `TResult` generic, examples (basic, await result, initial context), error handling
+12. `docs/docs/api/use-step.mdx` — signature, returns table, `advance` (step loader + context patching), `retreat` (with state caveat), `resolve`/`abort`, branching pattern, `TResult` generic
+13. `docs/docs/api/use-flow-context.mdx` — signature, chrome pattern (with tree diagram), `TContext` generic, error handling
+14. `docs/docs/api/flow-outlet.mdx` — props table, `FlowOutletHandle` type, lifecycle (idle/active), examples (minimal, async fallback, error boundary, chrome, multiple outlets)
+15. `docs/docs/api/types.mdx` — `StepLoader` and `FlowOutletHandle` type reference
+
+### Phase 5 — Chrome + sidebar
+
+16. Configure `sidebars.ts` with two sidebars: `docsSidebar` (Getting Started, Concepts) and `apiSidebar` (Hooks category, Components category, Types)
+17. Custom CSS theme: indigo primary, feature-card hover styles, install badge styling, landing page section spacing
+
+### Verification
+
+- `yarn docs:build` — zero errors, all pages render, source snippets present
+- `yarn test` — all 85 tests green (region markers are comments, no behavioral change)
+- GitHub Actions workflow validates on push to `main`; deploys to `https://ganondev.github.io/react-sequent/`
+
+### Decisions
+
+- **Docusaurus over Starlight**: Library is React-native; demos and landing page are plain React with no Astro islands ceremony. `@docusaurus/theme-live-codeblock` integrates natively.
+- **CJS plugin**: Docusaurus 3 does not resolve TS plugins at build time; the source-snippets plugin is plain JS with `module.exports`.
+- **Standalone `yarn.lock` in `docs/`**: Avoids adding docs as a Yarn workspace of the library, keeping dependency trees completely independent.
+- **Source region markers**: `// #region doc:<name>` comments are zero-cost at runtime, stripped by minifiers, and keep doc snippets in sync with the implementation automatically.
 
 ---
 

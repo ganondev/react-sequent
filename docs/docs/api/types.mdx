@@ -1,0 +1,55 @@
+---
+sidebar_position: 5
+title: Types
+---
+
+# Types
+
+Exported types from `react-sequent`.
+
+## `StepLoader`
+
+```typescript
+type StepLoader =
+  | ComponentType
+  | (() => Promise<{ default: ComponentType }>);
+```
+
+A step can be passed as either:
+
+- **A component reference** — renders immediately (sync)
+- **An async factory** — a function returning a promise that resolves to `{ default: ComponentType }`, matching the shape of `import()` expressions
+
+The library normalizes async factories into `React.lazy` components internally. You never need to call `React.lazy` yourself.
+
+```tsx
+import Step1 from "./Step1";
+
+// Sync
+advance(Step1);
+
+// Async (dynamic import)
+advance(() => import("./Step1"));
+```
+
+## `FlowOutletHandle`
+
+```typescript
+interface FlowOutletHandle {
+  activate: (
+    stepLoader: StepLoader,
+    initialContext?: unknown,
+    onResolve?: (value?: unknown) => void,
+    onAbort?: (reason?: unknown) => void,
+  ) => void;
+}
+```
+
+The imperative handle exposed by `<FlowOutlet />` via its forwarded ref. Used internally by `initFlow` — you generally don't call `activate` directly, but you need the type to create a properly typed ref:
+
+```tsx
+import { useRef } from "react";
+import type { FlowOutletHandle } from "react-sequent";
+
+const ref = useRef<FlowOutletHandle>(null);
+```

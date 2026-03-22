@@ -1,6 +1,7 @@
 import { useContext } from "react";
 import { FlowContext } from "../internal/context";
 
+// #region doc:full
 export function useFlowContext<TContext = unknown>(): TContext {
   const ctx = useContext(FlowContext);
   if (ctx === null) {
@@ -8,3 +9,4 @@ export function useFlowContext<TContext = unknown>(): TContext {
   }
   return ctx.consumerContext as TContext;
 }
+// #endregion doc:full

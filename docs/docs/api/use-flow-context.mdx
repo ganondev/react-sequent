@@ -1,0 +1,123 @@
+---
+sidebar_position: 3
+title: useFlowContext
+---
+
+# useFlowContext
+
+Read-only hook for **chrome components** and any consumer component inside the outlet's provider boundary. Returns the current flow context value.
+
+Has **no transition capabilities** — it cannot advance, retreat, resolve, or abort.
+
+## Signature
+
+```typescript
+function useFlowContext<TContext = unknown>(): TContext;
+```
+
+## Returns
+
+The current consumer-owned flow context value, cast to `TContext`.
+
+## When to Use
+
+`useFlowContext` exists for **non-step** components that need to respond to flow state — most commonly chrome components like modal headers, progress bars, or close buttons.
+
+Steps should use `useStep().context` instead. Both read the same underlying value, but `useStep` also provides transition capabilities that steps need.
+
+## Chrome Pattern
+
+The primary use case: a chrome component reads context to display dynamic content that stays stable across step transitions.
+
+```tsx
+// Chrome component — stays mounted across step transitions
+function ModalHeader() {
+  const ctx = useFlowContext<{ title: string; step: number }>();
+  return (
+    <header>
+      <h2>{ctx.title}</h2>
+      <span>Step {ctx.step} of 3</span>
+    </header>
+  );
+}
+
+// Step — patches context to update the chrome
+function Step1() {
+  const { advance } = useStep();
+  return (
+    <div>
+      <p>Welcome to the flow!</p>
+      <button
+        onClick={() =>
+          advance(Step2, { title: "Personal Info", step: 2 })
+        }
+      >
+        Next
+      </button>
+    </div>
+  );
+}
+
+// Outlet — chrome child is outside Suspense, inside provider
+function Host() {
+  const ref = useRef<FlowOutletHandle>(null);
+  const { initFlow } = useFlowInit();
+
+  const start = () => {
+    initFlow(Step1, ref, { title: "Welcome", step: 1 });
+  };
+
+  return (
+    <div>
+      <FlowOutlet ref={ref}>
+        <ModalHeader />
+      </FlowOutlet>
+      <button onClick={start}>Start</button>
+    </div>
+  );
+}
+```
+
+### Why chrome stays stable
+
+The chrome component (`<ModalHeader>` above) is rendered **inside** the outlet's context provider but **outside** the Suspense boundary. This means:
+
+- Chrome re-renders when context changes (via `contextPatch`) — so the title updates immediately.
+- Chrome does **not** unmount or flicker when an async step is loading — the Suspense fallback only affects the step area.
+
+```
+<FlowOutlet>               ← provider
+  <ModalHeader />           ← reads useFlowContext, stable across transitions
+  <FlowErrorBoundary>
+    <Suspense fallback={…}> ← only wraps the step
+      <ActiveStep />
+    </Suspense>
+  </FlowErrorBoundary>
+</FlowOutlet>
+```
+
+## Generic: `TContext`
+
+```tsx
+interface MyFlowContext {
+  title: string;
+  step: number;
+  canClose: boolean;
+}
+
+function ModalChrome() {
+  const ctx = useFlowContext<MyFlowContext>();
+  // ctx is typed as MyFlowContext
+  return <header>{ctx.title}</header>;
+}
+```
+
+## Error handling
+
+Throws if called outside a `<FlowOutlet />` provider boundary:
+
+```
+useFlowContext must be used within a <FlowOutlet /> provider boundary
+```
+
+This means `useFlowContext` can only be called from components rendered as children of `<FlowOutlet>` (chrome) or from step components rendered inside the outlet.

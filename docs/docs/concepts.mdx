@@ -1,0 +1,96 @@
+---
+sidebar_position: 2
+title: Core Concepts
+---
+
+# Core Concepts
+
+## The Paradigm
+
+Most state machine libraries (XState, Zag, etc.) require you to define all states and transitions upfront in a centralized config. The machine is rigid and "above" the components in the control hierarchy.
+
+**react-sequent** inverts this. Flows are **implicit** — transitions emerge from step-level logic rather than a global declaration. This means:
+
+- **Add, remove, or reorder steps** without touching a central config.
+- **Branching logic lives where it's most readable** — in the step itself.
+- **Steps are easy to test in isolation** because each one is self-contained.
+
+This is the library's entire reason for existing.
+
+## Vocabulary
+
+| Term | Meaning |
+|---|---|
+| **Flow** | A sequence of steps managed as a unit |
+| **Step** | A discrete state in a flow; owns its own transition logic |
+| **Advance** | Move to the next step, as determined by the current step's logic |
+| **Retreat** | Move to the previous step by popping the history stack |
+| **Context** | Flow-scoped data the library carries and makes available to all steps |
+| **Outlet** | The mount point where the active step renders (`<FlowOutlet />`) |
+| **Chrome** | Stable UI (headers, progress bars) rendered inside the outlet but outside the step |
+| **Resolve** | A flow completes successfully, returning a value |
+| **Abort** | A flow exits without completing |
+
+## Hook Separation
+
+The library exposes two primary hooks with **strictly separated concerns**:
+
+### `useFlowInit` — for flow entry points
+
+- Returns `initFlow` to start a flow
+- Associates the flow with a `<FlowOutlet />` via a ref
+- Has **no knowledge** of step internals
+
+### `useStep` — for step components
+
+- Returns `advance`, `retreat`, `resolve`, `abort`, and `context`
+- Has **no access** to initializer-level capabilities
+
+### `useFlowContext` — for chrome components
+
+- Returns the current flow context value (read-only)
+- Available to any component inside the outlet's provider boundary
+- Has **no transition capabilities**
+
+This compartmentalization is a hard requirement, not a preference. A step must never be able to access initializer-level capabilities, and vice versa.
+
+## Outlet Lifecycle
+
+```
+idle ──initFlow()──▶ active ──resolve()/abort()──▶ idle
+```
+
+The outlet renders nothing when idle. When activated via `initFlow`, it renders the active step (and optional chrome). Calling `resolve()` or `abort()` tears down the flow and returns the outlet to idle.
+
+The consumer never manages this boolean directly — it's derived entirely from whether a flow has been initialized against the outlet.
+
+## History & Retreat
+
+`retreat()` navigates backward by popping the history stack. It does **not** restore step-local state (e.g. `useState` values).
+
+If you need state preserved across retreat, write it to **context** via `advance(NextStep, { myField: value })` before moving forward. The library carries context across the whole flow — it's the intended solution for both prop-drilling and state persistence.
+
+## Async Step Loading
+
+Step loaders can be either:
+
+- **Sync** — a component reference (renders immediately, no loading flash)
+- **Async** — a function returning a promise, e.g. `() => import("./HeavyStep")` (resolved via `React.lazy` + `Suspense`)
+
+The outlet's `<Suspense>` boundary shows the consumer-provided `fallback` prop while async steps load. Retreat is always sync because the previous step is already in the history stack.
+
+## Chrome
+
+Chrome is stable UI that wraps the step — modal headers, progress indicators, close buttons. Chrome is rendered **inside** the outlet's provider but **outside** the Suspense boundary, so it stays mounted across async step transitions without flickering.
+
+```
+<FlowOutlet>                ← provider + error boundary
+  <ConsumerChrome>          ← stable across transitions
+    <Suspense fallback={…}> ← loading state for async steps
+      <ActiveStep />        ← swaps on each transition
+    </Suspense>
+  </ConsumerChrome>
+</FlowOutlet>
+```
+
+Chrome reads flow state via `useFlowContext()`. Steps write chrome-relevant data into context via `advance`'s `contextPatch` parameter.

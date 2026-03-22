@@ -21,6 +21,7 @@ import { FlowErrorBoundary } from "../internal/FlowErrorBoundary";
 import type { StepLoader } from "../internal/normalizer";
 import { normalizeStepLoader } from "../internal/normalizer";
 
+// #region doc:handle
 /** Imperative handle exposed by FlowOutlet via its forwarded ref. */
 export interface FlowOutletHandle {
   /** Activate a flow, rendering the given step component in this outlet. */
@@ -31,6 +32,7 @@ export interface FlowOutletHandle {
     onAbort?: (reason?: unknown) => void,
   ) => void;
 }
+// #endregion doc:handle
 
 interface FlowState {
   history: ComponentType[];
@@ -38,10 +40,12 @@ interface FlowState {
   consumerContext: unknown;
 }
 
+// #region doc:props
 export const FlowOutlet = forwardRef<
   FlowOutletHandle,
   { fallback?: ReactNode; errorFallback?: ReactNode; children?: ReactNode }
 >(function FlowOutlet(props, ref) {
+// #endregion doc:props
   const [flowState, setFlowState] = useState<FlowState | null>(null);
   const errorBoundaryRef = useRef<FlowErrorBoundary>(null);
   const resolveRef = useRef<((value?: unknown) => void) | null>(null);

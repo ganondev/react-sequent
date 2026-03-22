@@ -1,0 +1,154 @@
+---
+sidebar_position: 2
+title: useStep
+---
+
+# useStep
+
+Hook for **step components only** — provides transitions, flow completion, and context access. Has no access to initializer-level capabilities.
+
+## Signature
+
+```typescript
+function useStep<TResult = unknown>(): {
+  advance: (nextStep: StepLoader, contextPatch?: unknown) => void;
+  retreat: () => void;
+  resolve: (value?: TResult) => void;
+  abort: (reason?: unknown) => void;
+  context: unknown;
+};
+```
+
+## Returns
+
+| Property | Type | Description |
+|---|---|---|
+| `advance` | `(nextStep: StepLoader, contextPatch?: unknown) => void` | Transition to the next step. Pushes the current step onto the history stack. |
+| `retreat` | `() => void` | Go back to the previous step by popping the history stack. No-ops if history is empty. |
+| `resolve` | `(value?: TResult) => void` | End the flow successfully. The value is passed to the promise returned by `initFlow`. |
+| `abort` | `(reason?: unknown) => void` | End the flow without completing. The reason is passed as a rejection to the `initFlow` promise. |
+| `context` | `unknown` | The current consumer-owned flow context. Read-only. |
+
+## `advance(nextStep, contextPatch?)`
+
+The core transition function. The current step decides what comes next — there is no centralized state map.
+
+### Step loader
+
+The first argument is a `StepLoader`: either a component reference or an async factory.
+
+```tsx
+// Sync — component renders immediately
+advance(NextStep);
+
+// Async — outlet shows fallback during load
+advance(() => import("./HeavyStep"));
+```
+
+### Context patching
+
+The optional second argument shallow-merges into the current context (when both are objects), or replaces it entirely otherwise:
+
+```tsx
+// Merge: { name: "Alice" } + { step1Done: true } → { name: "Alice", step1Done: true }
+advance(Step2, { step1Done: true });
+
+// Replace: context becomes the string "reset"
+advance(Step2, "reset");
+```
+
+## `retreat()`
+
+Pops the history stack and renders the previous step. Always synchronous — the previous step component is already loaded.
+
+:::caution State is not restored
+`retreat()` navigates — it does not restore step-local state. If a step used `useState`, those values are lost on retreat. To preserve data across retreat, write it to context before advancing.
+:::
+
+```tsx
+function StepWithForm() {
+  const { advance, context } = useStep();
+  const [email, setEmail] = useState(context?.email ?? "");
+
+  const next = () => {
+    // Save form data to context so it survives retreat
+    advance(NextStep, { email });
+  };
+
+  return (
+    <div>
+      <input value={email} onChange={(e) => setEmail(e.target.value)} />
+      <button onClick={next}>Next</button>
+    </div>
+  );
+}
+```
+
+## `resolve(value?)` and `abort(reason?)`
+
+Both tear down the flow and return the outlet to idle.
+
+```tsx
+function FinalStep() {
+  const { retreat, resolve, abort } = useStep();
+
+  return (
+    <div>
+      <button onClick={() => retreat()}>Back</button>
+      <button onClick={() => abort("user cancelled")}>Cancel</button>
+      <button onClick={() => resolve({ confirmed: true })}>Confirm</button>
+    </div>
+  );
+}
+```
+
+On the initializer side:
+
+```tsx
+try {
+  const result = await initFlow(Step1, ref);
+  // resolve(value) → result === value
+} catch (reason) {
+  // abort(reason) → reason caught here
+}
+```
+
+## Branching
+
+Since the step decides what comes next, branching is a plain conditional:
+
+```tsx
+function PaymentStep() {
+  const { advance } = useStep();
+
+  const onSelect = (method: string) => {
+    if (method === "credit") {
+      advance(CreditCardStep);
+    } else if (method === "bank") {
+      advance(BankTransferStep);
+    } else {
+      advance(CryptoStep);
+    }
+  };
+
+  return <PaymentMethodPicker onSelect={onSelect} />;
+}
+```
+
+No transition table, no action creators. The component _is_ the branching logic.
+
+## Generic: `TResult`
+
+`useStep<TResult>()` types the `resolve` function:
+
+```tsx
+function ConfirmStep() {
+  const { resolve } = useStep<{ confirmed: boolean }>();
+  // resolve expects { confirmed: boolean }
+  resolve({ confirmed: true });
+}
+```
+
+:::note
+TypeScript cannot verify at compile time that a step is rendered inside the correct outlet. If you reuse a step across flows with different `TResult` types, the generic won't catch the mismatch. Create a thin typed wrapper hook if you need airtight safety.
+:::

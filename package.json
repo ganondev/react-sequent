@@ -37,7 +37,10 @@
     "lint": "biome check src/",
     "format": "biome check --write src/",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "docs:dev": "yarn --cwd docs start",
+    "docs:build": "yarn --cwd docs build",
+    "docs:serve": "yarn --cwd docs serve"
   },
   "peerDependencies": {
     "react": "^19.0.0",

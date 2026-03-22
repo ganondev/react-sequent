@@ -11,6 +11,7 @@ import { type RefObject, useCallback } from "react";
 import type { FlowOutletHandle } from "../components/FlowOutlet";
 import { normalizeStepLoader, type StepLoader } from "../internal/normalizer";
 
+// #region doc:signature
 export function useFlowInit<TResult = unknown>() {
   const initFlow = useCallback(
     (
@@ -18,6 +19,7 @@ export function useFlowInit<TResult = unknown>() {
       ref: RefObject<FlowOutletHandle | null>,
       initialContext?: unknown,
     ): Promise<TResult> => {
+// #endregion doc:signature
       const outlet = ref.current;
       if (!outlet) {
         throw new Error(
