@@ -31,6 +31,7 @@ const sidebars: SidebarsConfig = {
     "examples/subsection-flow",
     "examples/modal",
     "examples/wizard",
+    "examples/toast",
   ],
 };
 

@@ -1,0 +1,178 @@
+---
+sidebar_position: 4
+title: Auto-Dismissing Toast
+---
+
+# Auto-Dismissing Toast
+
+A **fixed-position toast notification** that appears in the lower-right corner and auto-dismisses after 5 seconds. This is not a primary use case for react-sequent — toasts are typically handled by a dedicated notification library. However, if your goal is minimizing dependencies, the library accommodates this pattern elegantly: a step can call `resolve` from inside a `useEffect`, making the flow self-terminating without any external timer management.
+
+Click **Show Toast** below to try it.
+
+```jsx live
+function ToastDemo() {
+  // ── Toast infrastructure (would live in its own module in a real app) ─────
+
+  const ToastContext = React.createContext(null);
+
+  function ToastStep() {
+    const { resolve } = useStep();
+    const ctx = useFlowContext();
+    const [remaining, setRemaining] = React.useState(5);
+
+    React.useEffect(() => {
+      const timeoutId = setTimeout(() => resolve("dismissed"), 5000);
+      const intervalId = setInterval(() => {
+        setRemaining((s) => {
+          if (s <= 1) {
+            clearInterval(intervalId);
+            return 0;
+          }
+          return s - 1;
+        });
+      }, 1000);
+
+      return () => {
+        clearTimeout(timeoutId);
+        clearInterval(intervalId);
+      };
+    }, [resolve]);
+
+    return (
+      <div style={{
+        background: "#1f2937",
+        color: "#fff",
+        padding: "12px 20px",
+        borderRadius: 8,
+        boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
+        minWidth: 240,
+        fontSize: 14,
+        lineHeight: 1.5,
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+      }}>
+        <div style={{ marginRight: 12 }}>{ctx.message}</div>
+        <div style={{ opacity: 0.85, fontSize: 12 }}>{remaining}s</div>
+      </div>
+    );
+  }
+
+  function ToastProvider({ children }) {
+    const ref = useRef(null);
+    const { initFlow } = useFlowInit();
+
+    async function toast(message) {
+      return initFlow(ToastStep, ref, { message });
+    }
+
+    return (
+      <ToastContext.Provider value={{ toast }}>
+        {children}
+        <FlowOutlet
+          ref={ref}
+          chrome={(slot) => (
+            <div style={{
+              position: "fixed",
+              bottom: 24,
+              right: 24,
+              zIndex: 1000,
+            }}>
+              {slot}
+            </div>
+          )}
+        />
+      </ToastContext.Provider>
+    );
+  }
+
+  function useToast() { return React.useContext(ToastContext); }
+
+  // ── Consumer ──────────────────────────────────────────────────────────────
+
+  function SaveButton() {
+    const { toast } = useToast();
+    const [log, setLog] = React.useState("");
+
+    async function handleClick() {
+      setLog("Toast active…");
+      await toast("Changes saved successfully!");
+      setLog("Toast dismissed.");
+    }
+
+    return (
+      <div style={{ padding: 8 }}>
+        <button onClick={handleClick}>Show Toast</button>
+        {log && <p style={{ marginTop: 12, color: "#555" }}>{log}</p>}
+      </div>
+    );
+  }
+
+  // ── Root ──────────────────────────────────────────────────────────────────
+
+  return (
+    <ToastProvider>
+      <SaveButton />
+    </ToastProvider>
+  );
+}
+```
+
+## How the self-dismissing step works
+
+`ToastStep` calls `resolve` inside a `useEffect` with a 5-second timeout. Because `resolve` ends the flow, the outlet unmounts the step and clears the chrome — no external state, no manual cleanup beyond the standard `clearTimeout` teardown:
+
+```jsx
+function ToastStep() {
+  const { resolve } = useStep();
+  const ctx = useFlowContext();
+  const [remaining, setRemaining] = useState(5);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => resolve("dismissed"), 5000);
+    const intervalId = setInterval(() => {
+      setRemaining((s) => {
+        if (s <= 1) {
+          clearInterval(intervalId);
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
+
+    return () => {
+      clearTimeout(timeoutId);
+      clearInterval(intervalId);
+    };
+  }, [resolve]);
+
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div>{ctx.message}</div>
+      <div style={{ opacity: 0.85, fontSize: 12 }}>{remaining}s</div>
+    </div>
+  );
+}
+```
+
+The chrome positions the outlet in the corner without knowing anything about timing — it only renders while the flow is active:
+
+```jsx
+<FlowOutlet
+  ref={ref}
+  chrome={(slot) => (
+    <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 1000 }}>
+      {slot}
+    </div>
+  )}
+/>
+```
+
+The `toast()` helper seeds context with the message and returns the same promise as `initFlow`, so callers can `await` it if they need to act after the toast disappears.
+
+## Key points
+
+- **Self-terminating step** — `resolve` called from `useEffect` after a delay ends the flow without any external timer or state.
+- **Chrome is the container** — positioning and z-index live in the chrome, keeping the step itself presentational.
+- **Awaitable** — because `initFlow` returns a promise, callers can optionally `await toast(...)` to react after dismissal.
+- **Not a replacement for a toast library** — dedicated libraries offer queuing, stacking, and animation out of the box. Use this approach when you specifically want to avoid adding a dependency.
