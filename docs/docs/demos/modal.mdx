@@ -1,0 +1,140 @@
+---
+sidebar_position: 2
+title: Singleton Modal with Hook
+---
+
+# Singleton Modal with Hook
+
+A flow rendered inside a **shared singleton modal** — a single `<FlowOutlet>` lives at the top of the tree inside a context provider. This enables an application to enter modal flows with a single shared `useModal` hook: any component in the subtree calls `useModal()` to open a flow without ever touching a ref or rendering an outlet itself.
+
+Click **Open Setup Flow** below to try it.
+
+```jsx live
+function SharedModalDemo() {
+  // ── Modal infrastructure (would live in its own module in a real app) ─────
+
+  const ModalContext = React.createContext(null);
+
+  function ModalChrome({ children }) {
+    const { context: ctx, abort } = useFlowContext();
+    return (
+      <div className="demo-modal">
+        <div className="demo-modal__header">
+          <strong>{ctx.title}</strong>
+          <button className="demo-btn-close" onClick={() => abort("cancelled")}>✕</button>
+        </div>
+        <div className="demo-modal__body">{children}</div>
+      </div>
+    );
+  }
+
+  function ModalProvider({ children }) {
+    const ref = useRef(null);
+    const { initFlow } = useFlowInit();
+
+    async function openModal(firstStep, ctx) {
+      return initFlow(firstStep, ref, ctx);
+    }
+
+    return (
+      <ModalContext.Provider value={{ openModal }}>
+        {children}
+        <div style={{ pointerEvents: "auto" }}>
+          <FlowOutlet
+            ref={ref}
+            chrome={(slot) => (
+              <div className="demo-modal-overlay">
+                <ModalChrome>{slot}</ModalChrome>
+              </div>
+            )}
+          />
+        </div>
+      </ModalContext.Provider>
+    );
+  }
+
+  function useModal() { return React.useContext(ModalContext); }
+
+  // ── Steps ─────────────────────────────────────────────────────────────────
+
+  function StepWelcome() {
+    const { advance, abort } = useStep();
+    return (
+      <div>
+        <p className="demo-para">Welcome to the setup flow. This will only take a minute.</p>
+        <div className="demo-actions">
+          <button onClick={() => advance(StepDetails, { title: "Details" })}>Get Started →</button>
+          <button className="demo-btn-ghost" onClick={() => abort("cancelled")}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
+
+  function StepDetails() {
+    const { retreat, advance, abort } = useStep();
+    const { context: ctx } = useFlowContext();
+    const [email, setEmail] = useState("");
+    return (
+      <div>
+        <p className="demo-para">Fill in your details below.</p>
+        <div className="demo-input-group">
+          <label className="demo-input-label">Email:</label>
+          <input
+            type="email"
+            className="demo-input"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+          />
+        </div>
+        <div className="demo-actions">
+          <button className="demo-btn-ghost" onClick={retreat}>← Back</button>
+          <button onClick={() => advance(StepDone, { ...ctx, email, title: "All done!" })}>Continue →</button>
+          <button className="demo-btn-ghost" onClick={() => abort("cancelled")}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
+
+  function StepDone() {
+    const { resolve } = useStep();
+    const { context: ctx } = useFlowContext();
+    return (
+      <div>
+        <p className="demo-para">You're all set! 🎉</p>
+        <button onClick={() => resolve(ctx)}>Close</button>
+      </div>
+    );
+  }
+
+  // ── Consumer ──────────────────────────────────────────────────────────────
+
+  function SetupButton() {
+    const { openModal } = useModal();
+    const [log, setLog] = useState("");
+
+    async function handleOpen() {
+      setLog("");
+      try {
+        const result = await openModal(StepWelcome, { title: "Welcome" });
+        setLog(`Setup complete with result: ${JSON.stringify(result)}`);
+      } catch {
+        setLog("Flow aborted.");
+      }
+    }
+
+    return (
+      <div className="demo-sandbox">
+        <button onClick={handleOpen}>Open Setup Flow</button>
+        {log && <p className="demo-log">{log}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <ModalProvider>
+      <SetupButton />
+    </ModalProvider>
+  );
+}
+```

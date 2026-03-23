@@ -61,9 +61,9 @@ const config: Config = {
         },
         {
           type: "docSidebar",
-          sidebarId: "apiSidebar",
+          sidebarId: "demosSidebar",
           position: "left",
-          label: "API",
+          label: "Demos",
         },
         {
           href: "https://github.com/ganondev/react-sequent",
@@ -82,6 +82,18 @@ const config: Config = {
               label: "Getting Started",
               to: "/docs/getting-started",
             },
+            {
+              label: "Core Concepts",
+              to: "/docs/concepts",
+            },
+          ],
+        },
+        {
+          title: "Demos",
+          items: [
+            { label: "Subsection Flow", to: "/docs/demos/subsection-flow" },
+            { label: "Modal", to: "/docs/demos/modal" },
+            { label: "Full-Screen Wizard", to: "/docs/demos/wizard" },
           ],
         },
         {

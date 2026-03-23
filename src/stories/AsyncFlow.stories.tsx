@@ -56,24 +56,28 @@ function Host() {
   const { initFlow } = useFlowInit();
   return (
     <Paper withBorder p="xl" maw={400} mx="auto" mt="xl" radius="md">
-      <Stack>
-        <FlowOutlet
-          ref={ref}
-          fallback={
-            <Center py="xl">
-              <Stack align="center" gap="sm">
-                <Loader size="md" />
-                <Text c="dimmed" size="sm">
-                  Loading step…
-                </Text>
-              </Stack>
-            </Center>
-          }
-        />
-        <Button variant="light" fullWidth onClick={() => initFlow(loadAsyncStep1, ref)}>
-          Start Flow
-        </Button>
-      </Stack>
+      <FlowOutlet
+        ref={ref}
+        fallback={
+          <Center py="xl">
+            <Stack align="center" gap="sm">
+              <Loader size="md" />
+              <Text c="dimmed" size="sm">
+                Loading step…
+              </Text>
+            </Stack>
+          </Center>
+        }
+      >
+        <Stack>
+          <Text c="dimmed">
+            Click the button below to start an async flow with simulated loading delays.
+          </Text>
+          <Button variant="light" fullWidth onClick={() => initFlow(loadAsyncStep1, ref)}>
+            Start Flow
+          </Button>
+        </Stack>
+      </FlowOutlet>
     </Paper>
   );
 }

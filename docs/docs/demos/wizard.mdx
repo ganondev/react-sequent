@@ -1,0 +1,195 @@
+---
+sidebar_position: 3
+title: Full-Screen Wizard
+---
+
+# Full-Screen Wizard
+
+A **full-screen onboarding wizard** with a persistent progress bar in the chrome, async step loading, and a final `resolve` that returns the collected data.
+
+Steps 2 and 3 load asynchronously (simulating code-split chunks). The progress bar updates **immediately** on `advance` — before the async step resolves — because chrome renders outside Suspense.
+
+Click **Start Onboarding** below to try it.
+
+```jsx live
+function WizardDemo() {
+  const [log, setLog] = React.useState("");
+
+  // --- Singleton provider + hook (shared FlowOutlet) ---
+  const WizardContext = React.createContext(null);
+
+  function WizardChrome({ children }) {
+    const { context: ctx } = useFlowContext();
+    const pct = Math.round((ctx.step / ctx.total) * 100);
+    return (
+      <div className="demo-wizard">
+        <div className="demo-wizard__track">
+          <div className="demo-wizard__fill" style={{ width: `${pct}%` }} />
+        </div>
+        <div className="demo-wizard__label">Step {ctx.step} of {ctx.total}</div>
+        <div className="demo-wizard__content">{children}</div>
+      </div>
+    );
+  }
+
+  function WizardProvider({ children }) {
+    const ref = useRef(null);
+    const { initFlow } = useFlowInit();
+
+    async function openWizard(firstStep, ctx) {
+      return initFlow(firstStep, ref, ctx);
+    }
+
+    return (
+      <WizardContext.Provider value={{ openWizard }}>
+        {children}
+        <FlowOutlet
+          ref={ref}
+          fallback={<span className="demo-fallback">Loading…</span>}
+          chrome={(slot) => <WizardChrome>{slot}</WizardChrome>}
+        />
+      </WizardContext.Provider>
+    );
+  }
+
+  function useWizard() { return React.useContext(WizardContext); }
+
+  // --- Steps ---
+  function StepProfile() {
+    const { advance, abort } = useStep();
+    const [name, setName] = React.useState("");
+    return (
+      <div className="demo-wizard__step">
+        <h2 className="demo-wizard__title">Tell us about yourself</h2>
+        <p className="demo-wizard__subtitle">What should we call you?</p>
+        <div className="demo-input-group-wide">
+          <input
+            type="text"
+            className="demo-input"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Your name"
+          />
+        </div>
+        <div className="demo-actions-center">
+          <button onClick={() => advance(loadStepPreferences, { step: 2, total: 3, data: { name: name || "User" } })}>
+            Continue →
+          </button>
+          <button className="demo-btn-ghost" onClick={() => abort("cancelled")}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
+
+  function StepPreferences() {
+    const { retreat, advance, abort } = useStep();
+    const { context: ctx } = useFlowContext();
+    const [notif, setNotif] = React.useState(true);
+    return (
+      <div className="demo-wizard__step">
+        <h2 className="demo-wizard__title">Set your preferences</h2>
+        <p className="demo-wizard__subtitle">Communication preferences</p>
+        <div className="demo-input-group-wide">
+          <label className="demo-checkbox-label">
+            <input
+              type="checkbox"
+              className="demo-checkbox"
+              checked={notif}
+              onChange={(e) => setNotif(e.target.checked)}
+            />
+            <span>Send me email notifications</span>
+          </label>
+        </div>
+        <div className="demo-actions-center">
+          <button className="demo-btn-ghost" onClick={() => retreat()}>← Back</button>
+          <button onClick={() => advance(loadStepConfirm, { ...ctx, step: 3, data: { ...ctx.data, notifications: notif } })}>
+            Continue →
+          </button>
+          <button className="demo-btn-ghost" onClick={() => abort("cancelled")}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
+
+  function StepConfirm() {
+    const { retreat, resolve, abort } = useStep();
+    const { context: ctx } = useFlowContext();
+    return (
+      <div className="demo-wizard__step">
+        <h2 className="demo-wizard__title">All set! 🎉</h2>
+        <p className="demo-wizard__subtitle">Your profile is ready.</p>
+        <div className="demo-actions-center">
+          <button className="demo-btn-ghost" onClick={() => retreat()}>← Back</button>
+          <button onClick={() => resolve(ctx.data)}>Finish</button>
+          <button className="demo-btn-ghost" onClick={() => abort("cancelled")}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
+
+  // --- Async loaders ---
+  const loadStepPreferences = () =>
+    new Promise((res) => setTimeout(() => res({ default: StepPreferences }), 700));
+  const loadStepConfirm = () =>
+    new Promise((res) => setTimeout(() => res({ default: StepConfirm }), 700));
+
+  // --- Consumer button that uses the singleton hook ---
+  function StartOnboarding() {
+    const { openWizard } = useWizard();
+    async function start() {
+      setLog("");
+      try {
+        const result = await openWizard(StepProfile, { step: 1, total: 3, data: {} });
+        setLog(`Onboarding complete: ${JSON.stringify(result)}`);
+      } catch {
+        setLog("Onboarding cancelled.");
+      }
+    }
+
+    return (
+      <div className="demo-sandbox">
+        <button onClick={start}>Start Onboarding</button>
+        {log && <p className="demo-log">{log}</p>}
+      </div>
+    );
+  }
+
+  // --- Root: provider + consumer ---
+  return (
+    <WizardProvider>
+      <StartOnboarding />
+    </WizardProvider>
+  );
+}
+```
+
+## Async step loading
+
+Steps 2 and 3 use async loaders — functions that return `Promise<{ default: ComponentType }>`, mirroring a real dynamic `import()`:
+
+```js
+// Real-world code splitting
+const loadStepPreferences = () => import("./StepPreferences");
+
+// Simulated in this example
+const loadStepPreferences = () =>
+  new Promise((res) => setTimeout(() => res({ default: StepPreferences }), 700));
+```
+
+`advance(loader, newContext)` accepts either a component directly or an async loader. While the loader is pending, the `<Suspense>` fallback inside `WizardChrome` shows the loading indicator.
+
+## Progress via context
+
+The progress bar reads `ctx.step` and `ctx.total` from `useFlowContext()`. Each `advance` call passes updated context:
+
+```js
+advance(loadStepPreferences, { step: 2, total: 3, data: { name: "…" } })
+```
+
+Because chrome renders **outside** the Suspense boundary, the progress bar jumps from 33% → 66% **immediately** when `advance` is called — before the next step finishes loading.
+
+## Key points
+
+- **Chrome outlives async loads** — the progress bar and step counter stay mounted while the next step resolves.
+- **Context carries accumulated data** — each step merges its data into context so the final step can `resolve(ctx.data)`.
+- **No centralized step list** — the total step count is just data passed through context; you can change it without touching any config.

@@ -19,7 +19,7 @@ export function useFlowInit<TResult = unknown>() {
       ref: RefObject<FlowOutletHandle | null>,
       initialContext?: unknown,
     ): Promise<TResult> => {
-// #endregion doc:signature
+      // #endregion doc:signature
       const outlet = ref.current;
       if (!outlet) {
         throw new Error(

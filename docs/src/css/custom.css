@@ -69,3 +69,149 @@
   margin-top: 0.75rem;
   user-select: all;
 }
+
+/* ── Demo example UI kit ───────────────────────────────────────────────────
+  Shared classes used by jsx live blocks in docs/demos/*.mdx.
+   Keeping styles here eliminates inline-style noise from the code previews.
+─────────────────────────────────────────────────────────────────────────── */
+
+/* Sandbox wrapper / status log */
+.demo-sandbox { padding: 8px; }
+.demo-log     { margin-top: 12px; color: var(--ifm-color-content-secondary); }
+
+/* Paragraph spacing variants */
+.demo-para      { margin: 0 0 16px; }
+.demo-step-para { margin: 8px 0; }
+
+/* Ghost / secondary button (back, cancel) */
+.demo-btn-ghost {
+  background: none;
+  color: var(--ifm-color-content-secondary);
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 4px;
+  padding: 4px 12px;
+  cursor: pointer;
+}
+
+/* Icon close button (modal header) */
+.demo-btn-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* Flex rows of action buttons */
+.demo-actions        { display: flex; gap: 8px; }
+.demo-actions-center { display: flex; justify-content: center; gap: 8px; }
+
+/* ── Subsection / checkout ──────────────────────────────────────────────── */
+.demo-checkout         { border: 1px solid var(--ifm-color-emphasis-300); border-radius: 8px; overflow: hidden; max-width: 400px; }
+.demo-checkout__header { padding: 12px 16px; border-bottom: 1px solid var(--ifm-color-emphasis-300); background: var(--ifm-background-surface-color); }
+.demo-checkout__body   { padding: 16px; }
+.demo-checkout__status { padding: 16px; color: var(--ifm-color-success); }
+
+/* ── Toast ──────────────────────────────────────────────────────────────── */
+.demo-toast {
+  background: #1f2937;
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  min-width: 240px;
+  font-size: 14px;
+  line-height: 1.5;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.demo-toast__message { margin-right: 12px; }
+.demo-toast__timer   { opacity: 0.85; font-size: 12px; }
+.demo-toast__chrome  { position: fixed; bottom: 24px; right: 24px; z-index: 1000; }
+
+/* ── Modal ──────────────────────────────────────────────────────────────── */
+.demo-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  pointer-events: none;
+}
+.demo-modal {
+  background: var(--ifm-card-background-color);
+  border-radius: 10px;
+  min-width: 340px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+  pointer-events: auto;
+}
+.demo-modal__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+}
+.demo-modal__body { padding: 24px; }
+
+/* ── Wizard ─────────────────────────────────────────────────────────────── */
+.demo-wizard {
+  position: fixed;
+  inset: 0;
+  background: var(--ifm-background-color);
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+}
+.demo-wizard__track   { height: 4px; background: var(--ifm-color-emphasis-200); }
+.demo-wizard__fill    { height: 100%; background: #4f46e5; transition: width 0.3s ease; }
+.demo-wizard__label   { padding: 8px 24px; color: var(--ifm-color-content-secondary); font-size: 13px; border-bottom: 1px solid var(--ifm-color-emphasis-200); }
+.demo-wizard__content { flex: 1; display: flex; align-items: center; justify-content: center; }
+.demo-wizard__step    { text-align: center; }
+.demo-wizard__title   { margin: 0 0 8px; }
+.demo-wizard__subtitle { margin: 0 0 16px; color: var(--ifm-color-content-secondary); }
+
+/* Async loading fallback text */
+.demo-fallback { color: var(--ifm-color-content-secondary); }
+
+/* ── Form inputs ────────────────────────────────────────────────────────── */
+.demo-input {
+  width: 100%;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  font-size: 14px;
+  box-sizing: border-box;
+  background: var(--ifm-background-color);
+  color: var(--ifm-color-content);
+}
+
+.demo-input-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+
+.demo-input-group {
+  margin-bottom: 12px;
+}
+
+.demo-input-group-wide {
+  margin-bottom: 16px;
+}
+
+.demo-checkbox {
+  width: 18px;
+  height: 18px;
+}
+
+.demo-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}

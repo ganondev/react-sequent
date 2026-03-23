@@ -5962,6 +5962,7 @@ __metadata:
     prism-react-renderer: "npm:^2.3.0"
     react: "npm:^19.0.0"
     react-dom: "npm:^19.0.0"
+    react-sequent: "portal:../"
     typescript: "npm:~5.6.2"
   languageName: unknown
   linkType: soft
@@ -11082,6 +11083,15 @@ __metadata:
   checksum: 10c0/e15c00dfef199249b4c6e6d98e5e76cc352ce66f3270f13df37cc069ddf7c05e43281e8c308fc407e4435d72924373baef1d2890e0f6b0b1eb423cf47315a053
   languageName: node
   linkType: hard
+
+"react-sequent@portal:../::locator=docs%40workspace%3A.":
+  version: 0.0.0-use.local
+  resolution: "react-sequent@portal:../::locator=docs%40workspace%3A."
+  peerDependencies:
+    react: ^19.0.0
+    react-dom: ^19.0.0
+  languageName: node
+  linkType: soft
 
 "react@npm:^19.0.0":
   version: 19.2.4
