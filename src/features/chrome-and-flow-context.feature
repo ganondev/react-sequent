@@ -38,3 +38,8 @@ Feature: Chrome and flow context
     And   the flow has been activated with a sync step
     When  the chrome component calls resolve via useFlowContext
     Then  the outlet returns to idle
+
+  Scenario: Chrome calling useStep throws immediately
+    Given a host with a FlowOutlet configured with a chrome component that calls useStep
+    When  initFlow is called with a sync step
+    Then  an error is thrown immediately when the chrome component renders

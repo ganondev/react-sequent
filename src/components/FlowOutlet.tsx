@@ -17,7 +17,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { FlowContext, type FlowContextValue } from "../internal/context";
+import { FlowContext, type FlowContextValue, StepContext, type StepContextValue } from "../internal/context";
 import { FlowErrorBoundary } from "../internal/FlowErrorBoundary";
 import type { StepLoader } from "../internal/normalizer";
 import { normalizeStepLoader } from "../internal/normalizer";
@@ -150,13 +150,9 @@ export const FlowOutlet = forwardRef<
   // biome-ignore lint/correctness/useExhaustiveDependencies: no-op functions are stable
   const idleContextValue: FlowContextValue = useMemo(
     () => ({
-      history: [],
-      activeStep: null,
       consumerContext: lastConsumerContextRef.current,
       resolve: () => {},
       abort: () => {},
-      advance: () => {},
-      retreat: () => {},
     }),
     [flowState],
   );
@@ -174,32 +170,44 @@ export const FlowOutlet = forwardRef<
   // or aborting the wrong flow.
   const capturedFlowId = flowIdRef.current;
 
-  const contextValue: FlowContextValue = {
-    history: flowState.history,
-    activeStep: flowState.activeStep,
+  const guardedResolve = (value?: unknown) => {
+    if (flowIdRef.current !== capturedFlowId) return;
+    handleResolve(value);
+  };
+
+  const guardedAbort = (reason?: unknown) => {
+    if (flowIdRef.current !== capturedFlowId) return;
+    handleAbort(reason);
+  };
+
+  // Outer context — available to chrome components and idle children.
+  const flowContextValue: FlowContextValue = {
     consumerContext: flowState.consumerContext,
-    resolve: (value?: unknown) => {
-      if (flowIdRef.current !== capturedFlowId) return;
-      handleResolve(value);
-    },
-    abort: (reason?: unknown) => {
-      if (flowIdRef.current !== capturedFlowId) return;
-      handleAbort(reason);
-    },
+    resolve: guardedResolve,
+    abort: guardedAbort,
+  };
+
+  // Inner context — only injected inside the step slot subtree.
+  const stepContextValue: StepContextValue = {
     advance,
     retreat,
+    resolve: guardedResolve,
+    abort: guardedAbort,
+    consumerContext: flowState.consumerContext,
   };
 
   const stepSlot = (
-    <FlowErrorBoundary ref={errorBoundaryRef} errorFallback={props.errorFallback}>
-      <Suspense fallback={props.fallback ?? null}>
-        <ActiveStep />
-      </Suspense>
-    </FlowErrorBoundary>
+    <StepContext.Provider value={stepContextValue}>
+      <FlowErrorBoundary ref={errorBoundaryRef} errorFallback={props.errorFallback}>
+        <Suspense fallback={props.fallback ?? null}>
+          <ActiveStep />
+        </Suspense>
+      </FlowErrorBoundary>
+    </StepContext.Provider>
   );
 
   return (
-    <FlowContext.Provider value={contextValue}>
+    <FlowContext.Provider value={flowContextValue}>
       {props.chrome ? props.chrome(stepSlot) : stepSlot}
     </FlowContext.Provider>
   );

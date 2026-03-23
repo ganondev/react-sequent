@@ -49,11 +49,15 @@ const ref = useRef<FlowOutletHandle>(null);
 
 When no flow is active, the outlet renders its **children** if provided, or nothing if no children are given. This is the initial state and the state after `resolve()` or `abort()` is called.
 
-Children are wrapped in the internal `FlowContext.Provider`, so they can call `useFlowContext()`. On the first idle render, the context value is `undefined`. After a flow resolves, the context retains the last `consumerContext` value from the completed flow.
+Children are wrapped in the internal `FlowContext.Provider` (flow-level context), so they can call `useFlowContext()`. On the first idle render, the context value is `undefined`. After a flow resolves, the context retains the last `consumerContext` value from the completed flow.
+
+:::note
+Idle children must **not** call `useStep()` — that hook is only available inside the active step's subtree. Use `useFlowContext()` instead. `useStep()` throws immediately if called outside a step boundary.
+:::
 
 ```
-<FlowContext.Provider>           ← always present
-  {children}                     ← visible when idle
+<FlowContext.Provider>             ← flow-level access (chrome + idle children)
+  {children}                       ← visible when idle
 </FlowContext.Provider>
 ```
 
@@ -67,13 +71,15 @@ When `initFlow` is called against this outlet, it renders:
 4. **Active step** — the current step component
 
 ```
-<FlowContext.Provider>
+<FlowContext.Provider>             ← flow-level access (chrome + idle children)
   {chrome(                         ← chrome wraps the step slot
-    <FlowErrorBoundary>
-      <Suspense fallback={…}>
-        <ActiveStep />             ← swaps on transition
-      </Suspense>
-    </FlowErrorBoundary>
+    <StepContext.Provider>         ← step-only access (active step only)
+      <FlowErrorBoundary>
+        <Suspense fallback={…}>
+          <ActiveStep />           ← swaps on transition
+        </Suspense>
+      </FlowErrorBoundary>
+    </StepContext.Provider>
   )}
 </FlowContext.Provider>
 ```

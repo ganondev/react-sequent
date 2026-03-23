@@ -58,6 +58,7 @@ Two hooks with strictly separated concerns. A step must never be able to access 
 - Returns `abort(reason?)` — end flow without completing
 - Returns `context` — the current flow context value
 - Has no access to initializer-level capabilities
+- **Throws immediately if called outside the active step's subtree** (e.g. from chrome or an idle child). Use `useFlowContext` for those contexts.
 
 **`useFlowContext`** — for chrome components and any consumer component inside the outlet's provider boundary
 - Returns an object with `context` (the current flow context value), `resolve`, and `abort`
@@ -98,15 +99,18 @@ The library defines no chrome slots. The consumer owns both the shape of the con
 The tree structure during an active flow with chrome:
 
 ```
-<FlowOutlet chrome={chrome}>   ← provider
+<FlowOutlet chrome={chrome}>   ← flow-level context (chrome + idle children)
   {chrome(
-    <FlowErrorBoundary>        ← error boundary
-      <Suspense>               ← fallback shown during async step loads
-        <ActiveStep />         ← swaps on each transition
-      </Suspense>
-    </FlowErrorBoundary>
+    <step-context>             ← step-only context (active step only)
+      <FlowErrorBoundary>      ← error boundary
+        <Suspense>             ← fallback shown during async step loads
+          <ActiveStep />       ← swaps on each transition
+        </Suspense>
+      </FlowErrorBoundary>
+    </step-context>
   )}
-  // chrome wraps and composes around the step slot
+  // chrome: inside flow context, outside step context
+  // step: inside both contexts
 </FlowOutlet>
 ```
 
@@ -123,9 +127,14 @@ This replaces any need for a purpose-built loading step component. Do not reintr
 
 `retreat` is always sync — the previous step is already loaded and in history. No async concern on the way back.
 
-### Internal Context
+### Internal Contexts
 
-The library uses a React context internally to coordinate between `useFlowInit`, `useStep`, and `<FlowOutlet />`. This context is an implementation detail — consumers never interact with it directly and do not insert a provider manually.
+The library uses **two nested React contexts** internally to enforce hook compartmentalization. These are implementation details — consumers never interact with them directly.
+
+- **`FlowContext` (outer)** — wraps idle children, chrome, and the step slot. Carries `consumerContext`, `resolve`, and `abort`. Read by `useFlowContext()`.
+- **`StepContext` (inner)** — wraps only the active step's subtree (inside the error boundary + Suspense). Carries navigation (`advance`, `retreat`) plus `resolve`, `abort`, and `consumerContext`. Read by `useStep()`.
+
+Chrome components sit inside `FlowContext` but outside `StepContext`. `useStep()` throws immediately when called without a `StepContext` present — structurally preventing chrome or idle children from accessing step-only capabilities.
 
 ---
 

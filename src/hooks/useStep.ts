@@ -3,57 +3,37 @@
  *
  * Returns advance, retreat, resolve, abort, and context.
  * Has no access to initializer-level capabilities.
+ *
+ * Throws immediately if called outside the active step's subtree (e.g. from
+ * a chrome component or an idle child). Use useFlowContext() for flow-level
+ * access in those contexts.
  */
-import { useFlowInternalContext } from "../internal/context";
+import { useContext } from "react";
+import { StepContext } from "../internal/context";
 import { normalizeStepLoader, type StepLoader } from "../internal/normalizer";
-
-function assertActiveStep(fnName: string, activeStep: unknown): void {
-  if (activeStep === null) {
-    throw new Error(
-      `useStep(): "${fnName}" was called outside of an active flow step. ` +
-        "The FlowOutlet is currently idle. " +
-        "Only call useStep() transition functions from within a rendered step component.",
-    );
-  }
-}
 
 // #region doc:full
 export function useStep<TResult = unknown>() {
-  const {
-    advance: rawAdvance,
-    retreat: rawRetreat,
-    resolve: rawResolve,
-    abort: rawAbort,
-    consumerContext,
-    activeStep,
-  } = useFlowInternalContext<TResult>();
+  const ctx = useContext(StepContext);
+
+  if (ctx === null) {
+    throw new Error(
+      "useStep() must be called from within a rendered step component. " +
+        "It is not available to chrome components or idle children — " +
+        "use useFlowContext() for flow-level access instead.",
+    );
+  }
 
   const advance = (nextStep: StepLoader, contextPatch?: unknown) => {
-    assertActiveStep("advance", activeStep);
-    rawAdvance(normalizeStepLoader(nextStep), contextPatch);
-  };
-
-  const retreat = () => {
-    assertActiveStep("retreat", activeStep);
-    rawRetreat();
-  };
-
-  const resolve = (value?: TResult) => {
-    assertActiveStep("resolve", activeStep);
-    rawResolve(value);
-  };
-
-  const abort = (reason?: unknown) => {
-    assertActiveStep("abort", activeStep);
-    rawAbort(reason);
+    ctx.advance(normalizeStepLoader(nextStep), contextPatch);
   };
 
   return {
     advance,
-    retreat,
-    resolve,
-    abort,
-    context: consumerContext,
+    retreat: ctx.retreat,
+    resolve: ctx.resolve as (value?: TResult) => void,
+    abort: ctx.abort,
+    context: ctx.consumerContext as unknown,
   };
 }
 // #endregion doc:full

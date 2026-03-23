@@ -2,7 +2,7 @@ import { describeFeature, loadFeature } from "@amiceli/vitest-cucumber";
 import { act, cleanup, render, screen } from "@testing-library/react";
 import type React from "react";
 import { useRef } from "react";
-import { expect } from "vitest";
+import { expect, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
 import { FlowOutlet, type FlowOutletHandle } from "../components/FlowOutlet";
 import { useFlowContext } from "../hooks/useFlowContext";
@@ -59,6 +59,12 @@ function ChromeWithResolve(): React.ReactElement {
   const { resolve } = useFlowContext();
   capturedResolveFromChrome = (value?: unknown) => resolve(value);
   return <div>Chrome Resolve</div>;
+}
+
+function ChromeWithStep(): React.ReactElement {
+  // Deliberate misuse — useStep() must not be callable from chrome
+  useStep();
+  return <div>Chrome Step</div>;
 }
 
 // ── Feature ──────────────────────────────────────────────────────────
@@ -349,6 +355,60 @@ describeFeature(feature, ({ Scenario }) => {
     Then("the outlet returns to idle", () => {
       expect(screen.queryByText("Chrome Resolve")).not.toBeInTheDocument();
       expect(screen.queryByText("Step Content")).not.toBeInTheDocument();
+    });
+  });
+
+  // ── Scenario 7 ─────────────────────────────────────────────────────
+  Scenario("Chrome calling useStep throws immediately", ({ Given, When, Then }) => {
+    let capturedInitFlow: ReturnType<typeof useFlowInit>["initFlow"];
+    let capturedRef: React.RefObject<FlowOutletHandle | null>;
+    let caughtError: unknown = null;
+
+    Given(
+      "a host with a FlowOutlet configured with a chrome component that calls useStep",
+      () => {
+        cleanup();
+        caughtError = null;
+
+        function TestHost() {
+          const ref = useRef<FlowOutletHandle>(null);
+          const { initFlow } = useFlowInit();
+          capturedInitFlow = initFlow;
+          capturedRef = ref;
+          return (
+            <FlowOutlet
+              ref={ref}
+              chrome={(slot) => (
+                <>
+                  <ChromeWithStep />
+                  {slot}
+                </>
+              )}
+            />
+          );
+        }
+
+        render(<TestHost />);
+        expect(capturedInitFlow).toBeDefined();
+      },
+    );
+
+    When("initFlow is called with a sync step", () => {
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        act(() => {
+          capturedInitFlow(SyncStep, capturedRef);
+        });
+      } catch (err) {
+        caughtError = err;
+      }
+      consoleSpy.mockRestore();
+    });
+
+    Then("an error is thrown immediately when the chrome component renders", () => {
+      expect(caughtError).toBeInstanceOf(Error);
+      expect((caughtError as Error).message).toContain("useStep()");
+      expect((caughtError as Error).message).toContain("rendered step component");
     });
   });
 });

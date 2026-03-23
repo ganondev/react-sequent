@@ -49,10 +49,12 @@ The library exposes two primary hooks with **strictly separated concerns**:
 ### `useFlowContext` — for chrome components
 
 - Returns the current flow context value, plus `resolve` and `abort` for flow termination
-- Available to any component inside the outlet's provider boundary
+- Available to any component inside the outlet's **flow-level** provider boundary (chrome, idle children, and steps)
 - Has **no navigation capabilities** — cannot `advance` or `retreat`
 
 This compartmentalization is a hard requirement, not a preference. A step must never be able to access initializer-level capabilities, and vice versa.
+
+`useStep()` is enforced at the React tree level — it throws immediately if called outside the active step's subtree (e.g. from chrome or an idle child). The correct hook for those contexts is `useFlowContext()`.
 
 ## Outlet Lifecycle
 
@@ -84,15 +86,18 @@ The outlet's `<Suspense>` boundary shows the consumer-provided `fallback` prop w
 Chrome is stable UI that wraps the step — modal headers, progress indicators, close buttons. Chrome is provided as a **render prop** to `<FlowOutlet chrome={...} />`. It receives the step slot (error boundary + Suspense + active step) as an argument and returns JSX. Chrome stays mounted across async step transitions without flickering because it renders outside the Suspense boundary.
 
 ```
-<FlowOutlet chrome={chrome}>   ← provider
+<FlowOutlet chrome={chrome}>   ← flow-level context (chrome + idle children)
   {chrome(
-    <FlowErrorBoundary>
-      <Suspense fallback={…}>   ← loading state for async steps
-        <ActiveStep />           ← swaps on each transition
-      </Suspense>
-    </FlowErrorBoundary>
+    <step-context>             ← step-only context (active step only)
+      <FlowErrorBoundary>
+        <Suspense fallback={…}>   ← loading state for async steps
+          <ActiveStep />           ← swaps on each transition
+        </Suspense>
+      </FlowErrorBoundary>
+    </step-context>
   )}
-  // chrome can wrap, layout, or compose around the step slot
+  // chrome: can call useFlowContext(), not useStep()
+  // step: can call both useStep() and useFlowContext()
 </FlowOutlet>
 ```
 

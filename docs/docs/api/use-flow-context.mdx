@@ -101,22 +101,26 @@ The chrome component (`<ModalHeader>` above) is rendered **inside** the outlet's
 - Chrome does **not** unmount or flicker when an async step is loading — the Suspense fallback only affects the step area.
 
 ```
-<FlowOutlet chrome={chrome}>   ← provider
+<FlowContext.Provider>           ← flow-level context (useFlowContext reads this)
   {chrome(
-    <FlowErrorBoundary>
-      <Suspense fallback={…}>   ← only wraps the step
-        <ActiveStep />
-      </Suspense>
-    </FlowErrorBoundary>
+    <StepContext.Provider>       ← step-only context (useStep reads this)
+      <FlowErrorBoundary>
+        <Suspense fallback={…}>   ← only wraps the step
+          <ActiveStep />
+        </Suspense>
+      </FlowErrorBoundary>
+    </StepContext.Provider>
   )}
   // inside chrome:
   <ModalHeader />              ← reads useFlowContext, stable across transitions
-</FlowOutlet>
+</FlowContext.Provider>
 ```
 
 ### Why chrome gets `resolve`/`abort` but not `advance`/`retreat`
 
-Chrome is stable UI that wraps the step area. It should be able to **terminate** a flow (e.g. a close button that aborts, or a "finish" action that resolves) but should **not drive navigation** between steps — that responsibility belongs to the step itself, per the "step decides what comes next" paradigm.
+Chrome is stable UI that wraps the step area. It should be able to **terminate** a flow (e.g. a close button that aborts, or a "finish" action that resolves) but must **not drive navigation** between steps — that responsibility belongs to the step itself, per the "step decides what comes next" paradigm.
+
+This separation is structurally enforced, not just a convention. `advance` and `retreat` live in the inner `StepContext`, which is only present inside the active step's subtree. Chrome components sit inside the outer `FlowContext` (which provides this hook's values) but outside `StepContext`. Calling `useStep()` from chrome throws immediately at render time.
 
 If chrome needs to influence which step renders next, the step should read a signal from context and branch accordingly.
 
