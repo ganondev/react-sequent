@@ -18,9 +18,9 @@ function CheckoutSection() {
   function StepAddress() {
     const { advance } = useStep();
     return (
-      <div style={{ padding: 16 }}>
+      <div className="demo-checkout__body">
         <strong>Step 1 — Shipping Address</strong>
-        <p style={{ margin: "8px 0" }}>Enter your address details here.</p>
+        <p className="demo-step-para">Enter your address details here.</p>
         <button onClick={() => advance(StepPayment)}>Next →</button>
       </div>
     );
@@ -29,11 +29,13 @@ function CheckoutSection() {
   function StepPayment() {
     const { retreat, advance } = useStep();
     return (
-      <div style={{ padding: 16 }}>
+      <div className="demo-checkout__body">
         <strong>Step 2 — Payment</strong>
-        <p style={{ margin: "8px 0" }}>Enter your payment details here.</p>
-        <button onClick={() => retreat()} style={{ marginRight: 8 }}>← Back</button>
-        <button onClick={() => advance(StepReview)}>Next →</button>
+        <p className="demo-step-para">Enter your payment details here.</p>
+        <div className="demo-actions">
+          <button onClick={() => retreat()}>← Back</button>
+          <button onClick={() => advance(StepReview)}>Next →</button>
+        </div>
       </div>
     );
   }
@@ -41,11 +43,13 @@ function CheckoutSection() {
   function StepReview() {
     const { retreat, resolve } = useStep();
     return (
-      <div style={{ padding: 16 }}>
+      <div className="demo-checkout__body">
         <strong>Step 3 — Review & Confirm</strong>
-        <p style={{ margin: "8px 0" }}>Everything looks good?</p>
-        <button onClick={() => retreat()} style={{ marginRight: 8 }}>← Back</button>
-        <button onClick={() => resolve({ confirmed: true })}>Place Order ✓</button>
+        <p className="demo-step-para">Everything looks good?</p>
+        <div className="demo-actions">
+          <button onClick={() => retreat()}>← Back</button>
+          <button onClick={() => resolve({ confirmed: true })}>Place Order ✓</button>
+        </div>
       </div>
     );
   }
@@ -57,14 +61,14 @@ function CheckoutSection() {
   }
 
   return (
-    <div style={{ border: "1px solid #ddd", borderRadius: 8, overflow: "hidden", maxWidth: 400 }}>
-      <div style={{ padding: "12px 16px", borderBottom: "1px solid #ddd", background: "#f9f9f9" }}>
+    <div className="demo-checkout">
+      <div className="demo-checkout__header">
         <strong>Checkout</strong>
       </div>
       <FlowOutlet ref={ref} />
       {status
-        ? <div style={{ padding: 16, color: "green" }}>{status}</div>
-        : <div style={{ padding: 16 }}>
+        ? <div className="demo-checkout__status">{status}</div>
+        : <div className="demo-checkout__body">
             <button onClick={start}>Begin Checkout</button>
           </div>
       }

@@ -22,16 +22,12 @@ function WizardDemo() {
     const ctx = useFlowContext();
     const pct = Math.round((ctx.step / ctx.total) * 100);
     return (
-      <div style={{ position: "fixed", inset: 0, background: "#fff", display: "flex", flexDirection: "column", zIndex: 1000 }}>
-        <div style={{ height: 4, background: "#eee" }}>
-          <div style={{ height: "100%", background: "#4f46e5", width: `${pct}%`, transition: "width 0.3s ease" }} />
+      <div className="demo-wizard">
+        <div className="demo-wizard__track">
+          <div className="demo-wizard__fill" style={{ width: `${pct}%` }} />
         </div>
-        <div style={{ padding: "8px 24px", color: "#888", fontSize: 13, borderBottom: "1px solid #eee" }}>
-          Step {ctx.step} of {ctx.total}
-        </div>
-        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          {children}
-        </div>
+        <div className="demo-wizard__label">Step {ctx.step} of {ctx.total}</div>
+        <div className="demo-wizard__content">{children}</div>
       </div>
     );
   }
@@ -62,16 +58,14 @@ function WizardDemo() {
   function StepProfile() {
     const { advance, abort } = useStep();
     return (
-      <div style={{ textAlign: "center" }}>
-        <h2 style={{ margin: "0 0 8px" }}>Tell us about yourself</h2>
-        <p style={{ margin: "0 0 16px", color: "#666" }}>What should we call you?</p>
-        <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
+      <div className="demo-wizard__step">
+        <h2 className="demo-wizard__title">Tell us about yourself</h2>
+        <p className="demo-wizard__subtitle">What should we call you?</p>
+        <div className="demo-actions-center">
           <button onClick={() => advance(loadStepPreferences, { step: 2, total: 3, data: { name: "Demo User" } })}>
             Continue →
           </button>
-          <button onClick={() => abort("cancelled")} style={{ background: "none", color: "#888", border: "1px solid #ddd", borderRadius: 4, padding: "4px 12px", cursor: "pointer" }}>
-            Cancel
-          </button>
+          <button className="demo-btn-ghost" onClick={() => abort("cancelled")}>Cancel</button>
         </div>
       </div>
     );
@@ -81,17 +75,15 @@ function WizardDemo() {
     const { retreat, advance, abort } = useStep();
     const ctx = useFlowContext();
     return (
-      <div style={{ textAlign: "center" }}>
-        <h2 style={{ margin: "0 0 8px" }}>Set your preferences</h2>
-        <p style={{ margin: "0 0 16px", color: "#666" }}>Enable notifications?</p>
-        <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
-          <button onClick={() => retreat()} style={{ background: "none", border: "1px solid #ddd", borderRadius: 4, padding: "4px 12px", cursor: "pointer" }}>← Back</button>
+      <div className="demo-wizard__step">
+        <h2 className="demo-wizard__title">Set your preferences</h2>
+        <p className="demo-wizard__subtitle">Enable notifications?</p>
+        <div className="demo-actions-center">
+          <button className="demo-btn-ghost" onClick={() => retreat()}>← Back</button>
           <button onClick={() => advance(loadStepConfirm, { ...ctx, step: 3, data: { ...ctx.data, notifications: true } })}>
             Continue →
           </button>
-          <button onClick={() => abort("cancelled")} style={{ background: "none", color: "#888", border: "1px solid #ddd", borderRadius: 4, padding: "4px 12px", cursor: "pointer" }}>
-            Cancel
-          </button>
+          <button className="demo-btn-ghost" onClick={() => abort("cancelled")}>Cancel</button>
         </div>
       </div>
     );
@@ -101,15 +93,13 @@ function WizardDemo() {
     const { retreat, resolve, abort } = useStep();
     const ctx = useFlowContext();
     return (
-      <div style={{ textAlign: "center" }}>
-        <h2 style={{ margin: "0 0 8px" }}>All set! 🎉</h2>
-        <p style={{ margin: "0 0 16px", color: "#666" }}>Your profile is ready.</p>
-        <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
-          <button onClick={() => retreat()} style={{ background: "none", border: "1px solid #ddd", borderRadius: 4, padding: "4px 12px", cursor: "pointer" }}>← Back</button>
+      <div className="demo-wizard__step">
+        <h2 className="demo-wizard__title">All set! 🎉</h2>
+        <p className="demo-wizard__subtitle">Your profile is ready.</p>
+        <div className="demo-actions-center">
+          <button className="demo-btn-ghost" onClick={() => retreat()}>← Back</button>
           <button onClick={() => resolve(ctx.data)}>Finish</button>
-          <button onClick={() => abort("cancelled")} style={{ background: "none", color: "#888", border: "1px solid #ddd", borderRadius: 4, padding: "4px 12px", cursor: "pointer" }}>
-            Cancel
-          </button>
+          <button className="demo-btn-ghost" onClick={() => abort("cancelled")}>Cancel</button>
         </div>
       </div>
     );
@@ -135,9 +125,9 @@ function WizardDemo() {
     }
 
     return (
-      <div style={{ padding: 8 }}>
+      <div className="demo-sandbox">
         <button onClick={start}>Start Onboarding</button>
-        {log && <p style={{ marginTop: 12, color: "#555" }}>{log}</p>}
+        {log && <p className="demo-log">{log}</p>}
       </div>
     );
   }

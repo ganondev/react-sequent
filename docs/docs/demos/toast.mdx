@@ -39,21 +39,9 @@ function ToastDemo() {
     }, [resolve]);
 
     return (
-      <div style={{
-        background: "#1f2937",
-        color: "#fff",
-        padding: "12px 20px",
-        borderRadius: 8,
-        boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
-        minWidth: 240,
-        fontSize: 14,
-        lineHeight: 1.5,
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-      }}>
-        <div style={{ marginRight: 12 }}>{ctx.message}</div>
-        <div style={{ opacity: 0.85, fontSize: 12 }}>{remaining}s</div>
+      <div className="demo-toast">
+        <div className="demo-toast__message">{ctx.message}</div>
+        <div className="demo-toast__timer">{remaining}s</div>
       </div>
     );
   }
@@ -71,16 +59,7 @@ function ToastDemo() {
         {children}
         <FlowOutlet
           ref={ref}
-          chrome={(slot) => (
-            <div style={{
-              position: "fixed",
-              bottom: 24,
-              right: 24,
-              zIndex: 1000,
-            }}>
-              {slot}
-            </div>
-          )}
+          chrome={(slot) => <div className="demo-toast__chrome">{slot}</div>}
         />
       </ToastContext.Provider>
     );
@@ -101,9 +80,9 @@ function ToastDemo() {
     }
 
     return (
-      <div style={{ padding: 8 }}>
+      <div className="demo-sandbox">
         <button onClick={handleClick}>Show Toast</button>
-        {log && <p style={{ marginTop: 12, color: "#555" }}>{log}</p>}
+        {log && <p className="demo-log">{log}</p>}
       </div>
     );
   }

@@ -27,11 +27,11 @@ const sidebars: SidebarsConfig = {
       ],
     },
   ],
-  examplesSidebar: [
-    "examples/subsection-flow",
-    "examples/modal",
-    "examples/wizard",
-    "examples/toast",
+  demosSidebar: [
+    "demos/subsection-flow",
+    "demos/modal",
+    "demos/wizard",
+    "demos/toast",
   ],
 };
 
