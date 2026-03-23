@@ -83,7 +83,7 @@ function WizardDemo() {
 
   function StepPreferences() {
     const { retreat, advance, abort } = useStep();
-    const ctx = useFlowContext();
+    const { context: ctx } = useFlowContext();
     const [notif, setNotif] = React.useState(true);
     return (
       <div className="demo-wizard__step">
@@ -113,7 +113,7 @@ function WizardDemo() {
 
   function StepConfirm() {
     const { retreat, resolve, abort } = useStep();
-    const ctx = useFlowContext();
+    const { context: ctx } = useFlowContext();
     return (
       <div className="demo-wizard__step">
         <h2 className="demo-wizard__title">All set! 🎉</h2>
