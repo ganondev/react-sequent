@@ -16,7 +16,7 @@ function ChromeHeader(): React.ReactElement {
 }
 
 function ContextChrome(): React.ReactElement {
-  const ctx = useFlowContext() as { title: string };
+  const { context: ctx } = useFlowContext<{ title: string }>();
   return <div>Title: {ctx.title}</div>;
 }
 
@@ -44,6 +44,21 @@ function ContextStep1(): React.ReactElement {
 
 function ContextStep2(): React.ReactElement {
   return <div>Context Step 2</div>;
+}
+
+let capturedAbortFromChrome: (() => void) | null = null;
+let capturedResolveFromChrome: ((value?: unknown) => void) | null = null;
+
+function ChromeWithAbort(): React.ReactElement {
+  const { abort } = useFlowContext();
+  capturedAbortFromChrome = () => abort("chrome-cancelled");
+  return <div>Chrome Abort</div>;
+}
+
+function ChromeWithResolve(): React.ReactElement {
+  const { resolve } = useFlowContext();
+  capturedResolveFromChrome = (value?: unknown) => resolve(value);
+  return <div>Chrome Resolve</div>;
 }
 
 // ── Feature ──────────────────────────────────────────────────────────
@@ -230,6 +245,110 @@ describeFeature(feature, ({ Scenario }) => {
     Then("only the step content is rendered", () => {
       expect(screen.getByText("Step Content")).toBeInTheDocument();
       expect(screen.queryByText("Chrome Header")).not.toBeInTheDocument();
+    });
+  });
+
+  // ── Scenario 5 ─────────────────────────────────────────────────────
+  Scenario("Chrome aborts flow via useFlowContext", ({ Given, When, Then, And }) => {
+    let capturedInitFlow: ReturnType<typeof useFlowInit>["initFlow"];
+    let capturedRef: React.RefObject<FlowOutletHandle | null>;
+
+    Given("a host with FlowOutlet configured with a chrome render prop that can abort", () => {
+      cleanup();
+      capturedAbortFromChrome = null;
+
+      function TestHost() {
+        const ref = useRef<FlowOutletHandle>(null);
+        const { initFlow } = useFlowInit();
+        capturedInitFlow = initFlow;
+        capturedRef = ref;
+        return (
+          <FlowOutlet
+            ref={ref}
+            chrome={(slot) => (
+              <>
+                <ChromeWithAbort />
+                {slot}
+              </>
+            )}
+          />
+        );
+      }
+
+      render(<TestHost />);
+      expect(capturedInitFlow).toBeDefined();
+    });
+
+    And("the flow has been activated with a sync step", () => {
+      act(() => {
+        capturedInitFlow(SyncStep, capturedRef);
+      });
+      expect(screen.getByText("Chrome Abort")).toBeInTheDocument();
+      expect(screen.getByText("Step Content")).toBeInTheDocument();
+    });
+
+    When("the chrome component calls abort via useFlowContext", () => {
+      expect(capturedAbortFromChrome).not.toBeNull();
+      act(() => {
+        capturedAbortFromChrome?.();
+      });
+    });
+
+    Then("the outlet returns to idle", () => {
+      expect(screen.queryByText("Chrome Abort")).not.toBeInTheDocument();
+      expect(screen.queryByText("Step Content")).not.toBeInTheDocument();
+    });
+  });
+
+  // ── Scenario 6 ─────────────────────────────────────────────────────
+  Scenario("Chrome resolves flow via useFlowContext", ({ Given, When, Then, And }) => {
+    let capturedInitFlow: ReturnType<typeof useFlowInit>["initFlow"];
+    let capturedRef: React.RefObject<FlowOutletHandle | null>;
+
+    Given("a host with FlowOutlet configured with a chrome render prop that can resolve", () => {
+      cleanup();
+      capturedResolveFromChrome = null;
+
+      function TestHost() {
+        const ref = useRef<FlowOutletHandle>(null);
+        const { initFlow } = useFlowInit();
+        capturedInitFlow = initFlow;
+        capturedRef = ref;
+        return (
+          <FlowOutlet
+            ref={ref}
+            chrome={(slot) => (
+              <>
+                <ChromeWithResolve />
+                {slot}
+              </>
+            )}
+          />
+        );
+      }
+
+      render(<TestHost />);
+      expect(capturedInitFlow).toBeDefined();
+    });
+
+    And("the flow has been activated with a sync step", () => {
+      act(() => {
+        capturedInitFlow(SyncStep, capturedRef);
+      });
+      expect(screen.getByText("Chrome Resolve")).toBeInTheDocument();
+      expect(screen.getByText("Step Content")).toBeInTheDocument();
+    });
+
+    When("the chrome component calls resolve via useFlowContext", () => {
+      expect(capturedResolveFromChrome).not.toBeNull();
+      act(() => {
+        capturedResolveFromChrome?.("chrome-resolved");
+      });
+    });
+
+    Then("the outlet returns to idle", () => {
+      expect(screen.queryByText("Chrome Resolve")).not.toBeInTheDocument();
+      expect(screen.queryByText("Step Content")).not.toBeInTheDocument();
     });
   });
 });

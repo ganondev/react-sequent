@@ -19,7 +19,7 @@ function WizardDemo() {
   const WizardContext = React.createContext(null);
 
   function WizardChrome({ children }) {
-    const ctx = useFlowContext();
+    const { context: ctx } = useFlowContext();
     const pct = Math.round((ctx.step / ctx.total) * 100);
     return (
       <div className="demo-wizard">

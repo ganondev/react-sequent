@@ -26,3 +26,15 @@ Feature: Chrome and flow context
     Given a host with FlowOutlet configured without chrome
     When  initFlow is called with a sync step
     Then  only the step content is rendered
+
+  Scenario: Chrome aborts flow via useFlowContext
+    Given a host with FlowOutlet configured with a chrome render prop that can abort
+    And   the flow has been activated with a sync step
+    When  the chrome component calls abort via useFlowContext
+    Then  the outlet returns to idle
+
+  Scenario: Chrome resolves flow via useFlowContext
+    Given a host with FlowOutlet configured with a chrome render prop that can resolve
+    And   the flow has been activated with a sync step
+    When  the chrome component calls resolve via useFlowContext
+    Then  the outlet returns to idle

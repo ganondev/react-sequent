@@ -16,8 +16,7 @@ function SharedModalDemo() {
   const ModalContext = React.createContext(null);
 
   function ModalChrome({ children }) {
-    const ctx = useFlowContext();
-    const { abort } = useStep();
+    const { context: ctx, abort } = useFlowContext();
     return (
       <div className="demo-modal">
         <div className="demo-modal__header">
@@ -73,7 +72,7 @@ function SharedModalDemo() {
 
   function StepDetails() {
     const { retreat, advance, abort } = useStep();
-    const ctx = useFlowContext();
+    const { context: ctx } = useFlowContext();
     const [email, setEmail] = useState("");
     return (
       <div>
@@ -99,7 +98,7 @@ function SharedModalDemo() {
 
   function StepDone() {
     const { resolve } = useStep();
-    const ctx = useFlowContext();
+    const { context: ctx } = useFlowContext();
     return (
       <div>
         <p className="demo-para">You're all set! 🎉</p>

@@ -38,7 +38,7 @@ function CheckoutSection() {
 
   function StepPayment() {
     const { retreat, advance } = useStep();
-    const ctx = useFlowContext();
+    const { context: ctx } = useFlowContext();
     const [card, setCard] = React.useState("");
     return (
       <div className="demo-checkout__body">
@@ -63,7 +63,7 @@ function CheckoutSection() {
 
   function StepReview() {
     const { retreat, resolve } = useStep();
-    const ctx = useFlowContext();
+    const { context: ctx } = useFlowContext();
     return (
       <div className="demo-checkout__body">
         <strong>Step 3 — Review & Confirm</strong>
@@ -77,7 +77,7 @@ function CheckoutSection() {
   }
 
   function IdleContent() {
-    const ctx = useFlowContext();
+    const { context: ctx } = useFlowContext();
     return (
       <div className="demo-checkout__body">
         <button onClick={start}>{ctx ? "Begin Checkout Again" : "Begin Checkout"}</button>

@@ -88,6 +88,10 @@ function StepWithForm() {
 
 Both tear down the flow and return the outlet to idle.
 
+:::tip Chrome components
+Chrome components (modal headers, close buttons) should use `useFlowContext()` for `resolve`/`abort` instead of `useStep`. `useStep` is reserved for step components — it provides navigation (`advance`/`retreat`) that chrome should not have access to.
+:::
+
 ```tsx
 function FinalStep() {
   const { retreat, resolve, abort } = useStep();

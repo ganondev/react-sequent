@@ -17,7 +17,7 @@ function ToastDemo() {
 
   function ToastStep() {
     const { resolve } = useStep();
-    const ctx = useFlowContext();
+    const { context: ctx } = useFlowContext();
     const [remaining, setRemaining] = React.useState(5);
 
     React.useEffect(() => {
@@ -104,7 +104,7 @@ function ToastDemo() {
 ```jsx
 function ToastStep() {
   const { resolve } = useStep();
-  const ctx = useFlowContext();
+  const { context: ctx } = useFlowContext();
   const [remaining, setRemaining] = useState(5);
 
   useEffect(() => {

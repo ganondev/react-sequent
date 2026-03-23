@@ -5,38 +5,47 @@ title: useFlowContext
 
 # useFlowContext
 
-Read-only hook for **chrome components** and any consumer component inside the outlet's provider boundary. Returns the current flow context value.
+Hook for **chrome components** and any consumer component inside the outlet's provider boundary. Returns the current flow context value plus `resolve` and `abort` callbacks for flow termination.
 
-Has **no transition capabilities** — it cannot advance, retreat, resolve, or abort.
+Has **no navigation capabilities** — it cannot `advance` or `retreat`. Navigation remains exclusive to step components via `useStep`.
 
 ## Signature
 
 ```typescript
-function useFlowContext<TContext = unknown>(): TContext;
+function useFlowContext<TContext = unknown>(): {
+  context: TContext;
+  resolve: (value?: unknown) => void;
+  abort: (reason?: unknown) => void;
+};
 ```
 
 ## Returns
 
-The current consumer-owned flow context value, cast to `TContext`.
+| Property | Type | Description |
+|---|---|---|
+| `context` | `TContext` | The current consumer-owned flow context value. |
+| `resolve` | `(value?: unknown) => void` | End the flow successfully. The value is passed to the promise returned by `initFlow`. |
+| `abort` | `(reason?: unknown) => void` | End the flow without completing. The reason is passed as a rejection to the `initFlow` promise. |
 
 ## When to Use
 
-`useFlowContext` exists for **non-step** components that need to respond to flow state — most commonly chrome components like modal headers, progress bars, or close buttons.
+`useFlowContext` exists for **non-step** components that need to respond to flow state or terminate a flow — most commonly chrome components like modal headers, progress bars, or close buttons.
 
-Steps should use `useStep().context` instead. Both read the same underlying value, but `useStep` also provides transition capabilities that steps need.
+Steps should use `useStep()` instead. `useStep` provides the same `resolve`/`abort` plus navigation (`advance`/`retreat`) and context access that steps need.
 
 ## Chrome Pattern
 
-The primary use case: a chrome component reads context to display dynamic content that stays stable across step transitions.
+The primary use case: a chrome component reads context to display dynamic content that stays stable across step transitions, and provides a close button that aborts the flow.
 
 ```tsx
 // Chrome component — stays mounted across step transitions
 function ModalHeader() {
-  const ctx = useFlowContext<{ title: string; step: number }>();
+  const { context: ctx, abort } = useFlowContext<{ title: string; step: number }>();
   return (
     <header>
       <h2>{ctx.title}</h2>
       <span>Step {ctx.step} of 3</span>
+      <button onClick={() => abort("cancelled")}>✕</button>
     </header>
   );
 }
@@ -105,6 +114,12 @@ The chrome component (`<ModalHeader>` above) is rendered **inside** the outlet's
 </FlowOutlet>
 ```
 
+### Why chrome gets `resolve`/`abort` but not `advance`/`retreat`
+
+Chrome is stable UI that wraps the step area. It should be able to **terminate** a flow (e.g. a close button that aborts, or a "finish" action that resolves) but should **not drive navigation** between steps — that responsibility belongs to the step itself, per the "step decides what comes next" paradigm.
+
+If chrome needs to influence which step renders next, the step should read a signal from context and branch accordingly.
+
 ## Generic: `TContext`
 
 ```tsx
@@ -115,9 +130,14 @@ interface MyFlowContext {
 }
 
 function ModalChrome() {
-  const ctx = useFlowContext<MyFlowContext>();
+  const { context: ctx, abort } = useFlowContext<MyFlowContext>();
   // ctx is typed as MyFlowContext
-  return <header>{ctx.title}</header>;
+  return (
+    <header>
+      {ctx.title}
+      {ctx.canClose && <button onClick={() => abort()}>✕</button>}
+    </header>
+  );
 }
 ```
 

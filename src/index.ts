@@ -2,6 +2,7 @@
 
 export type { FlowOutletHandle } from "./components/FlowOutlet";
 export { FlowOutlet } from "./components/FlowOutlet";
+export type { FlowContextReturn } from "./hooks/useFlowContext";
 export { useFlowContext } from "./hooks/useFlowContext";
 export { useFlowInit } from "./hooks/useFlowInit";
 export { useStep } from "./hooks/useStep";

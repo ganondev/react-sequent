@@ -60,9 +60,9 @@ Two hooks with strictly separated concerns. A step must never be able to access 
 - Has no access to initializer-level capabilities
 
 **`useFlowContext`** — for chrome components and any consumer component inside the outlet's provider boundary
-- Returns the current flow context value, read-only
-- Available to components that are not steps but need to respond to flow state (e.g. a chrome component that displays a dynamic title)
-- Has no transition capabilities
+- Returns an object with `context` (the current flow context value), `resolve`, and `abort`
+- Available to components that are not steps but need to respond to flow state (e.g. a chrome component that displays a dynamic title) or terminate the flow (e.g. a close button)
+- Has no navigation capabilities (`advance`/`retreat` remain exclusive to `useStep`)
 
 These hooks must not share a public interface beyond what is explicitly listed. Compartmentalization is a hard requirement, not a preference.
 
@@ -91,7 +91,7 @@ The chrome render prop is optional. Outlets with no chrome render prop simply re
 
 Steps should never include chrome. Chrome belongs to the outlet so that it remains visually stable across step transitions — a modal header should not flicker when an async step loads, and animated transitions between steps should not affect the surrounding shell.
 
-To allow chrome to respond to per-step concerns (e.g. a dynamic title, a conditionally hidden close button), the library exposes **`useFlowContext`** — a read-only hook available to any component inside the outlet's provider boundary. Steps write chrome-relevant state into context via `advance`'s `contextPatch`; the chrome component reads it via `useFlowContext`.
+To allow chrome to respond to per-step concerns (e.g. a dynamic title, a conditionally hidden close button), the library exposes **`useFlowContext`** — a hook available to any component inside the outlet's provider boundary. It returns the current flow context value (read-only) along with `resolve` and `abort` callbacks for flow termination. Steps write chrome-relevant state into context via `advance`'s `contextPatch`; the chrome component reads it via `useFlowContext`. Chrome can terminate a flow (e.g. a close button that aborts) but cannot navigate between steps — `advance` and `retreat` remain exclusive to `useStep`.
 
 The library defines no chrome slots. The consumer owns both the shape of the context and the chrome component itself, keeping the library generic. Common outlet patterns (modal, drawer, wizard) are left to the consumer or their own codebase to define as reusable compositions.
 
@@ -268,5 +268,5 @@ function SomeComponent() {
 - ~~**Typed `resolve`/`abort` payloads**~~ — Resolved. Generic goes on `useFlowInit<ResultType>()`, which types the return value of `initFlow` (the promise/callback the consumer handles) and carries a typed `resolve` through internal context to `useStep`. This is best-effort — TypeScript cannot verify at compile time that a step is rendered inside the correct outlet, so the type is trustworthy in practice but not airtight. A step used across flows with different resolve types would silently get the wrong type; this is an acceptable trade-off given that steps are designed to be portable. If the generic approach proves unworkable, the fallback is `resolve` accepting `unknown` in `useStep` with type safety living exclusively at the `initFlow` return value.
 - ~~**Multiple concurrent flows — v1 scope**~~ — Resolved. Out of scope for v1. Multiple outlets can coexist naturally via separate `useFlowInit` + `<FlowOutlet />` pairs; coordinating flows is a different problem deferred to a later version.
 - ~~**Error boundary story**~~ — Resolved. `<FlowOutlet />` owns an error boundary alongside its Suspense boundary. Accepts an `errorFallback` prop analogous to `fallback`, keeping broken step blast radius contained to the outlet.
-- ~~**Chrome / outlet composition**~~ — Resolved. See *Outlet* and *Chrome and `useFlowContext`* in Architecture. `<FlowOutlet />` is idle until `initFlow` activates it. An optional chrome child is rendered outside the Suspense boundary (stable across transitions) but inside the provider boundary (can call `useFlowContext`). Steps remain chrome-free and fully portable. `useFlowContext` is a read-only hook for non-step components that need to respond to flow state.
+- ~~**Chrome / outlet composition**~~ — Resolved. See *Outlet* and *Chrome and `useFlowContext`* in Architecture. `<FlowOutlet />` is idle until `initFlow` activates it. An optional chrome child is rendered outside the Suspense boundary (stable across transitions) but inside the provider boundary (can call `useFlowContext`). Steps remain chrome-free and fully portable. `useFlowContext` provides context (read-only), `resolve`, and `abort` — enabling chrome to terminate flows without accessing navigation capabilities.
 - ~~**Outlet association by ref**~~ — Resolved. See *Outlet association* above.

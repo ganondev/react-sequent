@@ -48,9 +48,9 @@ The library exposes two primary hooks with **strictly separated concerns**:
 
 ### `useFlowContext` — for chrome components
 
-- Returns the current flow context value (read-only)
+- Returns the current flow context value, plus `resolve` and `abort` for flow termination
 - Available to any component inside the outlet's provider boundary
-- Has **no transition capabilities**
+- Has **no navigation capabilities** — cannot `advance` or `retreat`
 
 This compartmentalization is a hard requirement, not a preference. A step must never be able to access initializer-level capabilities, and vice versa.
 

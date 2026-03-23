@@ -14,7 +14,7 @@ export default {
 /* ------------------------------------------------------------------ */
 
 function ModalHeader() {
-  const ctx = useFlowContext() as { title: string };
+  const { context: ctx } = useFlowContext<{ title: string }>();
   return (
     <>
       <Title order={3}>{ctx.title}</Title>
