@@ -7,8 +7,7 @@
  * should use useFlowContext() instead.
  */
 import { Alert, Badge, Button, Code, Divider, Group, Paper, Stack, Text, Title } from "@mantine/core";
-import React from "react";
-import { Component, useRef, useState } from "react";
+import { Component, type ReactNode, useRef, useState } from "react";
 import { FlowOutlet, type FlowOutletHandle } from "../components/FlowOutlet";
 import { useFlowContext } from "../hooks/useFlowContext";
 import { useFlowInit } from "../hooks/useFlowInit";
@@ -27,10 +26,10 @@ interface ErrorBoundaryState {
 }
 
 class ErrorBoundary extends Component<
-  { children: React.ReactNode; reset?: boolean },
+  { children: ReactNode; reset?: boolean },
   ErrorBoundaryState
 > {
-  constructor(props: { children: React.ReactNode; reset?: boolean }) {
+  constructor(props: { children: ReactNode; reset?: boolean }) {
     super(props);
     this.state = { error: null };
   }
