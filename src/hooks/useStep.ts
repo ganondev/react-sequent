@@ -10,7 +10,7 @@
  */
 import { useContext } from "react";
 import { StepContext } from "../internal/context";
-import { normalizeStepLoader, type StepLoader } from "../internal/normalizer";
+import type { StepLoader } from "../internal/normalizer";
 
 // #region doc:full
 export function useStep<TResult = unknown>() {
@@ -25,7 +25,7 @@ export function useStep<TResult = unknown>() {
   }
 
   const advance = (nextStep: StepLoader, contextPatch?: unknown) => {
-    ctx.advance(normalizeStepLoader(nextStep), contextPatch);
+    ctx.advance(nextStep, contextPatch);
   };
 
   return {
