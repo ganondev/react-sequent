@@ -45,7 +45,7 @@ function WizardDemo() {
         {children}
         <FlowOutlet
           ref={ref}
-          fallback={<span style={{ color: "#aaa" }}>Loading…</span>}
+          fallback={<span className="demo-fallback">Loading…</span>}
           chrome={(slot) => <WizardChrome>{slot}</WizardChrome>}
         />
       </WizardContext.Provider>
