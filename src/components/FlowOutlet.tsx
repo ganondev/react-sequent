@@ -147,12 +147,20 @@ export const FlowOutlet = forwardRef<
     [handleAbort],
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: no-op functions are stable
+  // biome-ignore lint/correctness/useExhaustiveDependencies: idle callbacks are stable
   const idleContextValue: FlowContextValue = useMemo(
     () => ({
       consumerContext: lastConsumerContextRef.current,
-      resolve: () => {},
-      abort: () => {},
+      resolve: () => {
+        throw new Error(
+          "FlowOutlet resolve() called while no flow is active. These callbacks are only valid during an active flow.",
+        );
+      },
+      abort: () => {
+        throw new Error(
+          "FlowOutlet abort() called while no flow is active. These callbacks are only valid during an active flow.",
+        );
+      },
     }),
     [flowState],
   );
