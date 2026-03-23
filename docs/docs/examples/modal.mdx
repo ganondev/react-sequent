@@ -17,11 +17,12 @@ function SharedModalDemo() {
 
   function ModalChrome({ children }) {
     const ctx = useFlowContext();
+    const { abort } = useStep();
     return (
       <div style={{ background: "#fff", borderRadius: 10, minWidth: 340, boxShadow: "0 8px 32px rgba(0,0,0,0.18)", overflow: "hidden", pointerEvents: "auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 20px", borderBottom: "1px solid #eee" }}>
           <strong>{ctx.title}</strong>
-          <button onClick={ctx.onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, lineHeight: 1 }}>✕</button>
+          <button onClick={() => abort("cancelled")} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, lineHeight: 1 }}>✕</button>
         </div>
         <div style={{ padding: 24 }}>{children}</div>
       </div>
@@ -32,14 +33,12 @@ function SharedModalDemo() {
     const ref = useRef(null);
     const { initFlow } = useFlowInit();
 
-    function closeModal() { ref.current?.abort(); }
-
     async function openModal(firstStep, ctx) {
-      return initFlow(firstStep, ref, { onClose: closeModal, ...ctx });
+      return initFlow(firstStep, ref, ctx);
     }
 
     return (
-      <ModalContext.Provider value={{ openModal, closeModal }}>
+      <ModalContext.Provider value={{ openModal }}>
         {children}
         <div style={{ pointerEvents: "auto" }}>
             <FlowOutlet
@@ -66,16 +65,15 @@ function SharedModalDemo() {
   // ── Steps ─────────────────────────────────────────────────────────────────
 
   function StepWelcome() {
-    const { advance } = useStep();
-    const { closeModal } = useModal();
+    const { advance, abort } = useStep();
     return (
       <div>
         <p style={{ margin: "0 0 16px" }}>Welcome to the setup flow. This will only take a minute.</p>
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => advance(StepDetails, { title: "Details", onClose: closeModal })}>
+          <button onClick={() => advance(StepDetails, { title: "Details" })}>
             Get Started →
           </button>
-          <button onClick={closeModal} style={{ background: "none", color: "#888", border: "1px solid #ddd", borderRadius: 4, padding: "4px 12px", cursor: "pointer" }}>
+          <button onClick={() => abort("cancelled")} style={{ background: "none", color: "#888", border: "1px solid #ddd", borderRadius: 4, padding: "4px 12px", cursor: "pointer" }}>
             Cancel
           </button>
         </div>
@@ -84,17 +82,16 @@ function SharedModalDemo() {
   }
 
   function StepDetails() {
-    const { retreat, advance } = useStep();
-    const { closeModal } = useModal();
+    const { retreat, advance, abort } = useStep();
     return (
       <div>
         <p style={{ margin: "0 0 16px" }}>Fill in your details below.</p>
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={retreat} style={{ background: "none", border: "1px solid #ddd", borderRadius: 4, padding: "4px 12px", cursor: "pointer" }}>← Back</button>
-          <button onClick={() => advance(StepDone, { title: "All done!", onClose: closeModal })}>
+          <button onClick={() => advance(StepDone, { title: "All done!" })}>
             Continue →
           </button>
-          <button onClick={closeModal} style={{ background: "none", color: "#888", border: "1px solid #ddd", borderRadius: 4, padding: "4px 12px", cursor: "pointer" }}>
+          <button onClick={() => abort("cancelled")} style={{ background: "none", color: "#888", border: "1px solid #ddd", borderRadius: 4, padding: "4px 12px", cursor: "pointer" }}>
             Cancel
           </button>
         </div>
@@ -148,14 +145,13 @@ function SharedModalDemo() {
 
 ## How the singleton pattern works
 
-The modal infrastructure (backdrop, centering, chrome) is provided by an outer wrapper that owns the `<FlowOutlet>` ref and `<ModalChrome>`. It exposes two things through context:
+The modal infrastructure (backdrop, centering, chrome) is provided by an outer wrapper that owns the `<FlowOutlet>` ref. It exposes one thing through context:
 
 | Value | Purpose |
 |---|---|
 | `openModal(firstStep, ctx)` | Starts a flow; returns the same promise as `initFlow` |
-| `closeModal()` | Aborts the active flow; safe to call when idle |
 
-`useModal()` is a thin wrapper around `React.useContext` that gives any descendant access to both without prop drilling or refs.
+`useModal()` is a thin wrapper around `React.useContext` that gives any descendant access to `openModal` without prop drilling or refs. Closing the modal is handled entirely by the library — chrome and steps call `abort` from `useStep()`.
 
 ```jsx
 // infrastructure (ModalProvider.tsx)
@@ -163,13 +159,12 @@ function ModalProvider({ children }) {
   const ref = useRef(null);
   const { initFlow } = useFlowInit();
 
-  function closeModal() { ref.current?.abort(); }
   async function openModal(firstStep, ctx) {
-    return initFlow(firstStep, ref, { onClose: closeModal, ...ctx });
+    return initFlow(firstStep, ref, ctx);
   }
 
   return (
-    <ModalContext.Provider value={{ openModal, closeModal }}>
+    <ModalContext.Provider value={{ openModal }}>
       {children}
       <div style={{ pointerEvents: "auto" }}>
         <FlowOutlet
@@ -205,6 +200,6 @@ function SetupButton() {
 ## Key points
 
 - **Single outlet, zero consumer boilerplate** — no `useRef`, no `<FlowOutlet>`, no `useFlowInit` outside the provider.
-- **`closeModal` from anywhere** — steps call `const { closeModal } = useModal()` and pass it as `onClose` to `advance`, so the close button in the chrome always works.
+- **Close via `useStep`** — chrome and steps call `abort` from the same `useStep()` hook used for all step navigation. No imperative ref reaching or callback threading required.
 - **Chrome is stable** — `ModalChrome` stays mounted for the full lifetime of the flow; `useFlowContext()` reflects the context set by the latest `initFlow` or `advance` call.
-- **Context flows down** — `openModal` seeds context; `advance(NextStep, newCtx)` replaces it. `useFlowContext()` always reads the latest value.
+- **Context carries only your data** — `openModal` seeds context; `advance(NextStep, newCtx)` replaces it. No library plumbing mixed in.
