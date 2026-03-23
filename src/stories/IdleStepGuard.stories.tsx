@@ -6,7 +6,18 @@
  * outside that boundary — including chrome and idle FlowOutlet children —
  * should use useFlowContext() instead.
  */
-import { Alert, Badge, Button, Code, Divider, Group, Paper, Stack, Text, Title } from "@mantine/core";
+import {
+  Alert,
+  Badge,
+  Button,
+  Code,
+  Divider,
+  Group,
+  Paper,
+  Stack,
+  Text,
+  Title,
+} from "@mantine/core";
 import { Component, type ReactNode, useRef, useState } from "react";
 import { FlowOutlet, type FlowOutletHandle } from "../components/FlowOutlet";
 import { useFlowContext } from "../hooks/useFlowContext";
@@ -130,9 +141,9 @@ function Host() {
         <Divider label="Misuse — triggers immediate render error" labelPosition="left" />
 
         <Text size="sm">
-          Clicking the button below mounts a component that calls{" "}
-          <Code>useStep()</Code> outside of a step. It throws immediately at
-          render time. The ErrorBoundary catches it and shows the error.
+          Clicking the button below mounts a component that calls <Code>useStep()</Code> outside of
+          a step. It throws immediately at render time. The ErrorBoundary catches it and shows the
+          error.
         </Text>
 
         <Button
@@ -152,11 +163,15 @@ function Host() {
           </ErrorBoundary>
         )}
 
-        <Divider label="Correct usage — useFlowContext() in idle child" labelPosition="left" mt="md" />
+        <Divider
+          label="Correct usage — useFlowContext() in idle child"
+          labelPosition="left"
+          mt="md"
+        />
 
         <Text size="sm">
-          The outlet below uses <Code>useFlowContext()</Code> in its idle
-          child. It renders fine and updates after a flow resolves.
+          The outlet below uses <Code>useFlowContext()</Code> in its idle child. It renders fine and
+          updates after a flow resolves.
         </Text>
 
         <FlowOutlet ref={ref}>
@@ -165,7 +180,6 @@ function Host() {
             Start a valid flow →
           </Button>
         </FlowOutlet>
-
       </Stack>
     </Paper>
   );

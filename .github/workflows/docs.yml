@@ -27,7 +27,15 @@ jobs:
         with:
           node-version: 24
           cache: yarn
-          cache-dependency-path: docs/yarn.lock
+          cache-dependency-path: |
+            yarn.lock
+            docs/yarn.lock
+
+      - name: Install root dependencies
+        run: yarn install --immutable
+
+      - name: Build react-sequent
+        run: yarn build
 
       - name: Install docs dependencies
         working-directory: docs
