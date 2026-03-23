@@ -162,7 +162,7 @@ If a step component throws during render, the error boundary catches it and disp
 
 ```tsx
 function ProgressChrome() {
-  const ctx = useFlowContext<{ step: number; total: number }>();
+  const { context: ctx } = useFlowContext<{ step: number; total: number }>();
   return (
     <div className="progress-bar">
       Step {ctx.step} of {ctx.total}
