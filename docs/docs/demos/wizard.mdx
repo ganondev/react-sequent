@@ -57,12 +57,22 @@ function WizardDemo() {
   // --- Steps ---
   function StepProfile() {
     const { advance, abort } = useStep();
+    const [name, setName] = React.useState("");
     return (
       <div className="demo-wizard__step">
         <h2 className="demo-wizard__title">Tell us about yourself</h2>
         <p className="demo-wizard__subtitle">What should we call you?</p>
+        <div className="demo-input-group-wide">
+          <input
+            type="text"
+            className="demo-input"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Your name"
+          />
+        </div>
         <div className="demo-actions-center">
-          <button onClick={() => advance(loadStepPreferences, { step: 2, total: 3, data: { name: "Demo User" } })}>
+          <button onClick={() => advance(loadStepPreferences, { step: 2, total: 3, data: { name: name || "User" } })}>
             Continue →
           </button>
           <button className="demo-btn-ghost" onClick={() => abort("cancelled")}>Cancel</button>
@@ -74,13 +84,25 @@ function WizardDemo() {
   function StepPreferences() {
     const { retreat, advance, abort } = useStep();
     const ctx = useFlowContext();
+    const [notif, setNotif] = React.useState(true);
     return (
       <div className="demo-wizard__step">
         <h2 className="demo-wizard__title">Set your preferences</h2>
-        <p className="demo-wizard__subtitle">Enable notifications?</p>
+        <p className="demo-wizard__subtitle">Communication preferences</p>
+        <div className="demo-input-group-wide">
+          <label className="demo-checkbox-label">
+            <input
+              type="checkbox"
+              className="demo-checkbox"
+              checked={notif}
+              onChange={(e) => setNotif(e.target.checked)}
+            />
+            <span>Send me email notifications</span>
+          </label>
+        </div>
         <div className="demo-actions-center">
           <button className="demo-btn-ghost" onClick={() => retreat()}>← Back</button>
-          <button onClick={() => advance(loadStepConfirm, { ...ctx, step: 3, data: { ...ctx.data, notifications: true } })}>
+          <button onClick={() => advance(loadStepConfirm, { ...ctx, step: 3, data: { ...ctx.data, notifications: notif } })}>
             Continue →
           </button>
           <button className="demo-btn-ghost" onClick={() => abort("cancelled")}>Cancel</button>

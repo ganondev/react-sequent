@@ -73,12 +73,24 @@ function SharedModalDemo() {
 
   function StepDetails() {
     const { retreat, advance, abort } = useStep();
+    const ctx = useFlowContext();
+    const [email, setEmail] = useState("");
     return (
       <div>
         <p className="demo-para">Fill in your details below.</p>
+        <div className="demo-input-group">
+          <label className="demo-input-label">Email:</label>
+          <input
+            type="email"
+            className="demo-input"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+          />
+        </div>
         <div className="demo-actions">
           <button className="demo-btn-ghost" onClick={retreat}>← Back</button>
-          <button onClick={() => advance(StepDone, { title: "All done!" })}>Continue →</button>
+          <button onClick={() => advance(StepDone, { ...ctx, email, title: "All done!" })}>Continue →</button>
           <button className="demo-btn-ghost" onClick={() => abort("cancelled")}>Cancel</button>
         </div>
       </div>
@@ -87,10 +99,11 @@ function SharedModalDemo() {
 
   function StepDone() {
     const { resolve } = useStep();
+    const ctx = useFlowContext();
     return (
       <div>
         <p className="demo-para">You're all set! 🎉</p>
-        <button onClick={() => resolve("setup-complete")}>Close</button>
+        <button onClick={() => resolve(ctx)}>Close</button>
       </div>
     );
   }
@@ -105,7 +118,7 @@ function SharedModalDemo() {
       setLog("");
       try {
         const result = await openModal(StepWelcome, { title: "Welcome" });
-        setLog(`Flow completed: "${result}"`);
+        setLog(`Setup complete with result: ${JSON.stringify(result)}`);
       } catch {
         setLog("Flow aborted.");
       }
@@ -118,4 +131,11 @@ function SharedModalDemo() {
       </div>
     );
   }
+
+  return (
+    <ModalProvider>
+      <SetupButton />
+    </ModalProvider>
+  );
+}
 ```

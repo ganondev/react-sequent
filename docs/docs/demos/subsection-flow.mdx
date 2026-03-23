@@ -17,24 +17,45 @@ function CheckoutSection() {
 
   function StepAddress() {
     const { advance } = useStep();
+    const [address, setAddress] = React.useState("");
     return (
       <div className="demo-checkout__body">
         <strong>Step 1 — Shipping Address</strong>
         <p className="demo-step-para">Enter your address details here.</p>
-        <button onClick={() => advance(StepPayment)}>Next →</button>
+        <div className="demo-input-group">
+          <input
+            type="text"
+            className="demo-input"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            placeholder="123 Main St, City, State"
+          />
+        </div>
+        <button onClick={() => advance(StepPayment, { address })}>Next →</button>
       </div>
     );
   }
 
   function StepPayment() {
     const { retreat, advance } = useStep();
+    const ctx = useFlowContext();
+    const [card, setCard] = React.useState("");
     return (
       <div className="demo-checkout__body">
         <strong>Step 2 — Payment</strong>
         <p className="demo-step-para">Enter your payment details here.</p>
+        <div className="demo-input-group">
+          <input
+            type="text"
+            className="demo-input"
+            value={card}
+            onChange={(e) => setCard(e.target.value)}
+            placeholder="Card number (e.g., 4111 1111 1111 1111)"
+          />
+        </div>
         <div className="demo-actions">
           <button onClick={() => retreat()}>← Back</button>
-          <button onClick={() => advance(StepReview)}>Next →</button>
+          <button onClick={() => advance(StepReview, { ...ctx, card })}>Next →</button>
         </div>
       </div>
     );
@@ -42,13 +63,14 @@ function CheckoutSection() {
 
   function StepReview() {
     const { retreat, resolve } = useStep();
+    const ctx = useFlowContext();
     return (
       <div className="demo-checkout__body">
         <strong>Step 3 — Review & Confirm</strong>
         <p className="demo-step-para">Everything looks good?</p>
         <div className="demo-actions">
           <button onClick={() => retreat()}>← Back</button>
-          <button onClick={() => resolve({ confirmed: true })}>Place Order ✓</button>
+          <button onClick={() => resolve({ ...ctx, confirmed: true })}>Place Order ✓</button>
         </div>
       </div>
     );
@@ -57,7 +79,7 @@ function CheckoutSection() {
   async function start() {
     setStatus(null);
     const result = await initFlow(StepAddress, ref);
-    setStatus(`Order placed! confirmed=${result.confirmed}`);
+    setStatus(`Order placed! ${JSON.stringify(result)}`);
   }
 
   return (

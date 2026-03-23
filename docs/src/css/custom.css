@@ -174,3 +174,39 @@
 .demo-wizard__step    { text-align: center; }
 .demo-wizard__title   { margin: 0 0 8px; }
 .demo-wizard__subtitle { margin: 0 0 16px; color: #666; }
+
+/* ── Form inputs ────────────────────────────────────────────────────────── */
+.demo-input {
+  width: 100%;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.demo-input-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+
+.demo-input-group {
+  margin-bottom: 12px;
+}
+
+.demo-input-group-wide {
+  margin-bottom: 16px;
+}
+
+.demo-checkbox {
+  width: 18px;
+  height: 18px;
+}
+
+.demo-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
