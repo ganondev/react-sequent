@@ -23,3 +23,15 @@ Feature: Idle children
   Scenario: Outlet with no children renders nothing when idle
     Given a host with FlowOutlet and no children
     Then  the outlet renders nothing
+
+  Scenario Outline: useStep <fn> throws when called outside an active flow step
+    Given a host with an idle FlowOutlet child that calls "<fn>"
+    When  the idle child triggers "<fn>"
+    Then  an error is thrown describing the outlet is idle
+
+    Examples:
+      | fn      |
+      | advance |
+      | retreat |
+      | resolve |
+      | abort   |

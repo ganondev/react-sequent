@@ -24,7 +24,7 @@ function ResolvingStep() {
 
 const feature = await loadFeature("src/features/idle-children.feature");
 
-describeFeature(feature, ({ Scenario }) => {
+describeFeature(feature, ({ Scenario, ScenarioOutline }) => {
   // ── Scenario 1 ─────────────────────────────────────────────────────
   Scenario("Outlet renders children when idle", ({ Given, Then }) => {
     Given("a host with FlowOutlet containing children", () => {
@@ -154,4 +154,54 @@ describeFeature(feature, ({ Scenario }) => {
       expect(wrapper.innerHTML).toBe("");
     });
   });
+
+  // ── Scenario 5 ─────────────────────────────────────────────────────
+  type TransitionFn = "advance" | "retreat" | "resolve" | "abort";
+
+  ScenarioOutline(
+    "useStep <fn> throws when called outside an active flow step",
+    ({ Given, When, Then }, variables) => {
+      const fn = variables.fn as TransitionFn;
+      let capturedHandler: (() => void) | null = null;
+      let caughtError: unknown = null;
+
+      Given("a host with an idle FlowOutlet child that calls \"<fn>\"", () => {
+        cleanup();
+        capturedHandler = null;
+        caughtError = null;
+
+        function IdleTrigger() {
+          const step = useStep();
+          const handlers: Record<TransitionFn, () => void> = {
+            advance: () => step.advance(() => Promise.resolve({ default: () => null })),
+            retreat: () => step.retreat(),
+            resolve: () => step.resolve(),
+            abort: () => step.abort(),
+          };
+          capturedHandler = handlers[fn];
+          return null;
+        }
+
+        render(
+          <FlowOutlet>
+            <IdleTrigger />
+          </FlowOutlet>,
+        );
+      });
+
+      When("the idle child triggers \"<fn>\"", () => {
+        try {
+          capturedHandler?.();
+        } catch (err) {
+          caughtError = err;
+        }
+      });
+
+      Then("an error is thrown describing the outlet is idle", () => {
+        expect(caughtError).toBeInstanceOf(Error);
+        expect((caughtError as Error).message).toContain(`useStep(): "${fn}"`);
+        expect((caughtError as Error).message).toContain("idle");
+      });
+    },
+  );
 });
