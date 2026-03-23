@@ -364,34 +364,31 @@ describeFeature(feature, ({ Scenario }) => {
     let capturedRef: React.RefObject<FlowOutletHandle | null>;
     let caughtError: unknown = null;
 
-    Given(
-      "a host with a FlowOutlet configured with a chrome component that calls useStep",
-      () => {
-        cleanup();
-        caughtError = null;
+    Given("a host with a FlowOutlet configured with a chrome component that calls useStep", () => {
+      cleanup();
+      caughtError = null;
 
-        function TestHost() {
-          const ref = useRef<FlowOutletHandle>(null);
-          const { initFlow } = useFlowInit();
-          capturedInitFlow = initFlow;
-          capturedRef = ref;
-          return (
-            <FlowOutlet
-              ref={ref}
-              chrome={(slot) => (
-                <>
-                  <ChromeWithStep />
-                  {slot}
-                </>
-              )}
-            />
-          );
-        }
+      function TestHost() {
+        const ref = useRef<FlowOutletHandle>(null);
+        const { initFlow } = useFlowInit();
+        capturedInitFlow = initFlow;
+        capturedRef = ref;
+        return (
+          <FlowOutlet
+            ref={ref}
+            chrome={(slot) => (
+              <>
+                <ChromeWithStep />
+                {slot}
+              </>
+            )}
+          />
+        );
+      }
 
-        render(<TestHost />);
-        expect(capturedInitFlow).toBeDefined();
-      },
-    );
+      render(<TestHost />);
+      expect(capturedInitFlow).toBeDefined();
+    });
 
     When("initFlow is called with a sync step", () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
