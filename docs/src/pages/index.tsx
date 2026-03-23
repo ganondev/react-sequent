@@ -17,7 +17,7 @@ const features = [
   {
     title: "Async-First",
     description:
-      "Dynamic imports just work. Suspense handles the loading state — your step components stay clean.",
+      "Dynamic imports and backend fetches just work. Suspense built-in — your step components stay clean.",
   },
   {
     title: "Chrome-Stable",
@@ -135,6 +135,72 @@ function TheParadigm() {
               Add, remove, or reorder steps without touching a config. Branching
               is an <code>if</code> statement, not a schema.
             </p>
+            <div className="text--center" style={{ marginTop: "2rem" }}>
+              <Link
+                className="button button--primary button--lg"
+                to="/docs/demos/subsection-flow"
+              >
+                See Examples in Action
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function RightFit() {
+  return (
+    <section className={styles.rightFit}>
+      <div className="container">
+        <Heading as="h2" className="text--center" style={{ marginBottom: "2rem" }}>
+          Is this the right fit for my project?
+        </Heading>
+        <div className="row">
+          <div className="col col--8 col--offset-2">
+            <p className="text--center" style={{ marginBottom: "2rem" }}>
+              <strong>react-sequent</strong> is designed for short, simple flows
+              where the UI outside the flow remains stable. If you have a long,
+              complex, or highly context-sensitive flow, or if you want your
+              your flow coupled to external state, a more traditional
+              state machine or flow library might be a better fit.
+            </p>
+          </div>
+        </div>
+        <div className="row">
+          <div className="col col--10 col--offset-1">
+          <table>
+            <thead>
+              <tr>
+                <th className={styles.rightFitQuestionCell} />
+                <th>react-sequent</th>
+                <th>Alternatives (XState, React Flow, etc.)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className={styles.rightFitQuestionCell}>Opinionated?</td>
+                <td>Opinionated on architecture, not structure.</td>
+                <td>Opinionated on architecture and structure.</td>
+              </tr>
+              <tr>
+                <td className={styles.rightFitQuestionCell}>Iteration and prototyping pace?</td>
+                <td>Fast iteration and prototyping.</td>
+                <td>Slower iteration due to coupled state management.</td>
+              </tr>
+              <tr>
+                <td className={styles.rightFitQuestionCell}>Boilerplate?</td>
+                <td>Minimal boilerplate required.</td>
+                <td>Some boilerplate, depending on the utility.</td>
+              </tr>
+              <tr>
+                <td className={styles.rightFitQuestionCell}>Flow Specialization?</td>
+                <td>Short, simple flows.</td>
+                <td>Long, complex, or context-sensitive flows.</td>
+              </tr>
+            </tbody>
+          </table>
           </div>
         </div>
       </div>
@@ -180,6 +246,7 @@ export default function Home(): ReactNode {
           </div>
         </section>
         <TheParadigm />
+        <RightFit />
         <QuickExample />
       </main>
     </Layout>

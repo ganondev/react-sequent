@@ -43,6 +43,16 @@
   background: var(--ifm-color-emphasis-100);
 }
 
+.rightFit {
+  padding: 3rem 0;
+  background: var(--ifm-color-emphasis-100);
+}
+
+.rightFitQuestionCell {
+  width: 25%;
+  font-weight: 600;
+}
+
 .example {
   padding: 3rem 0 4rem;
 }
