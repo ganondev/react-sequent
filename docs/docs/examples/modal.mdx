@@ -1,11 +1,11 @@
 ---
 sidebar_position: 2
-title: Modal Flow
+title: Singleton Modal with Hook
 ---
 
-# Modal Flow
+# Singleton Modal with Hook
 
-A flow rendered inside a **shared singleton modal** — a single `<FlowOutlet>` lives at the top of the tree inside a context provider. Any component in the subtree calls `useModal()` to open a flow without ever touching a ref or rendering an outlet itself.
+A flow rendered inside a **shared singleton modal** — a single `<FlowOutlet>` lives at the top of the tree inside a context provider. This enables an application to enter modal flows with a single shared `useModal` hook: any component in the subtree calls `useModal()` to open a flow without ever touching a ref or rendering an outlet itself.
 
 Click **Open Setup Flow** below to try it.
 
@@ -143,7 +143,7 @@ function SharedModalDemo() {
 }
 ```
 
-## How the singleton pattern works
+## How the singleton hook works
 
 The modal infrastructure (backdrop, centering, chrome) is provided by an outer wrapper that owns the `<FlowOutlet>` ref. It exposes one thing through context:
 
@@ -199,7 +199,7 @@ function SetupButton() {
 
 ## Key points
 
-- **Single outlet, zero consumer boilerplate** — no `useRef`, no `<FlowOutlet>`, no `useFlowInit` outside the provider.
+- **Single outlet, zero consumer boilerplate** — consumers only call the shared `useModal()` hook; no `useRef`, no `<FlowOutlet>`, no `useFlowInit` outside the provider.
 - **Close via `useStep`** — chrome and steps call `abort` from the same `useStep()` hook used for all step navigation. No imperative ref reaching or callback threading required.
 - **Chrome is stable** — `ModalChrome` stays mounted for the full lifetime of the flow; `useFlowContext()` reflects the context set by the latest `initFlow` or `advance` call.
 - **Context carries only your data** — `openModal` seeds context; `advance(NextStep, newCtx)` replaces it. No library plumbing mixed in.
