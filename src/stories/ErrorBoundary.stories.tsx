@@ -39,29 +39,33 @@ function Host() {
   const { initFlow } = useFlowInit();
   return (
     <Paper withBorder p="xl" maw={400} mx="auto" mt="xl" radius="md">
-      <Stack>
-        <FlowOutlet
-          ref={ref}
-          errorFallback={
-            <Alert color="red" title="Something went wrong">
-              <Text size="sm" mb="sm">
-                A step encountered an error.
-              </Text>
-              <Button
-                size="xs"
-                variant="white"
-                color="red"
-                onClick={() => ref.current?.activate(RecoveryStep)}
-              >
-                Recover
-              </Button>
-            </Alert>
-          }
-        />
-        <Button variant="light" fullWidth onClick={() => initFlow(Step1, ref)}>
-          Start Flow
-        </Button>
-      </Stack>
+      <FlowOutlet
+        ref={ref}
+        errorFallback={
+          <Alert color="red" title="Something went wrong">
+            <Text size="sm" mb="sm">
+              A step encountered an error.
+            </Text>
+            <Button
+              size="xs"
+              variant="white"
+              color="red"
+              onClick={() => ref.current?.activate(RecoveryStep)}
+            >
+              Recover
+            </Button>
+          </Alert>
+        }
+      >
+        <Stack>
+          <Text c="dimmed">
+            Click the button below. Step 2 will throw an error caught by the error boundary.
+          </Text>
+          <Button variant="light" fullWidth onClick={() => initFlow(Step1, ref)}>
+            Start Flow
+          </Button>
+        </Stack>
+      </FlowOutlet>
     </Paper>
   );
 }

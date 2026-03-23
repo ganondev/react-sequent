@@ -76,6 +76,15 @@ function CheckoutSection() {
     );
   }
 
+  function IdleContent() {
+    const ctx = useFlowContext();
+    return (
+      <div className="demo-checkout__body">
+        <button onClick={start}>{ctx ? "Begin Checkout Again" : "Begin Checkout"}</button>
+      </div>
+    );
+  }
+
   async function start() {
     setStatus(null);
     const result = await initFlow(StepAddress, ref);
@@ -87,13 +96,10 @@ function CheckoutSection() {
       <div className="demo-checkout__header">
         <strong>Checkout</strong>
       </div>
-      <FlowOutlet ref={ref} />
-      {status
-        ? <div className="demo-checkout__status">{status}</div>
-        : <div className="demo-checkout__body">
-            <button onClick={start}>Begin Checkout</button>
-          </div>
-      }
+      <FlowOutlet ref={ref}>
+        <IdleContent />
+      </FlowOutlet>
+      {status && <div className="demo-checkout__status">{status}</div>}
     </div>
   );
 }
@@ -101,13 +107,15 @@ function CheckoutSection() {
 
 ## How it works
 
-1. `<FlowOutlet ref={ref} />` is mounted inline — it renders nothing until a flow is active.
-2. Clicking **Begin Checkout** calls `initFlow(StepAddress, ref)`, which mounts `StepAddress` inside the outlet.
-3. Each step calls `advance(NextStep)` to move forward or `retreat()` to go back.
-4. `StepReview` calls `resolve(value)` — the `await initFlow(...)` promise resolves with that value and the outlet clears.
+1. The `IdleContent` component is passed as children of `<FlowOutlet>` — it renders as idle content until a flow is active.
+2. `IdleContent` calls `useFlowContext()` to check if a previous flow completed — if so, the button reads "Begin Checkout Again".
+3. Clicking the button calls `initFlow(StepAddress, ref)`, which replaces the idle children with `StepAddress` inside the outlet.
+4. Each step calls `advance(NextStep)` to move forward or `retreat()` to go back.
+5. `StepReview` calls `resolve(value)` — the `await initFlow(...)` promise resolves with that value, the outlet returns to idle, and the `IdleContent` reappears with the updated button label.
 
 ## Key points
 
+- **Idle children** — the outlet renders its children when no flow is active. Idle children have access to `useFlowContext`, which returns the last consumer context from the previous flow (or `undefined` on first render).
 - **No central state** — each step decides what comes next via `advance(NextStep)`.
 - **History is automatic** — `retreat()` pops the history stack with no manual bookkeeping.
 - **The outlet is reusable** — the same `ref` can be passed to a new `initFlow` call to start a fresh flow.

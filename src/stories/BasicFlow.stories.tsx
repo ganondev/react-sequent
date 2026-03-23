@@ -45,12 +45,14 @@ function Host() {
 
   return (
     <Paper withBorder p="xl" maw={400} mx="auto" mt="xl" radius="md">
-      <Stack>
-        <FlowOutlet ref={ref} />
-        <Button variant="light" fullWidth onClick={() => initFlow(Step1, ref)}>
-          Start Flow
-        </Button>
-      </Stack>
+      <FlowOutlet ref={ref}>
+        <Stack>
+          <Text c="dimmed">Click the button below to start a two-step flow.</Text>
+          <Button variant="light" fullWidth onClick={() => initFlow(Step1, ref)}>
+            Start Flow
+          </Button>
+        </Stack>
+      </FlowOutlet>
     </Paper>
   );
 }

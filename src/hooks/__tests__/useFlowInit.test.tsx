@@ -510,4 +510,126 @@ describe("useFlowInit", () => {
       expect(screen.getByText("Resolve")).toBeInTheDocument();
     });
   });
+
+  // ── Idle children ──────────────────────────────────────────────────
+  describe("idle children", () => {
+    it("renders children when outlet is idle", () => {
+      function TestHost() {
+        const ref = useRef<FlowOutletHandle>(null);
+        return (
+          <FlowOutlet ref={ref}>
+            <div>Idle Content</div>
+          </FlowOutlet>
+        );
+      }
+
+      render(<TestHost />);
+      expect(screen.getByText("Idle Content")).toBeInTheDocument();
+    });
+
+    it("hides children when a flow is active", async () => {
+      let capturedInitFlow!: ReturnType<typeof useFlowInit>["initFlow"];
+      let capturedRef!: RefObject<FlowOutletHandle | null>;
+
+      function TestHost() {
+        const ref = useRef<FlowOutletHandle>(null);
+        const { initFlow } = useFlowInit();
+        capturedInitFlow = initFlow;
+        capturedRef = ref;
+        return (
+          <FlowOutlet ref={ref}>
+            <div>Idle Content</div>
+          </FlowOutlet>
+        );
+      }
+
+      render(<TestHost />);
+      expect(screen.getByText("Idle Content")).toBeInTheDocument();
+
+      await act(async () => {
+        capturedInitFlow(StepOne, capturedRef);
+      });
+
+      expect(screen.queryByText("Idle Content")).not.toBeInTheDocument();
+      expect(screen.getByText("Step 1")).toBeInTheDocument();
+    });
+
+    it("shows children again after resolve", async () => {
+      let capturedInitFlow!: ReturnType<typeof useFlowInit>["initFlow"];
+      let capturedRef!: RefObject<FlowOutletHandle | null>;
+
+      function TestHost() {
+        const ref = useRef<FlowOutletHandle>(null);
+        const { initFlow } = useFlowInit();
+        capturedInitFlow = initFlow;
+        capturedRef = ref;
+        return (
+          <FlowOutlet ref={ref}>
+            <div>Idle Content</div>
+          </FlowOutlet>
+        );
+      }
+
+      render(<TestHost />);
+      expect(screen.getByText("Idle Content")).toBeInTheDocument();
+
+      await act(async () => {
+        capturedInitFlow(StepWithResolve, capturedRef);
+      });
+
+      expect(screen.queryByText("Idle Content")).not.toBeInTheDocument();
+
+      await act(async () => {
+        screen.getByText("Resolve").click();
+      });
+
+      expect(screen.getByText("Idle Content")).toBeInTheDocument();
+    });
+
+    it("shows children again after abort", async () => {
+      let capturedInitFlow!: ReturnType<typeof useFlowInit>["initFlow"];
+      let capturedRef!: RefObject<FlowOutletHandle | null>;
+
+      function TestHost() {
+        const ref = useRef<FlowOutletHandle>(null);
+        const { initFlow } = useFlowInit();
+        capturedInitFlow = initFlow;
+        capturedRef = ref;
+        return (
+          <FlowOutlet ref={ref}>
+            <div>Idle Content</div>
+          </FlowOutlet>
+        );
+      }
+
+      render(<TestHost />);
+      expect(screen.getByText("Idle Content")).toBeInTheDocument();
+
+      await act(async () => {
+        capturedInitFlow(StepWithAbort, capturedRef);
+      });
+
+      expect(screen.queryByText("Idle Content")).not.toBeInTheDocument();
+
+      await act(async () => {
+        screen.getByText("Abort").click();
+      });
+
+      expect(screen.getByText("Idle Content")).toBeInTheDocument();
+    });
+
+    it("renders nothing when idle with no children", () => {
+      function TestHost() {
+        const ref = useRef<FlowOutletHandle>(null);
+        return (
+          <div data-testid="wrapper">
+            <FlowOutlet ref={ref} />
+          </div>
+        );
+      }
+
+      render(<TestHost />);
+      expect(screen.getByTestId("wrapper").innerHTML).toBe("");
+    });
+  });
 });

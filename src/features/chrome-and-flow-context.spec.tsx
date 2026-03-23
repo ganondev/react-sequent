@@ -150,59 +150,56 @@ describeFeature(feature, ({ Scenario }) => {
   });
 
   // ── Scenario 3 ─────────────────────────────────────────────────────
-  Scenario(
-    "Chrome reads patched consumer context",
-    ({ Given, When, Then, And }) => {
-      let capturedInitFlow: ReturnType<typeof useFlowInit>["initFlow"];
-      let capturedRef: React.RefObject<FlowOutletHandle | null>;
+  Scenario("Chrome reads patched consumer context", ({ Given, When, Then, And }) => {
+    let capturedInitFlow: ReturnType<typeof useFlowInit>["initFlow"];
+    let capturedRef: React.RefObject<FlowOutletHandle | null>;
 
-      Given(
-        "a host with FlowOutlet configured with a chrome render prop that displays context",
-        () => {
-          cleanup();
+    Given(
+      "a host with FlowOutlet configured with a chrome render prop that displays context",
+      () => {
+        cleanup();
 
-          function TestHost() {
-            const ref = useRef<FlowOutletHandle>(null);
-            const { initFlow } = useFlowInit();
-            capturedInitFlow = initFlow;
-            capturedRef = ref;
-            return (
-              <FlowOutlet
-                ref={ref}
-                fallback={<div>Loading…</div>}
-                chrome={(slot) => (
-                  <>
-                    <ContextChrome />
-                    {slot}
-                  </>
-                )}
-              />
-            );
-          }
+        function TestHost() {
+          const ref = useRef<FlowOutletHandle>(null);
+          const { initFlow } = useFlowInit();
+          capturedInitFlow = initFlow;
+          capturedRef = ref;
+          return (
+            <FlowOutlet
+              ref={ref}
+              fallback={<div>Loading…</div>}
+              chrome={(slot) => (
+                <>
+                  <ContextChrome />
+                  {slot}
+                </>
+              )}
+            />
+          );
+        }
 
-          render(<TestHost />);
-          expect(capturedInitFlow).toBeDefined();
-        },
-      );
+        render(<TestHost />);
+        expect(capturedInitFlow).toBeDefined();
+      },
+    );
 
-      And("the flow has been activated with initial context", () => {
-        act(() => {
-          capturedInitFlow(ContextStep1, capturedRef, { title: "Initial" });
-        });
-        expect(screen.getByText("Title: Initial")).toBeInTheDocument();
+    And("the flow has been activated with initial context", () => {
+      act(() => {
+        capturedInitFlow(ContextStep1, capturedRef, { title: "Initial" });
       });
+      expect(screen.getByText("Title: Initial")).toBeInTheDocument();
+    });
 
-      When("the step advances with a contextPatch", () => {
-        act(() => {
-          capturedAdvance(ContextStep2, { title: "Updated" });
-        });
+    When("the step advances with a contextPatch", () => {
+      act(() => {
+        capturedAdvance(ContextStep2, { title: "Updated" });
       });
+    });
 
-      Then("the chrome component displays the updated context value", () => {
-        expect(screen.getByText("Title: Updated")).toBeInTheDocument();
-      });
-    },
-  );
+    Then("the chrome component displays the updated context value", () => {
+      expect(screen.getByText("Title: Updated")).toBeInTheDocument();
+    });
+  });
 
   // ── Scenario 4 ─────────────────────────────────────────────────────
   Scenario("Outlet renders without chrome", ({ Given, When, Then }) => {

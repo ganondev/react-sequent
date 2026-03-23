@@ -70,8 +70,8 @@ These hooks must not share a public interface beyond what is explicitly listed. 
 
 `<FlowOutlet />` is a component the consumer renders wherever they want flow output to appear. It has two states: **idle** and **active**.
 
-- **Idle** — renders nothing. The outlet is inert until a flow is initialized against it via `initFlow`.
-- **Active** — renders the result of calling the chrome render prop (if provided) with the step slot, or the step slot directly. Teardown (via `resolve` or `abort`) returns the outlet to idle.
+- **Idle** — renders `children` if provided, otherwise nothing. The outlet is inert until a flow is initialized against it via `initFlow`. When the flow resolves or aborts, the outlet returns to idle and children reappear. Idle children are wrapped in the internal `FlowContext.Provider`, so they can call `useFlowContext` — which returns the last consumer context from the previous flow, or `undefined` on first render.
+- **Active** — renders the result of calling the chrome render prop (if provided) with the step slot, or the step slot directly. Children are not rendered during the active state. Teardown (via `resolve` or `abort`) returns the outlet to idle.
 
 The outlet's active/idle state is derived entirely from whether a flow has been initialized against it. The consumer never manages this boolean directly.
 
@@ -79,6 +79,7 @@ The outlet's active/idle state is derived entirely from whether a flow has been 
 
 - Invisibly owns the internal React context provider
 - Owns both the Suspense boundary and the error boundary for the active step
+- Accepts optional `children` that render when idle (no active flow) and are hidden when a flow is active — useful for trigger buttons or placeholder content
 - Accepts a `fallback` prop for the async step loading state (passed through to Suspense)
 - Accepts an `errorFallback` prop for the error boundary, analogous to `fallback`
 - Accepts an optional **chrome render prop** (`chrome?: (children: ReactNode) => ReactNode`) — a function that receives the step slot (error boundary + Suspense + active step) and returns JSX; chrome renders outside the Suspense boundary but inside the provider boundary, so it remains stable across async step transitions

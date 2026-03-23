@@ -13,6 +13,7 @@ import {
   Suspense,
   useCallback,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -45,21 +46,33 @@ interface FlowState {
 // #region doc:props
 export const FlowOutlet = forwardRef<
   FlowOutletHandle,
-  { fallback?: ReactNode; errorFallback?: ReactNode; chrome?: (children: ReactNode) => ReactNode }
+  {
+    children?: ReactNode;
+    fallback?: ReactNode;
+    errorFallback?: ReactNode;
+    chrome?: (children: ReactNode) => ReactNode;
+  }
 >(function FlowOutlet(props, ref) {
-// #endregion doc:props
+  // #endregion doc:props
   const [flowState, setFlowState] = useState<FlowState | null>(null);
   const errorBoundaryRef = useRef<FlowErrorBoundary>(null);
   const resolveRef = useRef<((value?: unknown) => void) | null>(null);
   const abortRef = useRef<((reason?: unknown) => void) | null>(null);
   /** Monotonically increasing token — invalidates stale resolve/abort closures. */
   const flowIdRef = useRef(0);
+  /** Retains the last consumer context value after a flow resolves, so idle children can read it via `useFlowContext`. */
+  const lastConsumerContextRef = useRef<unknown>(undefined);
 
   const handleResolve = useCallback((value?: unknown) => {
     const cb = resolveRef.current;
     resolveRef.current = null;
     abortRef.current = null;
-    setFlowState(null);
+    setFlowState((prev) => {
+      if (prev !== null) {
+        lastConsumerContextRef.current = prev.consumerContext;
+      }
+      return null;
+    });
     cb?.(value);
   }, []);
 
@@ -134,8 +147,24 @@ export const FlowOutlet = forwardRef<
     [handleAbort],
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: no-op functions are stable
+  const idleContextValue: FlowContextValue = useMemo(
+    () => ({
+      history: [],
+      activeStep: null,
+      consumerContext: lastConsumerContextRef.current,
+      resolve: () => {},
+      abort: () => {},
+      advance: () => {},
+      retreat: () => {},
+    }),
+    [flowState],
+  );
+
   if (flowState === null) {
-    return null;
+    return (
+      <FlowContext.Provider value={idleContextValue}>{props.children ?? null}</FlowContext.Provider>
+    );
   }
 
   const ActiveStep = flowState.activeStep;

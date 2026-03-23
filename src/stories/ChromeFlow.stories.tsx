@@ -134,15 +134,23 @@ function Host() {
             </Stack>
           </Paper>
         )}
-      />
-
-      <Button
-        variant="light"
-        fullWidth
-        onClick={() => initFlow(loadStepWelcome, ref, { title: "Welcome" })}
       >
-        Start Flow
-      </Button>
+        <Paper withBorder p="xl" radius="md">
+          <Stack>
+            <Text c="dimmed">
+              Click the button below to start a chrome flow with async step transitions and a
+              persistent header.
+            </Text>
+            <Button
+              variant="light"
+              fullWidth
+              onClick={() => initFlow(loadStepWelcome, ref, { title: "Welcome" })}
+            >
+              Start Flow
+            </Button>
+          </Stack>
+        </Paper>
+      </FlowOutlet>
     </Stack>
   );
 }
