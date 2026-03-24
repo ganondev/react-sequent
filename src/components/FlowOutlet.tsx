@@ -93,32 +93,35 @@ export const FlowOutlet = forwardRef<
 
   const activeFlowId = flowIdRef.current;
 
-  const advance = useCallback((nextStep: StepLoader, contextPatch?: unknown) => {
-    if (flowIdRef.current !== activeFlowId) return;
-    const nextActiveStep = normalizeStepLoader(nextStep);
-    if (flowIdRef.current !== activeFlowId) return;
-    errorBoundaryRef.current?.resetError();
-    setFlowState((prev) => {
-      if (prev === null) return prev;
-      const newContext =
-        contextPatch !== undefined
-          ? typeof prev.consumerContext === "object" &&
-            prev.consumerContext !== null &&
-            typeof contextPatch === "object" &&
-            contextPatch !== null
-            ? {
-                ...(prev.consumerContext as Record<string, unknown>),
-                ...(contextPatch as Record<string, unknown>),
-              }
-            : contextPatch
-          : prev.consumerContext;
-      return {
-        history: [...prev.history, prev.activeStep],
-        activeStep: nextActiveStep,
-        consumerContext: newContext,
-      };
-    });
-  }, [activeFlowId]);
+  const advance = useCallback(
+    (nextStep: StepLoader, contextPatch?: unknown) => {
+      if (flowIdRef.current !== activeFlowId) return;
+      const nextActiveStep = normalizeStepLoader(nextStep);
+      if (flowIdRef.current !== activeFlowId) return;
+      errorBoundaryRef.current?.resetError();
+      setFlowState((prev) => {
+        if (prev === null) return prev;
+        const newContext =
+          contextPatch !== undefined
+            ? typeof prev.consumerContext === "object" &&
+              prev.consumerContext !== null &&
+              typeof contextPatch === "object" &&
+              contextPatch !== null
+              ? {
+                  ...(prev.consumerContext as Record<string, unknown>),
+                  ...(contextPatch as Record<string, unknown>),
+                }
+              : contextPatch
+            : prev.consumerContext;
+        return {
+          history: [...prev.history, prev.activeStep],
+          activeStep: nextActiveStep,
+          consumerContext: newContext,
+        };
+      });
+    },
+    [activeFlowId],
+  );
 
   const retreat = useCallback(() => {
     errorBoundaryRef.current?.resetError();
