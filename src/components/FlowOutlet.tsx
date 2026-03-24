@@ -91,8 +91,10 @@ export const FlowOutlet = forwardRef<
     cb?.(reason);
   }, []);
 
+  const activeFlowId = flowIdRef.current;
+
   const advance = useCallback((nextStep: StepLoader, contextPatch?: unknown) => {
-    const activeFlowId = flowIdRef.current;
+    if (flowIdRef.current !== activeFlowId) return;
     const nextActiveStep = normalizeStepLoader(nextStep);
     if (flowIdRef.current !== activeFlowId) return;
     errorBoundaryRef.current?.resetError();
@@ -116,7 +118,7 @@ export const FlowOutlet = forwardRef<
         consumerContext: newContext,
       };
     });
-  }, []);
+  }, [activeFlowId]);
 
   const retreat = useCallback(() => {
     errorBoundaryRef.current?.resetError();
