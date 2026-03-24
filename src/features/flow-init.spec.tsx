@@ -45,7 +45,7 @@ describeFeature(feature, ({ Scenario }) => {
 
     When("initFlow is called with a sync step loader", () => {
       act(() => {
-        capturedInitFlow(SimpleStep, capturedRef);
+        capturedInitFlow(() => SimpleStep, capturedRef);
       });
     });
 
@@ -77,7 +77,7 @@ describeFeature(feature, ({ Scenario }) => {
 
     When("initFlow is called with a step loader and initial context", () => {
       act(() => {
-        capturedInitFlow(ContextStep, capturedRef, { title: "hello" });
+        capturedInitFlow(() => ContextStep, capturedRef, { title: "hello" });
       });
     });
 

@@ -9,7 +9,7 @@
  */
 import { type RefObject, useCallback } from "react";
 import type { FlowOutletHandle } from "../components/FlowOutlet";
-import { normalizeStepLoader, type StepLoader } from "../internal/normalizer";
+import type { StepLoader } from "../internal/normalizer";
 
 // #region doc:signature
 export function useFlowInit<TResult = unknown>() {
@@ -28,7 +28,7 @@ export function useFlowInit<TResult = unknown>() {
       }
       const promise = new Promise<TResult>((resolve, reject) => {
         outlet.activate(
-          normalizeStepLoader(stepLoader),
+          stepLoader,
           initialContext,
           (value) => resolve(value as TResult),
           (reason) => reject(reason),

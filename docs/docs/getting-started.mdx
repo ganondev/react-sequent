@@ -37,7 +37,7 @@ function Step1() {
     <div>
       <h3>Step 1 — Welcome</h3>
       <p>This is the first step.</p>
-      <button onClick={() => advance(Step2)}>Next</button>
+      <button onClick={() => advance(() => Step2)}>Next</button>
     </div>
   );
 }
@@ -60,7 +60,7 @@ function App() {
   const { initFlow } = useFlowInit();
 
   const start = async () => {
-    const result = await initFlow(Step1, ref);
+    const result = await initFlow(() => Step1, ref);
     console.log("Flow resolved:", result);
   };
 
@@ -75,7 +75,7 @@ function App() {
 
 ### What's happening
 
-1. **`useFlowInit`** gives you `initFlow` — call it with a step component and an outlet ref to start a flow.
+1. **`useFlowInit`** gives you `initFlow` — call it with a step factory and an outlet ref to start a flow.
 2. **`<FlowOutlet>`** is where the flow renders. It's idle (invisible) until `initFlow` activates it.
 3. **`useStep`** is called inside step components. It returns `advance`, `retreat`, `resolve`, and `abort` — everything a step needs to control the flow.
 4. When `resolve("completed!")` is called, the promise returned by `initFlow` resolves with that value.
@@ -84,7 +84,7 @@ function App() {
 
 ### Steps own transitions
 
-There's no centralized state map. Each step calls `advance(NextStep)` to move forward. Branching is a plain `if` statement:
+There's no centralized state map. Each step calls `advance(() => NextStep)` to move forward. Branching is a plain `if` statement:
 
 ```tsx
 function PaymentStep() {
@@ -92,9 +92,9 @@ function PaymentStep() {
 
   const onSubmit = (method: string) => {
     if (method === "credit") {
-      advance(CreditCardForm);
+      advance(() => CreditCardForm);
     } else {
-      advance(BankTransferForm);
+      advance(() => BankTransferForm);
     }
   };
 
@@ -119,7 +119,7 @@ Carry data across steps without prop-drilling:
 
 ```tsx
 // Start with initial context
-initFlow(Step1, ref, { name: "Alice", plan: "pro" });
+initFlow(() => Step1, ref, { name: "Alice", plan: "pro" });
 
 // In any step — read and patch context
 function Step1() {
@@ -127,7 +127,7 @@ function Step1() {
   return (
     <div>
       <p>Hello, {context.name}!</p>
-      <button onClick={() => advance(Step2, { step1Complete: true })}>
+      <button onClick={() => advance(() => Step2, { step1Complete: true })}>
         Next
       </button>
     </div>

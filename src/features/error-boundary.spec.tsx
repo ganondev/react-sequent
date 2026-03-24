@@ -53,7 +53,7 @@ describeFeature(feature, ({ Scenario }) => {
 
     When("initFlow is called with a step that throws during render", () => {
       act(() => {
-        capturedInitFlow(ThrowingStep, capturedRef);
+        capturedInitFlow(() => ThrowingStep, capturedRef);
       });
     });
 
@@ -95,7 +95,7 @@ describeFeature(feature, ({ Scenario }) => {
 
     When("initFlow is called with a step that throws during render", () => {
       act(() => {
-        capturedInitFlow(ThrowingStep, capturedRef);
+        capturedInitFlow(() => ThrowingStep, capturedRef);
       });
     });
 
@@ -130,14 +130,14 @@ describeFeature(feature, ({ Scenario }) => {
 
       And("the flow has been activated with a step that throws during render", () => {
         act(() => {
-          capturedInitFlow(ThrowingStep, capturedRef);
+          capturedInitFlow(() => ThrowingStep, capturedRef);
         });
         expect(screen.getByText("Something went wrong")).toBeInTheDocument();
       });
 
       When("the outlet is re-activated with a healthy step", () => {
         act(() => {
-          capturedRef.current?.activate(HealthyStep);
+          capturedRef.current?.activate(() => HealthyStep);
         });
       });
 
@@ -177,7 +177,7 @@ describeFeature(feature, ({ Scenario }) => {
 
       And("the flow has been activated with a step that throws during render", () => {
         act(() => {
-          capturedInitFlow(ThrowingStep, capturedRef);
+          capturedInitFlow(() => ThrowingStep, capturedRef);
         });
         expect(screen.getByText("Something went wrong")).toBeInTheDocument();
       });
@@ -185,13 +185,13 @@ describeFeature(feature, ({ Scenario }) => {
       When("the flow is torn down by resolving", () => {
         // Activate a step that immediately calls resolve(), setting flowState to null
         act(() => {
-          capturedRef.current?.activate(ResolvingStep);
+          capturedRef.current?.activate(() => ResolvingStep);
         });
       });
 
       And("the outlet is activated with a healthy step", () => {
         act(() => {
-          capturedRef.current?.activate(HealthyStep);
+          capturedRef.current?.activate(() => HealthyStep);
         });
       });
 

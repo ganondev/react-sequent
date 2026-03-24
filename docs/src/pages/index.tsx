@@ -38,7 +38,7 @@ function Step1() {
   return (
     <div>
       <h3>Welcome</h3>
-      <button onClick={() => advance(Step2)}>
+      <button onClick={() => advance(() => Step2)}>
         Next
       </button>
     </div>
@@ -65,7 +65,7 @@ function App() {
   return (
     <>
       <FlowOutlet ref={ref} />
-      <button onClick={() => initFlow(Step1, ref)}>
+      <button onClick={() => initFlow(() => Step1, ref)}>
         Start Flow
       </button>
     </>

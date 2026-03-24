@@ -75,7 +75,7 @@ describeFeature(feature, ({ Scenario }) => {
 
       When("initFlow is called with a sync step", () => {
         act(() => {
-          capturedInitFlow(SimpleStep, capturedRef);
+          capturedInitFlow(() => SimpleStep, capturedRef);
         });
       });
 
@@ -115,7 +115,7 @@ describeFeature(feature, ({ Scenario }) => {
 
     And("a flow has been activated", () => {
       act(() => {
-        capturedInitFlow(SimpleStep, capturedRef);
+        capturedInitFlow(() => SimpleStep, capturedRef);
       });
       expect(screen.queryByText("Start Flow")).not.toBeInTheDocument();
       expect(screen.getByText("Step Content")).toBeInTheDocument();
@@ -123,7 +123,7 @@ describeFeature(feature, ({ Scenario }) => {
 
     When("the flow resolves", () => {
       act(() => {
-        capturedRef.current?.activate(ResolvingStep);
+        capturedRef.current?.activate(() => ResolvingStep);
       });
     });
 

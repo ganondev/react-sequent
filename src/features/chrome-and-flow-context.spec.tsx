@@ -105,7 +105,7 @@ describeFeature(feature, ({ Scenario }) => {
 
     When("initFlow is called with a sync step", () => {
       act(() => {
-        capturedInitFlow(SyncStep, capturedRef);
+        capturedInitFlow(() => SyncStep, capturedRef);
       });
     });
 
@@ -148,7 +148,7 @@ describeFeature(feature, ({ Scenario }) => {
 
     And("the flow has been activated with a sync step", () => {
       act(() => {
-        capturedInitFlow(Step1, capturedRef);
+        capturedInitFlow(() => Step1, capturedRef);
       });
       expect(screen.getByText("Step 1 Content")).toBeInTheDocument();
       expect(screen.getByText("Chrome Header")).toBeInTheDocument();
@@ -156,7 +156,7 @@ describeFeature(feature, ({ Scenario }) => {
 
     When("the step advances to a new step", () => {
       act(() => {
-        capturedAdvance(Step2);
+        capturedAdvance(() => Step2);
       });
     });
 
@@ -206,14 +206,14 @@ describeFeature(feature, ({ Scenario }) => {
 
     And("the flow has been activated with initial context", () => {
       act(() => {
-        capturedInitFlow(ContextStep1, capturedRef, { title: "Initial" });
+        capturedInitFlow(() => ContextStep1, capturedRef, { title: "Initial" });
       });
       expect(screen.getByText("Title: Initial")).toBeInTheDocument();
     });
 
     When("the step advances with a contextPatch", () => {
       act(() => {
-        capturedAdvance(ContextStep2, { title: "Updated" });
+        capturedAdvance(() => ContextStep2, { title: "Updated" });
       });
     });
 
@@ -244,7 +244,7 @@ describeFeature(feature, ({ Scenario }) => {
 
     When("initFlow is called with a sync step", () => {
       act(() => {
-        capturedInitFlow(SyncStep, capturedRef);
+        capturedInitFlow(() => SyncStep, capturedRef);
       });
     });
 
@@ -287,7 +287,7 @@ describeFeature(feature, ({ Scenario }) => {
 
     And("the flow has been activated with a sync step", () => {
       act(() => {
-        capturedInitFlow(SyncStep, capturedRef);
+        capturedInitFlow(() => SyncStep, capturedRef);
       });
       expect(screen.getByText("Chrome Abort")).toBeInTheDocument();
       expect(screen.getByText("Step Content")).toBeInTheDocument();
@@ -339,7 +339,7 @@ describeFeature(feature, ({ Scenario }) => {
 
     And("the flow has been activated with a sync step", () => {
       act(() => {
-        capturedInitFlow(SyncStep, capturedRef);
+        capturedInitFlow(() => SyncStep, capturedRef);
       });
       expect(screen.getByText("Chrome Resolve")).toBeInTheDocument();
       expect(screen.getByText("Step Content")).toBeInTheDocument();
@@ -394,7 +394,7 @@ describeFeature(feature, ({ Scenario }) => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       try {
         act(() => {
-          capturedInitFlow(SyncStep, capturedRef);
+          capturedInitFlow(() => SyncStep, capturedRef);
         });
       } catch (err) {
         caughtError = err;

@@ -72,6 +72,7 @@ export const FlowOutlet = forwardRef<
     const cb = resolveRef.current;
     resolveRef.current = null;
     abortRef.current = null;
+    flowIdRef.current += 1;
     setFlowState((prev) => {
       if (prev !== null) {
         lastConsumerContextRef.current = prev.consumerContext;
@@ -85,33 +86,42 @@ export const FlowOutlet = forwardRef<
     const cb = abortRef.current;
     resolveRef.current = null;
     abortRef.current = null;
+    flowIdRef.current += 1;
     setFlowState(null);
     cb?.(reason);
   }, []);
 
-  const advance = useCallback((nextStep: StepLoader, contextPatch?: unknown) => {
-    errorBoundaryRef.current?.resetError();
-    setFlowState((prev) => {
-      if (prev === null) return null;
-      const newContext =
-        contextPatch !== undefined
-          ? typeof prev.consumerContext === "object" &&
-            prev.consumerContext !== null &&
-            typeof contextPatch === "object" &&
-            contextPatch !== null
-            ? {
-                ...(prev.consumerContext as Record<string, unknown>),
-                ...(contextPatch as Record<string, unknown>),
-              }
-            : contextPatch
-          : prev.consumerContext;
-      return {
-        history: [...prev.history, prev.activeStep],
-        activeStep: normalizeStepLoader(nextStep),
-        consumerContext: newContext,
-      };
-    });
-  }, []);
+  const activeFlowId = flowIdRef.current;
+
+  const advance = useCallback(
+    (nextStep: StepLoader, contextPatch?: unknown) => {
+      if (flowIdRef.current !== activeFlowId) return;
+      const nextActiveStep = normalizeStepLoader(nextStep);
+      if (flowIdRef.current !== activeFlowId) return;
+      errorBoundaryRef.current?.resetError();
+      setFlowState((prev) => {
+        if (prev === null) return prev;
+        const newContext =
+          contextPatch !== undefined
+            ? typeof prev.consumerContext === "object" &&
+              prev.consumerContext !== null &&
+              typeof contextPatch === "object" &&
+              contextPatch !== null
+              ? {
+                  ...(prev.consumerContext as Record<string, unknown>),
+                  ...(contextPatch as Record<string, unknown>),
+                }
+              : contextPatch
+            : prev.consumerContext;
+        return {
+          history: [...prev.history, prev.activeStep],
+          activeStep: nextActiveStep,
+          consumerContext: newContext,
+        };
+      });
+    },
+    [activeFlowId],
+  );
 
   const retreat = useCallback(() => {
     errorBoundaryRef.current?.resetError();
@@ -135,13 +145,16 @@ export const FlowOutlet = forwardRef<
         onResolve?: (value?: unknown) => void,
         onAbort?: (reason?: unknown) => void,
       ) {
+        const activeFlowId = flowIdRef.current;
+        const activeStep = normalizeStepLoader(stepLoader);
+        if (flowIdRef.current !== activeFlowId) return;
         errorBoundaryRef.current?.resetError();
         flowIdRef.current += 1;
         resolveRef.current = onResolve ?? null;
         abortRef.current = onAbort ?? null;
         setFlowState({
           history: [],
-          activeStep: normalizeStepLoader(stepLoader),
+          activeStep,
           consumerContext: initialContext,
         });
       },

@@ -15,7 +15,7 @@ function Step1() {
       <Title order={4}>Step 1 — Welcome</Title>
       <Text c="dimmed">This is the first step of the flow.</Text>
       <Group justify="flex-end">
-        <Button onClick={() => advance(BrokenStep)}>Next →</Button>
+        <Button onClick={() => advance(() => BrokenStep)}>Next →</Button>
       </Group>
     </Stack>
   );
@@ -50,7 +50,7 @@ function Host() {
               size="xs"
               variant="white"
               color="red"
-              onClick={() => ref.current?.activate(RecoveryStep)}
+              onClick={() => ref.current?.activate(() => RecoveryStep)}
             >
               Recover
             </Button>
@@ -61,7 +61,7 @@ function Host() {
           <Text c="dimmed">
             Click the button below. Step 2 will throw an error caught by the error boundary.
           </Text>
-          <Button variant="light" fullWidth onClick={() => initFlow(Step1, ref)}>
+          <Button variant="light" fullWidth onClick={() => initFlow(() => Step1, ref)}>
             Start Flow
           </Button>
         </Stack>

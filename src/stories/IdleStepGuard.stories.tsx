@@ -125,7 +125,7 @@ function Host() {
     // idle child can display a non-undefined value after the flow resolves.
     setShowMisuse(false);
     setErrorKey((k) => k + 1);
-    initFlow(ActiveStep, ref, { note: "demo flow" });
+    initFlow(() => ActiveStep, ref, { note: "demo flow" });
   };
 
   return (
