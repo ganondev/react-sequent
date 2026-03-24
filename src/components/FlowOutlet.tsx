@@ -72,6 +72,7 @@ export const FlowOutlet = forwardRef<
     const cb = resolveRef.current;
     resolveRef.current = null;
     abortRef.current = null;
+    flowIdRef.current += 1;
     setFlowState((prev) => {
       if (prev !== null) {
         lastConsumerContextRef.current = prev.consumerContext;
@@ -85,14 +86,18 @@ export const FlowOutlet = forwardRef<
     const cb = abortRef.current;
     resolveRef.current = null;
     abortRef.current = null;
+    flowIdRef.current += 1;
     setFlowState(null);
     cb?.(reason);
   }, []);
 
   const advance = useCallback((nextStep: StepLoader, contextPatch?: unknown) => {
+    const activeFlowId = flowIdRef.current;
+    const nextActiveStep = normalizeStepLoader(nextStep);
+    if (flowIdRef.current !== activeFlowId) return;
     errorBoundaryRef.current?.resetError();
     setFlowState((prev) => {
-      if (prev === null) return null;
+      if (prev === null) return prev;
       const newContext =
         contextPatch !== undefined
           ? typeof prev.consumerContext === "object" &&
@@ -107,7 +112,7 @@ export const FlowOutlet = forwardRef<
           : prev.consumerContext;
       return {
         history: [...prev.history, prev.activeStep],
-        activeStep: normalizeStepLoader(nextStep),
+        activeStep: nextActiveStep,
         consumerContext: newContext,
       };
     });
@@ -135,13 +140,16 @@ export const FlowOutlet = forwardRef<
         onResolve?: (value?: unknown) => void,
         onAbort?: (reason?: unknown) => void,
       ) {
+        const activeFlowId = flowIdRef.current;
+        const activeStep = normalizeStepLoader(stepLoader);
+        if (flowIdRef.current !== activeFlowId) return;
         errorBoundaryRef.current?.resetError();
         flowIdRef.current += 1;
         resolveRef.current = onResolve ?? null;
         abortRef.current = onAbort ?? null;
         setFlowState({
           history: [],
-          activeStep: normalizeStepLoader(stepLoader),
+          activeStep,
           consumerContext: initialContext,
         });
       },
