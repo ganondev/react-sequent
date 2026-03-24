@@ -35,11 +35,11 @@ The core transition function. The current step decides what comes next — there
 
 ### Step loader
 
-The first argument is a `StepLoader`: either a component reference or an async factory.
+The first argument is a `StepLoader` factory.
 
 ```tsx
-// Sync — component renders immediately
-advance(NextStep);
+// Sync — factory returns component immediately
+advance(() => NextStep);
 
 // Async — outlet shows fallback during load
 advance(() => import("./HeavyStep"));
@@ -51,10 +51,10 @@ The optional second argument shallow-merges into the current context (when both 
 
 ```tsx
 // Merge: { name: "Alice" } + { step1Done: true } → { name: "Alice", step1Done: true }
-advance(Step2, { step1Done: true });
+advance(() => Step2, { step1Done: true });
 
 // Replace: context becomes the string "reset"
-advance(Step2, "reset");
+advance(() => Step2, "reset");
 ```
 
 ## `retreat()`
@@ -72,7 +72,7 @@ function StepWithForm() {
 
   const next = () => {
     // Save form data to context so it survives retreat
-    advance(NextStep, { email });
+    advance(() => NextStep, { email });
   };
 
   return (
@@ -110,7 +110,7 @@ On the initializer side:
 
 ```tsx
 try {
-  const result = await initFlow(Step1, ref);
+  const result = await initFlow(() => Step1, ref);
   // resolve(value) → result === value
 } catch (reason) {
   // abort(reason) → reason caught here
@@ -127,11 +127,11 @@ function PaymentStep() {
 
   const onSelect = (method: string) => {
     if (method === "credit") {
-      advance(CreditCardStep);
+      advance(() => CreditCardStep);
     } else if (method === "bank") {
-      advance(BankTransferStep);
+      advance(() => BankTransferStep);
     } else {
-      advance(CryptoStep);
+      advance(() => CryptoStep);
     }
   };
 

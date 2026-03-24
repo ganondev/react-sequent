@@ -29,7 +29,7 @@ function useFlowInit<TResult = unknown>(): {
 
 | Parameter | Type | Description |
 |---|---|---|
-| `stepLoader` | `StepLoader` | A component (`ComponentType`) or async factory (`() => Promise<{ default: ComponentType }>`) for the first step. |
+| `stepLoader` | `StepLoader` | A step factory for the first step. It may return a component synchronously or a promise resolving to a component / `{ default: ComponentType }`. |
 | `ref` | `RefObject<FlowOutletHandle \| null>` | Ref attached to the `<FlowOutlet />` that should render this flow. Must be mounted before calling `initFlow`. |
 | `initialContext` | `unknown` (optional) | Initial consumer-owned context value available to all steps via `useStep().context`. |
 
@@ -40,7 +40,7 @@ function useFlowInit<TResult = unknown>(): {
 ```tsx
 const { initFlow } = useFlowInit<{ confirmed: boolean }>();
 
-const result = await initFlow(ConfirmStep, ref);
+const result = await initFlow(() => ConfirmStep, ref);
 // result is typed as { confirmed: boolean }
 console.log(result.confirmed);
 ```
@@ -65,7 +65,7 @@ function Host() {
   return (
     <div>
       <FlowOutlet ref={ref} />
-      <button onClick={() => initFlow(WelcomeStep, ref)}>
+      <button onClick={() => initFlow(() => WelcomeStep, ref)}>
         Start
       </button>
     </div>
@@ -83,7 +83,7 @@ function Host() {
 
   const start = async () => {
     try {
-      const value = await initFlow(Step1, ref);
+      const value = await initFlow(() => Step1, ref);
       setResult(value); // typed as string
     } catch (reason) {
       console.log("Flow aborted:", reason);
@@ -108,7 +108,7 @@ function Host({ user }: { user: User }) {
   const { initFlow } = useFlowInit();
 
   const start = () => {
-    initFlow(OnboardingStep1, ref, {
+    initFlow(() => OnboardingStep1, ref, {
       userName: user.name,
       plan: user.plan,
     });

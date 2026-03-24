@@ -93,7 +93,7 @@ describeFeature(feature, ({ Scenario }) => {
 
     When("initFlow is called with a sync step loader", () => {
       act(() => {
-        capturedInitFlow(SyncStep, capturedRef);
+        capturedInitFlow(() => SyncStep, capturedRef);
       });
     });
 

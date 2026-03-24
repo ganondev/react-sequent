@@ -15,7 +15,7 @@ function Step1() {
       <Title order={4}>Step 1 — Welcome</Title>
       <Text c="dimmed">This is the first step of the flow.</Text>
       <Group justify="flex-end">
-        <Button onClick={() => advance(Step2)}>Next →</Button>
+        <Button onClick={() => advance(() => Step2)}>Next →</Button>
       </Group>
     </Stack>
   );
@@ -48,7 +48,7 @@ function Host() {
       <FlowOutlet ref={ref}>
         <Stack>
           <Text c="dimmed">Click the button below to start a two-step flow.</Text>
-          <Button variant="light" fullWidth onClick={() => initFlow(Step1, ref)}>
+          <Button variant="light" fullWidth onClick={() => initFlow(() => Step1, ref)}>
             Start Flow
           </Button>
         </Stack>

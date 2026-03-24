@@ -44,7 +44,7 @@ function StepWithAbort() {
 function StepWithAdvance() {
   const { advance } = useStep();
   return (
-    <button type="button" onClick={() => advance(StepTwo)}>
+    <button type="button" onClick={() => advance(() => StepTwo)}>
       Advance
     </button>
   );
@@ -53,7 +53,7 @@ function StepWithAdvance() {
 function StepWithAdvanceAndContext() {
   const { advance } = useStep();
   return (
-    <button type="button" onClick={() => advance(StepWithContext, { extra: "merged" })}>
+    <button type="button" onClick={() => advance(() => StepWithContext, { extra: "merged" })}>
       AdvanceCtx
     </button>
   );
@@ -155,7 +155,7 @@ describe("useFlowInit", () => {
       render(
         <TestHost
           onInit={(initFlow, ref) => {
-            initFlow(StepOne, ref);
+            initFlow(() => StepOne, ref);
           }}
         />,
       );
@@ -178,7 +178,7 @@ describe("useFlowInit", () => {
       render(
         <TestHost
           onInit={(initFlow, ref) => {
-            initFlow(StepWithContext, ref, { name: "hello" });
+            initFlow(() => StepWithContext, ref, { name: "hello" });
           }}
         />,
       );
@@ -198,7 +198,7 @@ describe("useFlowInit", () => {
       render(
         <TestHost
           onInit={(initFlow, ref) => {
-            initFlow(StepWithResolve, ref);
+            initFlow(() => StepWithResolve, ref);
           }}
         />,
       );
@@ -223,7 +223,7 @@ describe("useFlowInit", () => {
 
       render(
         <TestHostWithPromise
-          step={StepWithResolveValue}
+          step={() => StepWithResolveValue}
           onPromise={(p) => {
             promise = p;
           }}
@@ -249,7 +249,7 @@ describe("useFlowInit", () => {
       render(
         <TestHost
           onInit={(initFlow, ref) => {
-            initFlow(StepWithAbort, ref);
+            initFlow(() => StepWithAbort, ref);
           }}
         />,
       );
@@ -271,7 +271,7 @@ describe("useFlowInit", () => {
 
       render(
         <TestHostWithPromise
-          step={StepWithAbortReason}
+          step={() => StepWithAbortReason}
           onPromise={(p) => {
             promise = p;
           }}
@@ -297,7 +297,7 @@ describe("useFlowInit", () => {
       render(
         <TestHost
           onInit={(initFlow, ref) => {
-            initFlow(StepWithAdvance, ref);
+            initFlow(() => StepWithAdvance, ref);
           }}
         />,
       );
@@ -327,7 +327,7 @@ describe("useFlowInit", () => {
       function StepA() {
         const { advance } = useStep();
         return (
-          <button type="button" onClick={() => advance(StepB)}>
+          <button type="button" onClick={() => advance(() => StepB)}>
             Go to B
           </button>
         );
@@ -348,7 +348,7 @@ describe("useFlowInit", () => {
       render(
         <TestHost
           onInit={(initFlow, ref) => {
-            initFlow(StepA, ref);
+            initFlow(() => StepA, ref);
           }}
         />,
       );
@@ -377,7 +377,7 @@ describe("useFlowInit", () => {
       render(
         <TestHost
           onInit={(initFlow, ref) => {
-            initFlow(StepWithRetreat, ref);
+            initFlow(() => StepWithRetreat, ref);
           }}
         />,
       );
@@ -402,7 +402,7 @@ describe("useFlowInit", () => {
       render(
         <TestHost
           onInit={(initFlow, ref) => {
-            initFlow(StepWithAdvanceAndContext, ref, { initial: true });
+            initFlow(() => StepWithAdvanceAndContext, ref, { initial: true });
           }}
         />,
       );
@@ -425,7 +425,7 @@ describe("useFlowInit", () => {
       function StepAdvanceScalar() {
         const { advance } = useStep();
         return (
-          <button type="button" onClick={() => advance(StepWithContext, "replaced")}>
+          <button type="button" onClick={() => advance(() => StepWithContext, "replaced")}>
             AdvanceScalar
           </button>
         );
@@ -434,7 +434,7 @@ describe("useFlowInit", () => {
       render(
         <TestHost
           onInit={(initFlow, ref) => {
-            initFlow(StepAdvanceScalar, ref, { original: true });
+            initFlow(() => StepAdvanceScalar, ref, { original: true });
           }}
         />,
       );
@@ -472,7 +472,7 @@ describe("useFlowInit", () => {
       const emptyRef = { current: null };
 
       expect(() => {
-        capturedInitFlow(StepOne, emptyRef);
+        capturedInitFlow(() => StepOne, emptyRef);
       }).toThrowError(
         "FlowOutlet ref is not attached. Ensure <FlowOutlet ref={...} /> is mounted before calling initFlow.",
       );
@@ -486,7 +486,7 @@ describe("useFlowInit", () => {
       render(
         <TestHost
           onInit={(initFlow, ref) => {
-            initFlow(StepWithResolve, ref);
+            initFlow(() => StepWithResolve, ref);
           }}
         />,
       );
@@ -547,7 +547,7 @@ describe("useFlowInit", () => {
       expect(screen.getByText("Idle Content")).toBeInTheDocument();
 
       await act(async () => {
-        capturedInitFlow(StepOne, capturedRef);
+        capturedInitFlow(() => StepOne, capturedRef);
       });
 
       expect(screen.queryByText("Idle Content")).not.toBeInTheDocument();
@@ -574,7 +574,7 @@ describe("useFlowInit", () => {
       expect(screen.getByText("Idle Content")).toBeInTheDocument();
 
       await act(async () => {
-        capturedInitFlow(StepWithResolve, capturedRef);
+        capturedInitFlow(() => StepWithResolve, capturedRef);
       });
 
       expect(screen.queryByText("Idle Content")).not.toBeInTheDocument();
@@ -606,7 +606,7 @@ describe("useFlowInit", () => {
       expect(screen.getByText("Idle Content")).toBeInTheDocument();
 
       await act(async () => {
-        capturedInitFlow(StepWithAbort, capturedRef);
+        capturedInitFlow(() => StepWithAbort, capturedRef);
       });
 
       expect(screen.queryByText("Idle Content")).not.toBeInTheDocument();
