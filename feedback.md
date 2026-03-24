@@ -1,7 +1,7 @@
 # Overall Assessment
 For the niche it targets, there are a few implementation choices I would consider materially problematic, not just taste-level disagreements.
 
-## Step-loader Normalization Strategy
+## ~~Step-loader Normalization Strategy~~
 The library accepts either a component or an async factory, but normalizeStepLoader() tries to distinguish them by calling plain functions and checking whether the return value is thenable. The source comments explicitly acknowledge that this has side effects, and the implementation does it anyway, falling back only if the call throws. For plain function components, especially ones using hooks, that means the library may invoke a component function outside React just to classify it. Architecturally, that is the wrong boundary: loader detection should never require executing user code. This is the most serious flaw I saw because it makes the API look simpler than the implementation can safely support.
 
 **Resolution:** Refactored `StepLoader` to always be a factory function (`() => Component | Promise<...>`). This eliminates the classification heuristic entirely — there is no longer a need to probe user code to determine whether something is a component or factory. Now both sync and async steps are passed as explicit factories: sync components wrap themselves (`() => MyStep`), while async loaders remain as-is (`() => import('./MyStep')`). The factory is invoked once per transition at a deliberate boundary (in `FlowOutlet`), not as a side effect of classification. This makes the library's contract simpler and safer: execution is explicit and counted.
