@@ -1,14 +1,12 @@
 import { act, cleanup, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import { type RefObject, useRef } from "react";
+import type { ReactNode } from "react";
 import { afterEach, describe, expect, it } from "vitest";
-import { FlowOutlet, type FlowOutletHandle } from "../../components/FlowOutlet";
-import { useFlowInit } from "../useFlowInit";
-import { useStep } from "../useStep";
+import { useSequentContext } from "../useSequentContext";
+import { useSequentFlow } from "../useSequentFlow";
+import { useSequentStep } from "../useSequentStep";
 
-// ---------------------------------------------------------------------------
-// Fixture step components
-// ---------------------------------------------------------------------------
+type InitFn = ReturnType<typeof useSequentFlow>["init"];
 
 function StepOne() {
   return <div>Step 1</div>;
@@ -19,12 +17,12 @@ function StepTwo() {
 }
 
 function StepWithContext() {
-  const { context } = useStep();
+  const { context } = useSequentStep();
   return <div>context:{JSON.stringify(context)}</div>;
 }
 
 function StepWithResolve() {
-  const { resolve } = useStep();
+  const { resolve } = useSequentStep();
   return (
     <button type="button" onClick={() => resolve()}>
       Resolve
@@ -33,7 +31,7 @@ function StepWithResolve() {
 }
 
 function StepWithAbort() {
-  const { abort } = useStep();
+  const { abort } = useSequentStep();
   return (
     <button type="button" onClick={() => abort()}>
       Abort
@@ -42,7 +40,7 @@ function StepWithAbort() {
 }
 
 function StepWithAdvance() {
-  const { advance } = useStep();
+  const { advance } = useSequentStep();
   return (
     <button type="button" onClick={() => advance(() => StepTwo)}>
       Advance
@@ -51,7 +49,7 @@ function StepWithAdvance() {
 }
 
 function StepWithAdvanceAndContext() {
-  const { advance } = useStep();
+  const { advance } = useSequentStep();
   return (
     <button type="button" onClick={() => advance(() => StepWithContext, { extra: "merged" })}>
       AdvanceCtx
@@ -60,7 +58,7 @@ function StepWithAdvanceAndContext() {
 }
 
 function StepWithRetreat() {
-  const { retreat } = useStep();
+  const { retreat } = useSequentStep();
   return (
     <button type="button" onClick={() => retreat()}>
       Retreat
@@ -69,7 +67,7 @@ function StepWithRetreat() {
 }
 
 function StepWithResolveValue() {
-  const { resolve } = useStep();
+  const { resolve } = useSequentStep();
   return (
     <button type="button" onClick={() => resolve("success-value")}>
       ResolveValue
@@ -78,7 +76,7 @@ function StepWithResolveValue() {
 }
 
 function StepWithAbortReason() {
-  const { abort } = useStep();
+  const { abort } = useSequentStep();
   return (
     <button type="button" onClick={() => abort("abort-reason")}>
       AbortReason
@@ -86,81 +84,69 @@ function StepWithAbortReason() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Host component that wires useFlowInit + FlowOutlet together
-// ---------------------------------------------------------------------------
-
 function TestHost({
+  children,
   onInit,
 }: {
-  onInit?: (
-    initFlow: ReturnType<typeof useFlowInit>["initFlow"],
-    ref: RefObject<FlowOutletHandle | null>,
-  ) => void;
+  children?: ReactNode;
+  onInit?: (init: InitFn) => void;
 }) {
-  const ref = useRef<FlowOutletHandle>(null);
-  const { initFlow } = useFlowInit();
+  const { init, SequentOutlet } = useSequentFlow();
+
   return (
     <>
-      <button type="button" onClick={() => onInit?.(initFlow, ref)}>
+      <button type="button" onClick={() => onInit?.(init)}>
         Init
       </button>
-      <FlowOutlet ref={ref} />
+      <SequentOutlet>{children}</SequentOutlet>
     </>
   );
 }
 
 function TestHostWithPromise({
-  step,
   onPromise,
+  step,
 }: {
-  step: Parameters<ReturnType<typeof useFlowInit>["initFlow"]>[0];
   onPromise?: (promise: Promise<unknown>) => void;
+  step: Parameters<InitFn>[0];
 }) {
-  const ref = useRef<FlowOutletHandle>(null);
-  const { initFlow } = useFlowInit();
+  const { init, SequentOutlet } = useSequentFlow();
+
   return (
     <>
       <button
         type="button"
         onClick={() => {
-          const p = initFlow(step, ref);
-          onPromise?.(p);
+          const promise = init(step);
+          onPromise?.(promise);
         }}
       >
         Init
       </button>
-      <FlowOutlet ref={ref} />
+      <SequentOutlet />
     </>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
-describe("useFlowInit", () => {
+describe("useSequentFlow", () => {
   afterEach(() => {
     cleanup();
   });
 
   it("should be a function", () => {
-    expect(typeof useFlowInit).toBe("function");
+    expect(typeof useSequentFlow).toBe("function");
   });
 
-  // ── Init ────────────────────────────────────────────────────────────────
-
   describe("init", () => {
-    it("renders the step component in the outlet after calling initFlow", async () => {
+    it("renders the step component in the bound outlet after calling init", async () => {
       render(
         <TestHost
-          onInit={(initFlow, ref) => {
-            initFlow(() => StepOne, ref);
+          onInit={(init) => {
+            init(() => StepOne);
           }}
         />,
       );
 
-      // Before init, step should not be present
       expect(screen.queryByText("Step 1")).not.toBeInTheDocument();
 
       await act(async () => {
@@ -171,14 +157,12 @@ describe("useFlowInit", () => {
     });
   });
 
-  // ── Init with context ──────────────────────────────────────────────────
-
   describe("init with context", () => {
-    it("makes initial context accessible via useStep().context", async () => {
+    it("makes initial context accessible via useSequentStep().context", async () => {
       render(
         <TestHost
-          onInit={(initFlow, ref) => {
-            initFlow(() => StepWithContext, ref, { name: "hello" });
+          onInit={(init) => {
+            init(() => StepWithContext, { name: "hello" });
           }}
         />,
       );
@@ -191,42 +175,37 @@ describe("useFlowInit", () => {
     });
   });
 
-  // ── Resolve ─────────────────────────────────────────────────────────────
-
   describe("resolve", () => {
-    it("returns the outlet to idle (renders nothing) when resolve() is called", async () => {
+    it("returns the outlet to idle when resolve() is called", async () => {
       render(
         <TestHost
-          onInit={(initFlow, ref) => {
-            initFlow(() => StepWithResolve, ref);
+          onInit={(init) => {
+            init(() => StepWithResolve);
           }}
         />,
       );
 
-      // Activate the flow
       await act(async () => {
         screen.getByText("Init").click();
       });
       expect(screen.getByText("Resolve")).toBeInTheDocument();
 
-      // Resolve the flow
       await act(async () => {
         screen.getByText("Resolve").click();
       });
 
-      // Outlet should be idle — no step content rendered
       expect(screen.queryByText("Resolve")).not.toBeInTheDocument();
     });
 
-    it("resolves the initFlow promise with the value passed to resolve()", async () => {
+    it("resolves the init promise with the value passed to resolve()", async () => {
       let promise: Promise<unknown> | undefined;
 
       render(
         <TestHostWithPromise
-          step={() => StepWithResolveValue}
-          onPromise={(p) => {
-            promise = p;
+          onPromise={(nextPromise) => {
+            promise = nextPromise;
           }}
+          step={() => StepWithResolveValue}
         />,
       );
 
@@ -242,14 +221,12 @@ describe("useFlowInit", () => {
     });
   });
 
-  // ── Abort ───────────────────────────────────────────────────────────────
-
   describe("abort", () => {
-    it("returns the outlet to idle (renders nothing) when abort() is called", async () => {
+    it("returns the outlet to idle when abort() is called", async () => {
       render(
         <TestHost
-          onInit={(initFlow, ref) => {
-            initFlow(() => StepWithAbort, ref);
+          onInit={(init) => {
+            init(() => StepWithAbort);
           }}
         />,
       );
@@ -266,15 +243,15 @@ describe("useFlowInit", () => {
       expect(screen.queryByText("Abort")).not.toBeInTheDocument();
     });
 
-    it("rejects the initFlow promise with the reason passed to abort()", async () => {
+    it("rejects the init promise with the reason passed to abort()", async () => {
       let promise: Promise<unknown> | undefined;
 
       render(
         <TestHostWithPromise
-          step={() => StepWithAbortReason}
-          onPromise={(p) => {
-            promise = p;
+          onPromise={(nextPromise) => {
+            promise = nextPromise;
           }}
+          step={() => StepWithAbortReason}
         />,
       );
 
@@ -290,14 +267,12 @@ describe("useFlowInit", () => {
     });
   });
 
-  // ── Advance ─────────────────────────────────────────────────────────────
-
   describe("advance", () => {
     it("renders the next step and pushes the previous step to history", async () => {
       render(
         <TestHost
-          onInit={(initFlow, ref) => {
-            initFlow(() => StepWithAdvance, ref);
+          onInit={(init) => {
+            init(() => StepWithAdvance);
           }}
         />,
       );
@@ -312,20 +287,15 @@ describe("useFlowInit", () => {
         screen.getByText("Advance").click();
       });
 
-      // StepTwo should now be rendered
       expect(screen.getByText("Step 2")).toBeInTheDocument();
-      // StepWithAdvance should no longer be visible
       expect(screen.queryByText("Advance")).not.toBeInTheDocument();
     });
   });
 
-  // ── Retreat ─────────────────────────────────────────────────────────────
-
   describe("retreat", () => {
     it("returns to the previous step after advancing", async () => {
-      // Use a step that can advance, then a step that can retreat
       function StepA() {
-        const { advance } = useStep();
+        const { advance } = useSequentStep();
         return (
           <button type="button" onClick={() => advance(() => StepB)}>
             Go to B
@@ -334,7 +304,7 @@ describe("useFlowInit", () => {
       }
 
       function StepB() {
-        const { retreat } = useStep();
+        const { retreat } = useSequentStep();
         return (
           <>
             <div>In B</div>
@@ -347,25 +317,22 @@ describe("useFlowInit", () => {
 
       render(
         <TestHost
-          onInit={(initFlow, ref) => {
-            initFlow(() => StepA, ref);
+          onInit={(init) => {
+            init(() => StepA);
           }}
         />,
       );
 
-      // Activate flow
       await act(async () => {
         screen.getByText("Init").click();
       });
       expect(screen.getByText("Go to B")).toBeInTheDocument();
 
-      // Advance to StepB
       await act(async () => {
         screen.getByText("Go to B").click();
       });
       expect(screen.getByText("In B")).toBeInTheDocument();
 
-      // Retreat back to StepA
       await act(async () => {
         screen.getByText("Back").click();
       });
@@ -373,11 +340,11 @@ describe("useFlowInit", () => {
       expect(screen.queryByText("In B")).not.toBeInTheDocument();
     });
 
-    it("does nothing when history is empty (at the first step)", async () => {
+    it("does nothing when history is empty", async () => {
       render(
         <TestHost
-          onInit={(initFlow, ref) => {
-            initFlow(() => StepWithRetreat, ref);
+          onInit={(init) => {
+            init(() => StepWithRetreat);
           }}
         />,
       );
@@ -387,7 +354,6 @@ describe("useFlowInit", () => {
       });
       expect(screen.getByText("Retreat")).toBeInTheDocument();
 
-      // Retreat with no history — should stay on the same step
       await act(async () => {
         screen.getByText("Retreat").click();
       });
@@ -395,14 +361,12 @@ describe("useFlowInit", () => {
     });
   });
 
-  // ── Advance with context patch ──────────────────────────────────────────
-
   describe("advance with context patch", () => {
     it("merges context patch into the consumer context", async () => {
       render(
         <TestHost
-          onInit={(initFlow, ref) => {
-            initFlow(() => StepWithAdvanceAndContext, ref, { initial: true });
+          onInit={(init) => {
+            init(() => StepWithAdvanceAndContext, { initial: true });
           }}
         />,
       );
@@ -412,18 +376,16 @@ describe("useFlowInit", () => {
       });
       expect(screen.getByText("AdvanceCtx")).toBeInTheDocument();
 
-      // Advance with context patch
       await act(async () => {
         screen.getByText("AdvanceCtx").click();
       });
 
-      // StepWithContext should display merged context
       expect(screen.getByText('context:{"initial":true,"extra":"merged"}')).toBeInTheDocument();
     });
 
     it("replaces context when patch is not an object", async () => {
       function StepAdvanceScalar() {
-        const { advance } = useStep();
+        const { advance } = useSequentStep();
         return (
           <button type="button" onClick={() => advance(() => StepWithContext, "replaced")}>
             AdvanceScalar
@@ -433,8 +395,8 @@ describe("useFlowInit", () => {
 
       render(
         <TestHost
-          onInit={(initFlow, ref) => {
-            initFlow(() => StepAdvanceScalar, ref, { original: true });
+          onInit={(init) => {
+            init(() => StepAdvanceScalar, { original: true });
           }}
         />,
       );
@@ -451,59 +413,46 @@ describe("useFlowInit", () => {
     });
   });
 
-  // ── Error: ref not attached ─────────────────────────────────────────────
-
   describe("error handling", () => {
-    it("throws when initFlow is called with an unattached ref", () => {
-      // We need to call the hook outside of the component tree,
-      // but hooks can only be called inside components. Instead,
-      // capture initFlow from inside a component and call it with
-      // a ref that has no current value.
-      let capturedInitFlow: ReturnType<typeof useFlowInit>["initFlow"];
+    it("throws when init is called before the bound outlet is mounted", () => {
+      let capturedInit!: InitFn;
 
       function Capture() {
-        const { initFlow } = useFlowInit();
-        capturedInitFlow = initFlow;
+        const { init } = useSequentFlow();
+        capturedInit = init;
         return null;
       }
 
       render(<Capture />);
 
-      const emptyRef = { current: null };
-
       expect(() => {
-        capturedInitFlow(() => StepOne, emptyRef);
+        capturedInit(() => StepOne);
       }).toThrowError(
-        "FlowOutlet ref is not attached. Ensure <FlowOutlet ref={...} /> is mounted before calling initFlow.",
+        "SequentOutlet is not mounted. Ensure <SequentOutlet /> is rendered before calling init().",
       );
     });
   });
-
-  // ── Re-init ─────────────────────────────────────────────────────────────
 
   describe("re-initialization", () => {
     it("can re-init the flow after it has been resolved", async () => {
       render(
         <TestHost
-          onInit={(initFlow, ref) => {
-            initFlow(() => StepWithResolve, ref);
+          onInit={(init) => {
+            init(() => StepWithResolve);
           }}
         />,
       );
 
-      // First init
       await act(async () => {
         screen.getByText("Init").click();
       });
       expect(screen.getByText("Resolve")).toBeInTheDocument();
 
-      // Resolve
       await act(async () => {
         screen.getByText("Resolve").click();
       });
       expect(screen.queryByText("Resolve")).not.toBeInTheDocument();
 
-      // Re-init
       await act(async () => {
         screen.getByText("Init").click();
       });
@@ -511,43 +460,32 @@ describe("useFlowInit", () => {
     });
   });
 
-  // ── Idle children ──────────────────────────────────────────────────
-  describe("idle children", () => {
-    it("renders children when outlet is idle", () => {
-      function TestHost() {
-        const ref = useRef<FlowOutletHandle>(null);
-        return (
-          <FlowOutlet ref={ref}>
-            <div>Idle Content</div>
-          </FlowOutlet>
-        );
-      }
+  describe("bound SequentOutlet", () => {
+    it("renders children when idle", () => {
+      render(
+        <TestHost>
+          <div>Idle Content</div>
+        </TestHost>,
+      );
 
-      render(<TestHost />);
       expect(screen.getByText("Idle Content")).toBeInTheDocument();
     });
 
     it("hides children when a flow is active", async () => {
-      let capturedInitFlow!: ReturnType<typeof useFlowInit>["initFlow"];
-      let capturedRef!: RefObject<FlowOutletHandle | null>;
+      render(
+        <TestHost
+          onInit={(init) => {
+            init(() => StepOne);
+          }}
+        >
+          <div>Idle Content</div>
+        </TestHost>,
+      );
 
-      function TestHost() {
-        const ref = useRef<FlowOutletHandle>(null);
-        const { initFlow } = useFlowInit();
-        capturedInitFlow = initFlow;
-        capturedRef = ref;
-        return (
-          <FlowOutlet ref={ref}>
-            <div>Idle Content</div>
-          </FlowOutlet>
-        );
-      }
-
-      render(<TestHost />);
       expect(screen.getByText("Idle Content")).toBeInTheDocument();
 
       await act(async () => {
-        capturedInitFlow(() => StepOne, capturedRef);
+        screen.getByText("Init").click();
       });
 
       expect(screen.queryByText("Idle Content")).not.toBeInTheDocument();
@@ -555,26 +493,18 @@ describe("useFlowInit", () => {
     });
 
     it("shows children again after resolve", async () => {
-      let capturedInitFlow!: ReturnType<typeof useFlowInit>["initFlow"];
-      let capturedRef!: RefObject<FlowOutletHandle | null>;
-
-      function TestHost() {
-        const ref = useRef<FlowOutletHandle>(null);
-        const { initFlow } = useFlowInit();
-        capturedInitFlow = initFlow;
-        capturedRef = ref;
-        return (
-          <FlowOutlet ref={ref}>
-            <div>Idle Content</div>
-          </FlowOutlet>
-        );
-      }
-
-      render(<TestHost />);
-      expect(screen.getByText("Idle Content")).toBeInTheDocument();
+      render(
+        <TestHost
+          onInit={(init) => {
+            init(() => StepWithResolve);
+          }}
+        >
+          <div>Idle Content</div>
+        </TestHost>,
+      );
 
       await act(async () => {
-        capturedInitFlow(() => StepWithResolve, capturedRef);
+        screen.getByText("Init").click();
       });
 
       expect(screen.queryByText("Idle Content")).not.toBeInTheDocument();
@@ -587,26 +517,18 @@ describe("useFlowInit", () => {
     });
 
     it("shows children again after abort", async () => {
-      let capturedInitFlow!: ReturnType<typeof useFlowInit>["initFlow"];
-      let capturedRef!: RefObject<FlowOutletHandle | null>;
-
-      function TestHost() {
-        const ref = useRef<FlowOutletHandle>(null);
-        const { initFlow } = useFlowInit();
-        capturedInitFlow = initFlow;
-        capturedRef = ref;
-        return (
-          <FlowOutlet ref={ref}>
-            <div>Idle Content</div>
-          </FlowOutlet>
-        );
-      }
-
-      render(<TestHost />);
-      expect(screen.getByText("Idle Content")).toBeInTheDocument();
+      render(
+        <TestHost
+          onInit={(init) => {
+            init(() => StepWithAbort);
+          }}
+        >
+          <div>Idle Content</div>
+        </TestHost>,
+      );
 
       await act(async () => {
-        capturedInitFlow(() => StepWithAbort, capturedRef);
+        screen.getByText("Init").click();
       });
 
       expect(screen.queryByText("Idle Content")).not.toBeInTheDocument();
@@ -618,17 +540,55 @@ describe("useFlowInit", () => {
       expect(screen.getByText("Idle Content")).toBeInTheDocument();
     });
 
+    it("preserves the last resolved context for idle children", async () => {
+      function IdleContextReader() {
+        const { context } = useSequentContext<{ note?: string }>();
+        return <div>idle:{context?.note ?? "empty"}</div>;
+      }
+
+      function ResolvingStep() {
+        const { resolve } = useSequentStep();
+        return (
+          <button type="button" onClick={() => resolve("done")}>
+            Done
+          </button>
+        );
+      }
+
+      render(
+        <TestHost
+          onInit={(init) => {
+            init(() => ResolvingStep, { note: "remembered" });
+          }}
+        >
+          <IdleContextReader />
+        </TestHost>,
+      );
+
+      expect(screen.getByText("idle:empty")).toBeInTheDocument();
+
+      await act(async () => {
+        screen.getByText("Init").click();
+      });
+
+      await act(async () => {
+        screen.getByText("Done").click();
+      });
+
+      expect(screen.getByText("idle:remembered")).toBeInTheDocument();
+    });
+
     it("renders nothing when idle with no children", () => {
-      function TestHost() {
-        const ref = useRef<FlowOutletHandle>(null);
+      function EmptyHost() {
+        const { SequentOutlet } = useSequentFlow();
         return (
           <div data-testid="wrapper">
-            <FlowOutlet ref={ref} />
+            <SequentOutlet />
           </div>
         );
       }
 
-      render(<TestHost />);
+      render(<EmptyHost />);
       expect(screen.getByTestId("wrapper").innerHTML).toBe("");
     });
   });

@@ -1,9 +1,13 @@
 // react-sequent — public API
 
-export type { FlowOutletHandle } from "./components/FlowOutlet";
-export { FlowOutlet } from "./components/FlowOutlet";
-export type { FlowContextReturn } from "./hooks/useFlowContext";
-export { useFlowContext } from "./hooks/useFlowContext";
-export { useFlowInit } from "./hooks/useFlowInit";
-export { useStep } from "./hooks/useStep";
+export type {
+	SequentContextReturn,
+} from "./hooks/useSequentContext";
+export type {
+	SequentOutletProps,
+	UseSequentFlowReturn,
+} from "./hooks/useSequentFlow";
+export { useSequentContext } from "./hooks/useSequentContext";
+export { useSequentFlow } from "./hooks/useSequentFlow";
+export { useSequentStep } from "./hooks/useSequentStep";
 export type { StepLoader } from "./internal/normalizer";

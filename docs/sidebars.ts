@@ -13,15 +13,10 @@ const sidebars: SidebarsConfig = {
           type: "category",
           label: "Hooks",
           items: [
-            "api/use-flow-init",
-            "api/use-step",
-            "api/use-flow-context",
+            "api/use-sequent-flow",
+            "api/use-sequent-step",
+            "api/use-sequent-context",
           ],
-        },
-        {
-          type: "category",
-          label: "Components",
-          items: ["api/flow-outlet"],
         },
         "api/types",
       ],

@@ -1,20 +1,18 @@
 import { Button, Center, Divider, Group, Loader, Paper, Stack, Text, Title } from "@mantine/core";
-import { useRef } from "react";
-import { FlowOutlet, type FlowOutletHandle } from "../components/FlowOutlet";
-import { useFlowContext } from "../hooks/useFlowContext";
-import { useFlowInit } from "../hooks/useFlowInit";
-import { useStep } from "../hooks/useStep";
+import { useSequentContext } from "../hooks/useSequentContext";
+import { useSequentFlow } from "../hooks/useSequentFlow";
+import { useSequentStep } from "../hooks/useSequentStep";
 
 export default {
   title: "Flow/ChromeFlow",
 };
 
 /* ------------------------------------------------------------------ */
-/*  Chrome — lives inside <FlowOutlet> children, outside Suspense     */
+/*  Chrome — lives inside <SequentOutlet> children, outside Suspense  */
 /* ------------------------------------------------------------------ */
 
 function ModalHeader() {
-  const { context: ctx } = useFlowContext<{ title: string }>();
+  const { context: ctx } = useSequentContext<{ title: string }>();
   return (
     <>
       <Title order={3}>{ctx.title}</Title>
@@ -28,7 +26,7 @@ function ModalHeader() {
 /* ------------------------------------------------------------------ */
 
 function StepWelcome() {
-  const { advance } = useStep();
+  const { advance } = useSequentStep();
   return (
     <Stack>
       <Text>Welcome! This is the first step of the flow.</Text>
@@ -44,7 +42,7 @@ function StepWelcome() {
 }
 
 function StepDetails() {
-  const { advance, retreat } = useStep();
+  const { advance, retreat } = useSequentStep();
   return (
     <Stack>
       <Text>Please review the details below.</Text>
@@ -65,7 +63,7 @@ function StepDetails() {
 }
 
 function StepConfirmation() {
-  const { retreat, resolve } = useStep();
+  const { retreat, resolve } = useSequentStep();
   return (
     <Stack>
       <Text>All done — everything looks good!</Text>
@@ -109,13 +107,11 @@ const loadStepConfirmation = () =>
 /* ------------------------------------------------------------------ */
 
 function Host() {
-  const ref = useRef<FlowOutletHandle>(null);
-  const { initFlow } = useFlowInit();
+  const { init, SequentOutlet } = useSequentFlow();
 
   return (
     <Stack maw={440} mx="auto" mt="xl">
-      <FlowOutlet
-        ref={ref}
+      <SequentOutlet
         fallback={
           <Center py="xl">
             <Stack align="center" gap="sm">
@@ -144,13 +140,13 @@ function Host() {
             <Button
               variant="light"
               fullWidth
-              onClick={() => initFlow(loadStepWelcome, ref, { title: "Welcome" })}
+              onClick={() => init(loadStepWelcome, { title: "Welcome" })}
             >
               Start Flow
             </Button>
           </Stack>
         </Paper>
-      </FlowOutlet>
+      </SequentOutlet>
     </Stack>
   );
 }

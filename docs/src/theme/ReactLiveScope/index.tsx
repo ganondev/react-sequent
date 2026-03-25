@@ -1,9 +1,8 @@
 import React, { useRef, useState, useEffect } from "react";
 import {
-  FlowOutlet,
-  useFlowContext,
-  useFlowInit,
-  useStep,
+  useSequentContext,
+  useSequentFlow,
+  useSequentStep,
 } from "react-sequent";
 
 /**
@@ -19,10 +18,9 @@ const ReactLiveScope: Record<string, unknown> = {
   useState,
   useEffect,
   // react-sequent
-  FlowOutlet,
-  useFlowContext,
-  useFlowInit,
-  useStep,
+  useSequentContext,
+  useSequentFlow,
+  useSequentStep,
 };
 
 export default ReactLiveScope;
