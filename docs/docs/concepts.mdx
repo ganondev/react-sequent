@@ -26,27 +26,27 @@ This is the library's entire reason for existing.
 | **Advance** | Move to the next step, as determined by the current step's logic |
 | **Retreat** | Move to the previous step by popping the history stack |
 | **Context** | Flow-scoped data the library carries and makes available to all steps |
-| **Outlet** | The mount point where the active step renders (`<FlowOutlet />`) |
+| **Outlet** | The mount point where the active step renders (`<SequentOutlet />`) |
 | **Chrome** | Stable UI (headers, progress bars) rendered inside the outlet but outside the step |
 | **Resolve** | A flow completes successfully, returning a value |
 | **Abort** | A flow exits without completing |
 
 ## Hook Separation
 
-The library exposes two primary hooks with **strictly separated concerns**:
+The library exposes a primary flow hook plus two runtime hooks with **strictly separated concerns**:
 
-### `useFlowInit` — for flow entry points
+### `useSequentFlow` — for flow entry points
 
-- Returns `initFlow` to start a flow
-- Associates the flow with a `<FlowOutlet />` via a ref
+- Returns `init` to start a flow
+- Returns a bound `<SequentOutlet />` component for that hook instance
 - Has **no knowledge** of step internals
 
-### `useStep` — for step components
+### `useSequentStep` — for step components
 
 - Returns `advance`, `retreat`, `resolve`, `abort`, and `context`
 - Has **no access** to initializer-level capabilities
 
-### `useFlowContext` — for chrome components
+### `useSequentContext` — for chrome components
 
 - Returns the current flow context value, plus `resolve` and `abort` for flow termination
 - Available to any component inside the outlet's **flow-level** provider boundary (chrome, idle children, and steps)
@@ -54,15 +54,15 @@ The library exposes two primary hooks with **strictly separated concerns**:
 
 This compartmentalization is a hard requirement, not a preference. A step must never be able to access initializer-level capabilities, and vice versa.
 
-`useStep()` is enforced at the React tree level — it throws immediately if called outside the active step's subtree (e.g. from chrome or an idle child). The correct hook for those contexts is `useFlowContext()`.
+`useSequentStep()` is enforced at the React tree level — it throws immediately if called outside the active step's subtree (e.g. from chrome or an idle child). The correct hook for those contexts is `useSequentContext()`.
 
 ## Outlet Lifecycle
 
 ```
-idle ──initFlow()──▶ active ──resolve()/abort()──▶ idle
+idle ──init()──▶ active ──resolve()/abort()──▶ idle
 ```
 
-The outlet renders nothing when idle. When activated via `initFlow`, it renders the active step (and optional chrome). Calling `resolve()` or `abort()` tears down the flow and returns the outlet to idle.
+When idle, the outlet renders its `children` (if any) and otherwise renders nothing. When activated via `init()`, it renders the active step (and any chrome you place inside the outlet). Calling `resolve()` or `abort()` tears down the flow and returns the outlet to idle.
 
 The consumer never manages this boolean directly — it's derived entirely from whether a flow has been initialized against the outlet.
 
@@ -83,10 +83,10 @@ The outlet's `<Suspense>` boundary shows the consumer-provided `fallback` prop w
 
 ## Chrome
 
-Chrome is stable UI that wraps the step — modal headers, progress indicators, close buttons. Chrome is provided as a **render prop** to `<FlowOutlet chrome={...} />`. It receives the step slot (error boundary + Suspense + active step) as an argument and returns JSX. Chrome stays mounted across async step transitions without flickering because it renders outside the Suspense boundary.
+Chrome is stable UI that wraps the step — modal headers, progress indicators, close buttons. Chrome is provided as a **render prop** to `<SequentOutlet chrome={...} />`. It receives the step slot (error boundary + Suspense + active step) as an argument and returns JSX. Chrome stays mounted across async step transitions without flickering because it renders outside the Suspense boundary.
 
 ```
-<FlowOutlet chrome={chrome}>   ← flow-level context (chrome + idle children)
+<SequentOutlet chrome={chrome}>   ← flow-level context (chrome + idle children)
   {chrome(
     <step-context>             ← step-only context (active step only)
       <FlowErrorBoundary>
@@ -96,9 +96,9 @@ Chrome is stable UI that wraps the step — modal headers, progress indicators, 
       </FlowErrorBoundary>
     </step-context>
   )}
-  // chrome: can call useFlowContext(), not useStep()
-  // step: can call both useStep() and useFlowContext()
-</FlowOutlet>
+  // chrome: can call useSequentContext(), not useSequentStep()
+  // step: can call both useSequentStep() and useSequentContext()
+</SequentOutlet>
 ```
 
-Chrome reads flow state via `useFlowContext()`. Steps write chrome-relevant data into context via `advance`'s `contextPatch` parameter.
+Chrome reads flow state via `useSequentContext()`. Steps write chrome-relevant data into context via `advance`'s `contextPatch` parameter.

@@ -1,0 +1,44 @@
+---
+sidebar_position: 3
+title: useSequentContext
+---
+
+# useSequentContext
+
+Hook for chrome components, idle children, and step components inside a `SequentOutlet` boundary.
+
+## Signature
+
+```typescript
+function useSequentContext<TContext = unknown>(): {
+  context: TContext;
+  resolve: (value?: unknown) => void;
+  abort: (reason?: unknown) => void;
+};
+```
+
+## When to use it
+
+Use `useSequentContext()` when a component needs flow-level context or wants to terminate the flow, but should not control navigation.
+
+Typical use cases:
+
+- modal headers
+- close buttons
+- progress chrome
+- idle content that reads the last resolved context
+
+## Example
+
+```tsx
+function ModalHeader() {
+  const { context, abort } = useSequentContext<{ title: string }>();
+
+  return (
+    <header>
+      <h2>{context.title}</h2>
+      <button onClick={() => abort("cancelled")}>Close</button>
+    </header>
+  );
+}
+```

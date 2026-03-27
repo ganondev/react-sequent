@@ -1,5 +1,5 @@
 ---
-sidebar_position: 5
+sidebar_position: 4
 title: Types
 ---
 
@@ -33,24 +33,24 @@ advance(() => Step1);
 advance(() => import("./Step1"));
 ```
 
-## `FlowOutletHandle`
+## `SequentOutletProps`
 
 ```typescript
-interface FlowOutletHandle {
-  activate: (
-    stepLoader: StepLoader,
-    initialContext?: unknown,
-    onResolve?: (value?: unknown) => void,
-    onAbort?: (reason?: unknown) => void,
-  ) => void;
-}
+type SequentOutletProps = {
+  children?: ReactNode;
+  fallback?: ReactNode;
+  errorFallback?: ReactNode;
+  chrome?: (children: ReactNode) => ReactNode;
+};
 ```
 
-The imperative handle exposed by `<FlowOutlet />` via its forwarded ref. Used internally by `initFlow` — you generally don't call `activate` directly, but you need the type to create a properly typed ref:
+Props accepted by the bound `SequentOutlet` component returned from `useSequentFlow()`.
 
 ```tsx
-import { useRef } from "react";
-import type { FlowOutletHandle } from "react-sequent";
+import { useSequentFlow } from "react-sequent";
 
-const ref = useRef<FlowOutletHandle>(null);
+function Host() {
+  const { SequentOutlet } = useSequentFlow();
+  return <SequentOutlet fallback={<div>Loading…</div>} />;
+}
 ```

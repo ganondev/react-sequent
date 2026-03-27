@@ -1,12 +1,10 @@
 import { describeFeature, loadFeature } from "@amiceli/vitest-cucumber";
 import { act, cleanup, render, screen } from "@testing-library/react";
-import type React from "react";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { expect, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
-import { FlowOutlet, type FlowOutletHandle } from "../components/FlowOutlet";
-import { useFlowInit } from "../hooks/useFlowInit";
-import { useStep } from "../hooks/useStep";
+import { useSequentFlow } from "../hooks/useSequentFlow";
+import { useSequentStep } from "../hooks/useSequentStep";
 
 // ── Fixture step components ──────────────────────────────────────────
 
@@ -15,7 +13,7 @@ function SimpleStep() {
 }
 
 function ResolvingStep() {
-  const { resolve } = useStep();
+  const { resolve } = useSequentStep();
   useEffect(() => {
     resolve("done");
   }, [resolve]);
@@ -27,15 +25,15 @@ const feature = await loadFeature("src/features/idle-children.feature");
 describeFeature(feature, ({ Scenario }) => {
   // ── Scenario 1 ─────────────────────────────────────────────────────
   Scenario("Outlet renders children when idle", ({ Given, Then }) => {
-    Given("a host with FlowOutlet containing children", () => {
+    Given("a host with SequentOutlet containing children", () => {
       cleanup();
 
       function TestHost() {
-        const ref = useRef<FlowOutletHandle>(null);
+        const { SequentOutlet } = useSequentFlow();
         return (
-          <FlowOutlet ref={ref}>
+          <SequentOutlet>
             <button type="button">Start Flow</button>
-          </FlowOutlet>
+          </SequentOutlet>
         );
       }
 
@@ -51,21 +49,18 @@ describeFeature(feature, ({ Scenario }) => {
   Scenario(
     "Children are replaced by the active step when a flow starts",
     ({ Given, When, Then, And }) => {
-      let capturedInitFlow: ReturnType<typeof useFlowInit>["initFlow"];
-      let capturedRef: React.RefObject<FlowOutletHandle | null>;
+      let capturedInit: ReturnType<typeof useSequentFlow>["init"];
 
-      Given("a host with FlowOutlet containing children", () => {
+      Given("a host with SequentOutlet containing children", () => {
         cleanup();
 
         function TestHost() {
-          const ref = useRef<FlowOutletHandle>(null);
-          const { initFlow } = useFlowInit();
-          capturedInitFlow = initFlow;
-          capturedRef = ref;
+          const { init, SequentOutlet } = useSequentFlow();
+          capturedInit = init;
           return (
-            <FlowOutlet ref={ref}>
+            <SequentOutlet>
               <button type="button">Start Flow</button>
-            </FlowOutlet>
+            </SequentOutlet>
           );
         }
 
@@ -73,9 +68,9 @@ describeFeature(feature, ({ Scenario }) => {
         expect(screen.getByText("Start Flow")).toBeInTheDocument();
       });
 
-      When("initFlow is called with a sync step", () => {
+      When("init is called with a sync step", () => {
         act(() => {
-          capturedInitFlow(() => SimpleStep, capturedRef);
+          capturedInit(() => SimpleStep);
         });
       });
 
@@ -91,21 +86,18 @@ describeFeature(feature, ({ Scenario }) => {
 
   // ── Scenario 3 ─────────────────────────────────────────────────────
   Scenario("Children reappear after the flow resolves", ({ Given, And, When, Then }) => {
-    let capturedInitFlow: ReturnType<typeof useFlowInit>["initFlow"];
-    let capturedRef: React.RefObject<FlowOutletHandle | null>;
+    let capturedInit: ReturnType<typeof useSequentFlow>["init"];
 
-    Given("a host with FlowOutlet containing children", () => {
+    Given("a host with SequentOutlet containing children", () => {
       cleanup();
 
       function TestHost() {
-        const ref = useRef<FlowOutletHandle>(null);
-        const { initFlow } = useFlowInit();
-        capturedInitFlow = initFlow;
-        capturedRef = ref;
+        const { init, SequentOutlet } = useSequentFlow();
+        capturedInit = init;
         return (
-          <FlowOutlet ref={ref}>
+          <SequentOutlet>
             <button type="button">Start Flow</button>
-          </FlowOutlet>
+          </SequentOutlet>
         );
       }
 
@@ -115,7 +107,7 @@ describeFeature(feature, ({ Scenario }) => {
 
     And("a flow has been activated", () => {
       act(() => {
-        capturedInitFlow(() => SimpleStep, capturedRef);
+        capturedInit(() => SimpleStep);
       });
       expect(screen.queryByText("Start Flow")).not.toBeInTheDocument();
       expect(screen.getByText("Step Content")).toBeInTheDocument();
@@ -123,7 +115,7 @@ describeFeature(feature, ({ Scenario }) => {
 
     When("the flow resolves", () => {
       act(() => {
-        capturedRef.current?.activate(() => ResolvingStep);
+        capturedInit(() => ResolvingStep);
       });
     });
 
@@ -134,14 +126,14 @@ describeFeature(feature, ({ Scenario }) => {
 
   // ── Scenario 4 ─────────────────────────────────────────────────────
   Scenario("Outlet with no children renders nothing when idle", ({ Given, Then }) => {
-    Given("a host with FlowOutlet and no children", () => {
+    Given("a host with SequentOutlet and no children", () => {
       cleanup();
 
       function TestHost() {
-        const ref = useRef<FlowOutletHandle>(null);
+        const { SequentOutlet } = useSequentFlow();
         return (
           <div data-testid="outlet-wrapper">
-            <FlowOutlet ref={ref} />
+            <SequentOutlet />
           </div>
         );
       }
@@ -157,26 +149,31 @@ describeFeature(feature, ({ Scenario }) => {
 
   // ── Scenario 5 ─────────────────────────────────────────────────────
   Scenario(
-    "useStep throws immediately when rendered outside the step boundary",
+    "useSequentStep throws immediately when rendered outside the step boundary",
     ({ Given, Then }) => {
       let caughtError: unknown = null;
 
-      Given("an idle FlowOutlet child that calls useStep", () => {
+      Given("an idle SequentOutlet child that calls useSequentStep", () => {
         cleanup();
         caughtError = null;
 
         function UseStepChild() {
-          useStep();
+          useSequentStep();
           return null;
+        }
+
+        function TestHost() {
+          const { SequentOutlet } = useSequentFlow();
+          return (
+            <SequentOutlet>
+              <UseStepChild />
+            </SequentOutlet>
+          );
         }
 
         const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
         try {
-          render(
-            <FlowOutlet>
-              <UseStepChild />
-            </FlowOutlet>,
-          );
+          render(<TestHost />);
         } catch (err) {
           caughtError = err;
         }
@@ -185,7 +182,7 @@ describeFeature(feature, ({ Scenario }) => {
 
       Then("an error is thrown immediately when the component renders", () => {
         expect(caughtError).toBeInstanceOf(Error);
-        expect((caughtError as Error).message).toContain("useStep()");
+        expect((caughtError as Error).message).toContain("useSequentStep()");
         expect((caughtError as Error).message).toContain("rendered step component");
       });
     },

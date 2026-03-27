@@ -22,17 +22,14 @@ npm install react-sequent
 A minimal two-step flow in under 40 lines:
 
 ```tsx
-import { useRef } from "react";
 import {
-  FlowOutlet,
-  useFlowInit,
-  useStep,
+  useSequentFlow,
+  useSequentStep,
 } from "react-sequent";
-import type { FlowOutletHandle } from "react-sequent";
 
 // Step 1 — decides what to render and where to go next
 function Step1() {
-  const { advance } = useStep();
+  const { advance } = useSequentStep();
   return (
     <div>
       <h3>Step 1 — Welcome</h3>
@@ -44,7 +41,7 @@ function Step1() {
 
 // Step 2 — can go back or finish the flow
 function Step2() {
-  const { retreat, resolve } = useStep();
+  const { retreat, resolve } = useSequentStep();
   return (
     <div>
       <h3>Step 2 — Confirm</h3>
@@ -56,17 +53,16 @@ function Step2() {
 
 // Host — owns the outlet and starts the flow
 function App() {
-  const ref = useRef<FlowOutletHandle>(null);
-  const { initFlow } = useFlowInit();
+  const { init, SequentOutlet } = useSequentFlow();
 
   const start = async () => {
-    const result = await initFlow(() => Step1, ref);
+    const result = await init(() => Step1);
     console.log("Flow resolved:", result);
   };
 
   return (
     <div>
-      <FlowOutlet ref={ref} />
+      <SequentOutlet />
       <button onClick={start}>Start Flow</button>
     </div>
   );
@@ -75,10 +71,10 @@ function App() {
 
 ### What's happening
 
-1. **`useFlowInit`** gives you `initFlow` — call it with a step factory and an outlet ref to start a flow.
-2. **`<FlowOutlet>`** is where the flow renders. It's idle (invisible) until `initFlow` activates it.
-3. **`useStep`** is called inside step components. It returns `advance`, `retreat`, `resolve`, and `abort` — everything a step needs to control the flow.
-4. When `resolve("completed!")` is called, the promise returned by `initFlow` resolves with that value.
+1. **`useSequentFlow`** gives you `init` and a bound **`SequentOutlet`**.
+2. **`<SequentOutlet>`** is where the flow renders. It's idle until `init()` activates it.
+3. **`useSequentStep`** is called inside step components. It returns `advance`, `retreat`, `resolve`, and `abort`.
+4. When `resolve("completed!")` is called, the promise returned by `init()` resolves with that value.
 
 ## Key Concepts
 
@@ -88,7 +84,7 @@ There's no centralized state map. Each step calls `advance(() => NextStep)` to m
 
 ```tsx
 function PaymentStep() {
-  const { advance, resolve } = useStep();
+  const { advance, resolve } = useSequentStep();
 
   const onSubmit = (method: string) => {
     if (method === "credit") {
@@ -107,7 +103,7 @@ function PaymentStep() {
 Pass a dynamic import instead of a component — Suspense handles the rest:
 
 ```tsx
-const { advance } = useStep();
+const { advance } = useSequentStep();
 
 // Lazy-loaded step — the outlet shows the fallback while loading
 advance(() => import("./HeavyStep"));
@@ -119,11 +115,11 @@ Carry data across steps without prop-drilling:
 
 ```tsx
 // Start with initial context
-initFlow(() => Step1, ref, { name: "Alice", plan: "pro" });
+init(() => Step1, { name: "Alice", plan: "pro" });
 
 // In any step — read and patch context
 function Step1() {
-  const { advance, context } = useStep();
+  const { advance, context } = useSequentStep();
   return (
     <div>
       <p>Hello, {context.name}!</p>
@@ -137,7 +133,6 @@ function Step1() {
 
 ## Next Steps
 
-- [**useFlowInit**](/docs/api/use-flow-init) — full reference for flow initialization
-- [**useStep**](/docs/api/use-step) — transitions, context, and flow completion
-- [**useFlowContext**](/docs/api/use-flow-context) — read-only context for chrome components
-- [**FlowOutlet**](/docs/api/flow-outlet) — outlet props, async fallback, error boundary
+- [**useSequentFlow**](/docs/api/use-sequent-flow) — flow initialization and the bound outlet
+- [**useSequentStep**](/docs/api/use-sequent-step) — transitions, context, and flow completion
+- [**useSequentContext**](/docs/api/use-sequent-context) — flow-level context for chrome and idle children

@@ -26,15 +26,13 @@ const features = [
   },
 ];
 
-const quickExample = `import { useRef } from "react";
-import {
-  FlowOutlet,
-  useFlowInit,
-  useStep,
+const quickExample = `import {
+  useSequentFlow,
+  useSequentStep,
 } from "react-sequent";
 
 function Step1() {
-  const { advance } = useStep();
+  const { advance } = useSequentStep();
   return (
     <div>
       <h3>Welcome</h3>
@@ -46,7 +44,7 @@ function Step1() {
 }
 
 function Step2() {
-  const { retreat, resolve } = useStep();
+  const { retreat, resolve } = useSequentStep();
   return (
     <div>
       <h3>Confirm</h3>
@@ -59,13 +57,12 @@ function Step2() {
 }
 
 function App() {
-  const ref = useRef(null);
-  const { initFlow } = useFlowInit();
+  const { init, SequentOutlet } = useSequentFlow();
 
   return (
     <>
-      <FlowOutlet ref={ref} />
-      <button onClick={() => initFlow(() => Step1, ref)}>
+      <SequentOutlet />
+      <button onClick={() => init(() => Step1)}>
         Start Flow
       </button>
     </>
@@ -91,7 +88,7 @@ function HomepageHeader() {
           </Link>
           <Link
             className="button button--outline button--secondary button--lg"
-            to="/docs/api/use-flow-init"
+            to="/docs/api/use-sequent-flow"
             style={{ marginLeft: "1rem" }}
           >
             API Reference

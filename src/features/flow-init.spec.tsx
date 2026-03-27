@@ -1,12 +1,10 @@
 import { describeFeature, loadFeature } from "@amiceli/vitest-cucumber";
 import { act, cleanup, render, screen } from "@testing-library/react";
-import type React from "react";
-import { useRef } from "react";
+import type { ReactNode } from "react";
 import { expect } from "vitest";
 import "@testing-library/jest-dom/vitest";
-import { FlowOutlet, type FlowOutletHandle } from "../components/FlowOutlet";
-import { useFlowInit } from "../hooks/useFlowInit";
-import { useStep } from "../hooks/useStep";
+import { useSequentFlow } from "../hooks/useSequentFlow";
+import { useSequentStep } from "../hooks/useSequentStep";
 
 // ── Fixture step components ──────────────────────────────────────────
 function SimpleStep() {
@@ -14,38 +12,48 @@ function SimpleStep() {
 }
 
 function ContextStep() {
-  const { context } = useStep();
+  const { context } = useSequentStep();
   const ctx = context as { title: string };
   return <div>{ctx.title}</div>;
+}
+
+type InitFn = ReturnType<typeof useSequentFlow>["init"];
+
+function Host({
+  children,
+  onCapture,
+}: {
+  children?: ReactNode;
+  onCapture: (init: InitFn) => void;
+}) {
+  const { init, SequentOutlet } = useSequentFlow();
+  onCapture(init);
+  return <SequentOutlet>{children}</SequentOutlet>;
 }
 
 const feature = await loadFeature("src/features/flow-init.feature");
 
 describeFeature(feature, ({ Scenario }) => {
-  // ── Scenario 1 ─────────────────────────────────────────────────────
   Scenario("Initialize a basic flow", ({ Given, When, Then }) => {
-    let capturedInitFlow: ReturnType<typeof useFlowInit>["initFlow"];
-    let capturedRef: React.RefObject<FlowOutletHandle | null>;
+    let capturedInit!: InitFn;
 
-    Given("a host component with useFlowInit and FlowOutlet", () => {
+    Given("a host component with useSequentFlow and SequentOutlet", () => {
       cleanup();
 
-      function TestHost() {
-        const ref = useRef<FlowOutletHandle>(null);
-        const { initFlow } = useFlowInit();
-        capturedInitFlow = initFlow;
-        capturedRef = ref;
-        return <FlowOutlet ref={ref} />;
-      }
+      render(
+        <Host
+          onCapture={(init) => {
+            capturedInit = init;
+          }}
+        />,
+      );
 
-      render(<TestHost />);
-      expect(capturedInitFlow).toBeDefined();
-      expect(capturedRef).toBeDefined();
+      expect(capturedInit).toBeDefined();
     });
 
-    When("initFlow is called with a sync step loader", () => {
+    When("init is called with a sync step loader", () => {
       act(() => {
-        capturedInitFlow(() => SimpleStep, capturedRef);
+        capturedInit(() => SimpleStep);
       });
     });
 
@@ -54,34 +62,30 @@ describeFeature(feature, ({ Scenario }) => {
     });
   });
 
-  // ── Scenario 2 ─────────────────────────────────────────────────────
   Scenario("Initialize a flow with initial context", ({ Given, When, Then }) => {
-    let capturedInitFlow: ReturnType<typeof useFlowInit>["initFlow"];
-    let capturedRef: React.RefObject<FlowOutletHandle | null>;
+    let capturedInit!: InitFn;
 
-    Given("a host component with useFlowInit and FlowOutlet", () => {
+    Given("a host component with useSequentFlow and SequentOutlet", () => {
       cleanup();
 
-      function TestHost() {
-        const ref = useRef<FlowOutletHandle>(null);
-        const { initFlow } = useFlowInit();
-        capturedInitFlow = initFlow;
-        capturedRef = ref;
-        return <FlowOutlet ref={ref} />;
-      }
+      render(
+        <Host
+          onCapture={(init) => {
+            capturedInit = init;
+          }}
+        />,
+      );
 
-      render(<TestHost />);
-      expect(capturedInitFlow).toBeDefined();
-      expect(capturedRef).toBeDefined();
+      expect(capturedInit).toBeDefined();
     });
 
-    When("initFlow is called with a step loader and initial context", () => {
+    When("init is called with a step loader and initial context", () => {
       act(() => {
-        capturedInitFlow(() => ContextStep, capturedRef, { title: "hello" });
+        capturedInit(() => ContextStep, { title: "hello" });
       });
     });
 
-    Then("the step can read the context via useStep", () => {
+    Then("the step can read the context via useSequentStep", () => {
       expect(screen.getByText("hello")).toBeInTheDocument();
     });
   });

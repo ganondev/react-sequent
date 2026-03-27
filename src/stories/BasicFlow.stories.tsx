@@ -1,15 +1,13 @@
 import { Button, Group, Paper, Stack, Text, Title } from "@mantine/core";
-import { useRef } from "react";
-import { FlowOutlet, type FlowOutletHandle } from "../components/FlowOutlet";
-import { useFlowInit } from "../hooks/useFlowInit";
-import { useStep } from "../hooks/useStep";
+import { useSequentFlow } from "../hooks/useSequentFlow";
+import { useSequentStep } from "../hooks/useSequentStep";
 
 export default {
   title: "Flow/BasicFlow",
 };
 
 function Step1() {
-  const { advance } = useStep();
+  const { advance } = useSequentStep();
   return (
     <Stack>
       <Title order={4}>Step 1 — Welcome</Title>
@@ -22,7 +20,7 @@ function Step1() {
 }
 
 function Step2() {
-  const { retreat, resolve } = useStep();
+  const { retreat, resolve } = useSequentStep();
   return (
     <Stack>
       <Title order={4}>Step 2 — Confirm</Title>
@@ -40,19 +38,18 @@ function Step2() {
 }
 
 function Host() {
-  const ref = useRef<FlowOutletHandle>(null);
-  const { initFlow } = useFlowInit();
+  const { init, SequentOutlet } = useSequentFlow();
 
   return (
     <Paper withBorder p="xl" maw={400} mx="auto" mt="xl" radius="md">
-      <FlowOutlet ref={ref}>
+      <SequentOutlet>
         <Stack>
           <Text c="dimmed">Click the button below to start a two-step flow.</Text>
-          <Button variant="light" fullWidth onClick={() => initFlow(() => Step1, ref)}>
+          <Button variant="light" fullWidth onClick={() => init(() => Step1)}>
             Start Flow
           </Button>
         </Stack>
-      </FlowOutlet>
+      </SequentOutlet>
     </Paper>
   );
 }

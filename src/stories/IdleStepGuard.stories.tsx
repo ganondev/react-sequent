@@ -1,10 +1,10 @@
 /**
- * StepBoundary — demonstrates that useStep() throws immediately when
+ * StepBoundary — demonstrates that useSequentStep() throws immediately when
  * called outside the active step's subtree (idle children or chrome).
  *
- * useStep() is only valid inside a rendered step component. Any component
- * outside that boundary — including chrome and idle FlowOutlet children —
- * should use useFlowContext() instead.
+ * useSequentStep() is only valid inside a rendered step component. Any
+ * component outside that boundary — including chrome and idle SequentOutlet
+ * children — should use useSequentContext() instead.
  */
 import {
   Alert,
@@ -18,11 +18,10 @@ import {
   Text,
   Title,
 } from "@mantine/core";
-import { Component, type ReactNode, useRef, useState } from "react";
-import { FlowOutlet, type FlowOutletHandle } from "../components/FlowOutlet";
-import { useFlowContext } from "../hooks/useFlowContext";
-import { useFlowInit } from "../hooks/useFlowInit";
-import { useStep } from "../hooks/useStep";
+import { Component, type ReactNode, useState } from "react";
+import { useSequentContext } from "../hooks/useSequentContext";
+import { useSequentFlow } from "../hooks/useSequentFlow";
+import { useSequentStep } from "../hooks/useSequentStep";
 
 export default {
   title: "Flow/StepBoundary",
@@ -53,7 +52,7 @@ class ErrorBoundary extends Component<
   render() {
     if (this.state.error) {
       return (
-        <Alert color="red" title="useStep() — boundary violation">
+        <Alert color="red" title="useSequentStep() — boundary violation">
           <Code block style={{ whiteSpace: "pre-wrap", fontSize: 12 }}>
             {this.state.error.message}
           </Code>
@@ -65,20 +64,20 @@ class ErrorBoundary extends Component<
 }
 
 /* ------------------------------------------------------------------ */
-/*  Misuse: useStep() called outside a step — throws at render time   */
+/*  Misuse: useSequentStep() called outside a step — throws at render time   */
 /* ------------------------------------------------------------------ */
 
 function IdleChildMisuse() {
-  useStep(); // throws immediately — no StepContext present here
+  useSequentStep(); // throws immediately — no StepContext present here
   return <div>This never renders</div>;
 }
 
 /* ------------------------------------------------------------------ */
-/*  Correct: useFlowContext() in an idle child                         */
+/*  Correct: useSequentContext() in an idle child                      */
 /* ------------------------------------------------------------------ */
 
 function IdleChildCorrect() {
-  const { context } = useFlowContext<{ note?: string }>();
+  const { context } = useSequentContext<{ note?: string }>();
   return (
     <Text size="sm" c="teal">
       Last resolved context:{" "}
@@ -96,12 +95,12 @@ function IdleChildCorrect() {
 /* ------------------------------------------------------------------ */
 
 function ActiveStep() {
-  const { resolve } = useStep();
+  const { resolve } = useSequentStep();
   return (
     <Stack>
       <Title order={5}>Active Step</Title>
       <Text c="dimmed" size="sm">
-        useStep() works normally inside a rendered step.
+        useSequentStep() works normally inside a rendered step.
       </Text>
       <Button size="xs" color="green" onClick={() => resolve()}>
         Finish flow
@@ -115,8 +114,7 @@ function ActiveStep() {
 /* ------------------------------------------------------------------ */
 
 function Host() {
-  const ref = useRef<FlowOutletHandle>(null);
-  const { initFlow } = useFlowInit();
+  const { init, SequentOutlet } = useSequentFlow();
   const [showMisuse, setShowMisuse] = useState(false);
   const [errorKey, setErrorKey] = useState(0);
 
@@ -125,7 +123,7 @@ function Host() {
     // idle child can display a non-undefined value after the flow resolves.
     setShowMisuse(false);
     setErrorKey((k) => k + 1);
-    initFlow(() => ActiveStep, ref, { note: "demo flow" });
+    init(() => ActiveStep, { note: "demo flow" });
   };
 
   return (
@@ -134,16 +132,16 @@ function Host() {
         <Group justify="space-between" align="center">
           <Title order={4}>Step Boundary Enforcement</Title>
           <Badge color="violet" variant="light">
-            useStep() is step-only
+            useSequentStep() is step-only
           </Badge>
         </Group>
 
         <Divider label="Misuse — triggers immediate render error" labelPosition="left" />
 
         <Text size="sm">
-          Clicking the button below mounts a component that calls <Code>useStep()</Code> outside of
-          a step. It throws immediately at render time. The ErrorBoundary catches it and shows the
-          error.
+          Clicking the button below mounts a component that calls <Code>useSequentStep()</Code>
+          outside of a step. It throws immediately at render time. The ErrorBoundary catches it and
+          shows the error.
         </Text>
 
         <Button
@@ -154,7 +152,7 @@ function Host() {
             setShowMisuse(true);
           }}
         >
-          Click to call useStep() outside a step boundary
+          Click to call useSequentStep() outside a step boundary
         </Button>
 
         {showMisuse && (
@@ -164,22 +162,22 @@ function Host() {
         )}
 
         <Divider
-          label="Correct usage — useFlowContext() in idle child"
+          label="Correct usage — useSequentContext() in idle child"
           labelPosition="left"
           mt="md"
         />
 
         <Text size="sm">
-          The outlet below uses <Code>useFlowContext()</Code> in its idle child. It renders fine and
-          updates after a flow resolves.
+          The outlet below uses <Code>useSequentContext()</Code> in its idle child. It renders fine
+          and updates after a flow resolves.
         </Text>
 
-        <FlowOutlet ref={ref}>
+        <SequentOutlet>
           <IdleChildCorrect />
           <Button size="xs" variant="filled" onClick={startFlow} mt="sm">
             Start a valid flow →
           </Button>
-        </FlowOutlet>
+        </SequentOutlet>
       </Stack>
     </Paper>
   );

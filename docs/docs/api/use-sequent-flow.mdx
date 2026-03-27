@@ -1,0 +1,61 @@
+---
+sidebar_position: 1
+title: useSequentFlow
+---
+
+# useSequentFlow
+
+Primary hook for creating and controlling a single flow host.
+
+It returns:
+
+- `init` — starts the flow
+- `SequentOutlet` — the bound outlet component for that hook instance
+
+## Signature
+
+```typescript
+function useSequentFlow<TResult = unknown>(): {
+  init: (stepLoader: StepLoader, initialContext?: unknown) => Promise<TResult>;
+  SequentOutlet: (props: SequentOutletProps) => ReactElement;
+};
+```
+
+## Example
+
+```tsx
+import { useSequentFlow, useSequentStep } from "react-sequent";
+
+function Step1() {
+  const { advance } = useSequentStep();
+  return <button onClick={() => advance(() => Step2)}>Next</button>;
+}
+
+function Step2() {
+  const { resolve } = useSequentStep<string>();
+  return <button onClick={() => resolve("done")}>Finish</button>;
+}
+
+function App() {
+  const { init, SequentOutlet } = useSequentFlow<string>();
+
+  const start = async () => {
+    const result = await init(() => Step1);
+    console.log(result);
+  };
+
+  return (
+    <>
+      <SequentOutlet />
+      <button onClick={start}>Start</button>
+    </>
+  );
+}
+```
+
+## Notes
+
+- One `useSequentFlow()` call creates one isolated flow host.
+- `SequentOutlet` stays idle until `init()` is called.
+- `children`, `fallback`, `errorFallback`, and `chrome` are still configured on `SequentOutlet`.
+- `init()` throws if `SequentOutlet` is not currently mounted.

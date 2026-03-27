@@ -16,8 +16,8 @@ function ToastDemo() {
   const ToastContext = React.createContext(null);
 
   function ToastStep() {
-    const { resolve } = useStep();
-    const { context: ctx } = useFlowContext();
+    const { resolve } = useSequentStep();
+    const { context: ctx } = useSequentContext();
     const [remaining, setRemaining] = React.useState(5);
 
     React.useEffect(() => {
@@ -47,18 +47,16 @@ function ToastDemo() {
   }
 
   function ToastProvider({ children }) {
-    const ref = useRef(null);
-    const { initFlow } = useFlowInit();
+    const { init, SequentOutlet } = useSequentFlow();
 
     async function toast(message) {
-      return initFlow(ToastStep, ref, { message });
+      return init(() => ToastStep, { message });
     }
 
     return (
       <ToastContext.Provider value={{ toast }}>
         {children}
-        <FlowOutlet
-          ref={ref}
+        <SequentOutlet
           chrome={(slot) => <div className="demo-toast__chrome">{slot}</div>}
         />
       </ToastContext.Provider>
@@ -103,8 +101,8 @@ function ToastDemo() {
 
 ```jsx
 function ToastStep() {
-  const { resolve } = useStep();
-  const { context: ctx } = useFlowContext();
+  const { resolve } = useSequentStep();
+  const { context: ctx } = useSequentContext();
   const [remaining, setRemaining] = useState(5);
 
   useEffect(() => {
@@ -137,8 +135,7 @@ function ToastStep() {
 The chrome positions the outlet in the corner without knowing anything about timing — it only renders while the flow is active:
 
 ```jsx
-<FlowOutlet
-  ref={ref}
+<SequentOutlet
   chrome={(slot) => (
     <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 1000 }}>
       {slot}
@@ -147,11 +144,11 @@ The chrome positions the outlet in the corner without knowing anything about tim
 />
 ```
 
-The `toast()` helper seeds context with the message and returns the same promise as `initFlow`, so callers can `await` it if they need to act after the toast disappears.
+The `toast()` helper seeds context with the message and returns the same promise as `init`, so callers can `await` it if they need to act after the toast disappears.
 
 ## Key points
 
 - **Self-terminating step** — `resolve` called from `useEffect` after a delay ends the flow without any external timer or state.
 - **Chrome is the container** — positioning and z-index live in the chrome, keeping the step itself presentational.
-- **Awaitable** — because `initFlow` returns a promise, callers can optionally `await toast(...)` to react after dismissal.
+- **Awaitable** — because `init()` returns a promise, callers can optionally `await toast(...)` to react after dismissal.
 - **Not a replacement for a toast library** — dedicated libraries offer queuing, stacking, and animation out of the box. Use this approach when you specifically want to avoid adding a dependency.

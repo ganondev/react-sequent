@@ -5,10 +5,10 @@
  * Two nested contexts enforce hook compartmentalization:
  *
  *   FlowContext (outer) — available to chrome components and idle children.
- *     Read by useFlowContext().
+ *     Read by useSequentContext().
  *
  *   StepContext (inner) — only injected around the active step's subtree.
- *     Read by useStep(). Absent outside that subtree so misuse throws eagerly.
+ *     Read by useSequentStep(). Absent outside that subtree so misuse throws eagerly.
  */
 import { createContext } from "react";
 import type { StepLoader } from "./normalizer";

@@ -1,0 +1,46 @@
+---
+sidebar_position: 2
+title: useSequentStep
+---
+
+# useSequentStep
+
+Hook for active step components.
+
+## Signature
+
+```typescript
+function useSequentStep<TResult = unknown>(): {
+  advance: (nextStep: StepLoader, contextPatch?: unknown) => void;
+  retreat: () => void;
+  resolve: (value?: TResult) => void;
+  abort: (reason?: unknown) => void;
+  context: unknown;
+};
+```
+
+## Responsibilities
+
+- Move forward with `advance()`
+- Go backward with `retreat()`
+- Finish with `resolve()`
+- Cancel with `abort()`
+- Read flow-scoped `context`
+
+## Example
+
+```tsx
+function PaymentStep() {
+  const { advance, context } = useSequentStep();
+
+  return (
+    <button onClick={() => advance(() => ConfirmStep, { plan: context.plan })}>
+      Continue
+    </button>
+  );
+}
+```
+
+:::tip
+`useSequentStep()` is only valid inside the active step subtree. Chrome and idle children should use `useSequentContext()`.
+:::

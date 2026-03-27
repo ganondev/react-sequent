@@ -1,15 +1,13 @@
 import { Alert, Button, Group, Paper, Stack, Text, Title } from "@mantine/core";
-import { useRef } from "react";
-import { FlowOutlet, type FlowOutletHandle } from "../components/FlowOutlet";
-import { useFlowInit } from "../hooks/useFlowInit";
-import { useStep } from "../hooks/useStep";
+import { useSequentFlow } from "../hooks/useSequentFlow";
+import { useSequentStep } from "../hooks/useSequentStep";
 
 export default {
   title: "Flow/ErrorBoundary",
 };
 
 function Step1() {
-  const { advance } = useStep();
+  const { advance } = useSequentStep();
   return (
     <Stack>
       <Title order={4}>Step 1 — Welcome</Title>
@@ -35,12 +33,10 @@ function RecoveryStep(): React.ReactElement {
 }
 
 function Host() {
-  const ref = useRef<FlowOutletHandle>(null);
-  const { initFlow } = useFlowInit();
+  const { init, SequentOutlet } = useSequentFlow();
   return (
     <Paper withBorder p="xl" maw={400} mx="auto" mt="xl" radius="md">
-      <FlowOutlet
-        ref={ref}
+      <SequentOutlet
         errorFallback={
           <Alert color="red" title="Something went wrong">
             <Text size="sm" mb="sm">
@@ -50,7 +46,7 @@ function Host() {
               size="xs"
               variant="white"
               color="red"
-              onClick={() => ref.current?.activate(() => RecoveryStep)}
+              onClick={() => void init(() => RecoveryStep)}
             >
               Recover
             </Button>
@@ -61,11 +57,11 @@ function Host() {
           <Text c="dimmed">
             Click the button below. Step 2 will throw an error caught by the error boundary.
           </Text>
-          <Button variant="light" fullWidth onClick={() => initFlow(() => Step1, ref)}>
+          <Button variant="light" fullWidth onClick={() => init(() => Step1)}>
             Start Flow
           </Button>
         </Stack>
-      </FlowOutlet>
+      </SequentOutlet>
     </Paper>
   );
 }

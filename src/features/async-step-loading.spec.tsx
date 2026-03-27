@@ -1,13 +1,9 @@
 import { describeFeature, loadFeature } from "@amiceli/vitest-cucumber";
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
-import type React from "react";
-import { useRef } from "react";
+import type { ComponentType } from "react";
 import { expect } from "vitest";
 import "@testing-library/jest-dom/vitest";
-import { FlowOutlet, type FlowOutletHandle } from "../components/FlowOutlet";
-import { useFlowInit } from "../hooks/useFlowInit";
-
-// ── Fixture step components ──────────────────────────────────────────
+import { useSequentFlow } from "../hooks/useSequentFlow";
 
 function AsyncStep() {
   return <div>Async Step Content</div>;
@@ -20,37 +16,32 @@ function SyncStep() {
 const feature = await loadFeature("src/features/async-step-loading.feature");
 
 describeFeature(feature, ({ Scenario }) => {
-  // ── Scenario 1 ─────────────────────────────────────────────────────
   Scenario("Async loader shows fallback then renders the step", ({ Given, When, Then, And }) => {
-    let capturedInitFlow: ReturnType<typeof useFlowInit>["initFlow"];
-    let capturedRef: React.RefObject<FlowOutletHandle | null>;
-    let resolveStep: () => void;
-    let asyncLoader: () => Promise<{ default: React.ComponentType }>;
+    let capturedInit: ReturnType<typeof useSequentFlow>["init"];
+    let resolveStep!: () => void;
+    let asyncLoader!: () => Promise<{ default: ComponentType }>;
 
-    Given("a host with FlowOutlet configured with a fallback", () => {
+    Given("a host with SequentOutlet configured with a fallback", () => {
       cleanup();
 
-      // Build the controllable async loader before rendering
-      const stepPromise = new Promise<{ default: React.ComponentType }>((resolve) => {
+      const stepPromise = new Promise<{ default: ComponentType }>((resolve) => {
         resolveStep = () => resolve({ default: AsyncStep });
       });
       asyncLoader = () => stepPromise;
 
       function TestHost() {
-        const ref = useRef<FlowOutletHandle>(null);
-        const { initFlow } = useFlowInit();
-        capturedInitFlow = initFlow;
-        capturedRef = ref;
-        return <FlowOutlet ref={ref} fallback={<div>Loading…</div>} />;
+        const { init, SequentOutlet } = useSequentFlow();
+        capturedInit = init;
+        return <SequentOutlet fallback={<div>Loading…</div>} />;
       }
 
       render(<TestHost />);
-      expect(capturedInitFlow).toBeDefined();
+      expect(capturedInit).toBeDefined();
     });
 
-    When("initFlow is called with an async step loader", () => {
+    When("init is called with an async step loader", () => {
       act(() => {
-        capturedInitFlow(asyncLoader, capturedRef);
+        capturedInit(asyncLoader);
       });
     });
 
@@ -71,29 +62,25 @@ describeFeature(feature, ({ Scenario }) => {
     });
   });
 
-  // ── Scenario 2 ─────────────────────────────────────────────────────
   Scenario("Sync loader renders immediately with no fallback", ({ Given, When, Then, And }) => {
-    let capturedInitFlow: ReturnType<typeof useFlowInit>["initFlow"];
-    let capturedRef: React.RefObject<FlowOutletHandle | null>;
+    let capturedInit: ReturnType<typeof useSequentFlow>["init"];
 
-    Given("a host with FlowOutlet configured with a fallback", () => {
+    Given("a host with SequentOutlet configured with a fallback", () => {
       cleanup();
 
       function TestHost() {
-        const ref = useRef<FlowOutletHandle>(null);
-        const { initFlow } = useFlowInit();
-        capturedInitFlow = initFlow;
-        capturedRef = ref;
-        return <FlowOutlet ref={ref} fallback={<div>Loading…</div>} />;
+        const { init, SequentOutlet } = useSequentFlow();
+        capturedInit = init;
+        return <SequentOutlet fallback={<div>Loading…</div>} />;
       }
 
       render(<TestHost />);
-      expect(capturedInitFlow).toBeDefined();
+      expect(capturedInit).toBeDefined();
     });
 
-    When("initFlow is called with a sync step loader", () => {
+    When("init is called with a sync step loader", () => {
       act(() => {
-        capturedInitFlow(() => SyncStep, capturedRef);
+        capturedInit(() => SyncStep);
       });
     });
 
