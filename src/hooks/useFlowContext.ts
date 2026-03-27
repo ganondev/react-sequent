@@ -1,7 +1,4 @@
-import {
-  type SequentContextReturn,
-  useSequentContext,
-} from "./useSequentContext";
+import { type SequentContextReturn, useSequentContext } from "./useSequentContext";
 
 export type FlowContextReturn<TContext = unknown> = SequentContextReturn<TContext>;
 

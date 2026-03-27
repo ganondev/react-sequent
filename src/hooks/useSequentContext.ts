@@ -10,9 +10,7 @@ export interface SequentContextReturn<TContext = unknown> {
 export function useSequentContext<TContext = unknown>(): SequentContextReturn<TContext> {
   const ctx = useContext(FlowContext);
   if (ctx === null) {
-    throw new Error(
-      "useSequentContext must be used within a <SequentOutlet /> provider boundary",
-    );
+    throw new Error("useSequentContext must be used within a <SequentOutlet /> provider boundary");
   }
 
   return {

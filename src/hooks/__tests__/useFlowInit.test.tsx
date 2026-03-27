@@ -84,13 +84,7 @@ function StepWithAbortReason() {
   );
 }
 
-function TestHost({
-  children,
-  onInit,
-}: {
-  children?: ReactNode;
-  onInit?: (init: InitFn) => void;
-}) {
+function TestHost({ children, onInit }: { children?: ReactNode; onInit?: (init: InitFn) => void }) {
   const { init, SequentOutlet } = useSequentFlow();
 
   return (

@@ -18,29 +18,26 @@ export interface UseSequentFlowReturn<TResult = unknown> {
 export function useSequentFlow<TResult = unknown>(): UseSequentFlowReturn<TResult> {
   const outletRef = useRef<FlowOutletHandle>(null);
 
-  const init = useCallback(
-    (stepLoader: StepLoader, initialContext?: unknown): Promise<TResult> => {
-      const outlet = outletRef.current;
-      if (!outlet) {
-        throw new Error(
-          "SequentOutlet is not mounted. Ensure <SequentOutlet /> is rendered before calling init().",
-        );
-      }
+  const init = useCallback((stepLoader: StepLoader, initialContext?: unknown): Promise<TResult> => {
+    const outlet = outletRef.current;
+    if (!outlet) {
+      throw new Error(
+        "SequentOutlet is not mounted. Ensure <SequentOutlet /> is rendered before calling init().",
+      );
+    }
 
-      const promise = new Promise<TResult>((resolve, reject) => {
-        outlet.activate(
-          stepLoader,
-          initialContext,
-          (value) => resolve(value as TResult),
-          (reason) => reject(reason),
-        );
-      });
+    const promise = new Promise<TResult>((resolve, reject) => {
+      outlet.activate(
+        stepLoader,
+        initialContext,
+        (value) => resolve(value as TResult),
+        (reason) => reject(reason),
+      );
+    });
 
-      promise.catch(() => {});
-      return promise;
-    },
-    [],
-  );
+    promise.catch(() => {});
+    return promise;
+  }, []);
 
   const SequentOutlet = useMemo<FunctionComponent<SequentOutletProps>>(() => {
     function BoundSequentOutlet(props: SequentOutletProps) {
