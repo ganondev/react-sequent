@@ -62,7 +62,7 @@ This compartmentalization is a hard requirement, not a preference. A step must n
 idle ──init()──▶ active ──resolve()/abort()──▶ idle
 ```
 
-The outlet renders nothing when idle. When activated via `init()`, it renders the active step (and optional chrome). Calling `resolve()` or `abort()` tears down the flow and returns the outlet to idle.
+When idle, the outlet renders its `children` (if any) and otherwise renders nothing. When activated via `init()`, it renders the active step (and any chrome you place inside the outlet). Calling `resolve()` or `abort()` tears down the flow and returns the outlet to idle.
 
 The consumer never manages this boolean directly — it's derived entirely from whether a flow has been initialized against the outlet.
 
