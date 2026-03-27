@@ -326,28 +326,31 @@ describeFeature(feature, ({ Scenario }) => {
     let capturedInit: ReturnType<typeof useSequentFlow>["init"];
     let caughtError: unknown = null;
 
-    Given("a host with a SequentOutlet configured with a chrome component that calls useSequentStep", () => {
-      cleanup();
-      caughtError = null;
+    Given(
+      "a host with a SequentOutlet configured with a chrome component that calls useSequentStep",
+      () => {
+        cleanup();
+        caughtError = null;
 
-      function TestHost() {
-        const { init, SequentOutlet } = useSequentFlow();
-        capturedInit = init;
-        return (
-          <SequentOutlet
-            chrome={(slot) => (
-              <>
-                <ChromeWithStep />
-                {slot}
-              </>
-            )}
-          />
-        );
-      }
+        function TestHost() {
+          const { init, SequentOutlet } = useSequentFlow();
+          capturedInit = init;
+          return (
+            <SequentOutlet
+              chrome={(slot) => (
+                <>
+                  <ChromeWithStep />
+                  {slot}
+                </>
+              )}
+            />
+          );
+        }
 
-      render(<TestHost />);
-      expect(capturedInit).toBeDefined();
-    });
+        render(<TestHost />);
+        expect(capturedInit).toBeDefined();
+      },
+    );
 
     When("init is called with a sync step", () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
