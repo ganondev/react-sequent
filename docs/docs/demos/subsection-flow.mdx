@@ -11,12 +11,11 @@ Click **Begin Checkout** below to start the flow directly on this page.
 
 ```jsx live
 function CheckoutSection() {
-  const ref = useRef(null);
-  const { initFlow } = useFlowInit();
+  const { init, SequentOutlet } = useSequentFlow();
   const [status, setStatus] = React.useState(null);
 
   function StepAddress() {
-    const { advance } = useStep();
+    const { advance } = useSequentStep();
     const [address, setAddress] = React.useState("");
     return (
       <div className="demo-checkout__body">
@@ -31,14 +30,14 @@ function CheckoutSection() {
             placeholder="123 Main St, City, State"
           />
         </div>
-        <button onClick={() => advance(StepPayment, { address })}>Next →</button>
+        <button onClick={() => advance(() => StepPayment, { address })}>Next →</button>
       </div>
     );
   }
 
   function StepPayment() {
-    const { retreat, advance } = useStep();
-    const { context: ctx } = useFlowContext();
+    const { retreat, advance } = useSequentStep();
+    const { context: ctx } = useSequentContext();
     const [card, setCard] = React.useState("");
     return (
       <div className="demo-checkout__body">
@@ -55,15 +54,15 @@ function CheckoutSection() {
         </div>
         <div className="demo-actions">
           <button onClick={() => retreat()}>← Back</button>
-          <button onClick={() => advance(StepReview, { ...ctx, card })}>Next →</button>
+          <button onClick={() => advance(() => StepReview, { ...ctx, card })}>Next →</button>
         </div>
       </div>
     );
   }
 
   function StepReview() {
-    const { retreat, resolve } = useStep();
-    const { context: ctx } = useFlowContext();
+    const { retreat, resolve } = useSequentStep();
+    const { context: ctx } = useSequentContext();
     return (
       <div className="demo-checkout__body">
         <strong>Step 3 — Review & Confirm</strong>
@@ -77,7 +76,7 @@ function CheckoutSection() {
   }
 
   function IdleContent() {
-    const { context: ctx } = useFlowContext();
+    const { context: ctx } = useSequentContext();
     return (
       <div className="demo-checkout__body">
         <button onClick={start}>{ctx ? "Begin Checkout Again" : "Begin Checkout"}</button>
@@ -87,7 +86,7 @@ function CheckoutSection() {
 
   async function start() {
     setStatus(null);
-    const result = await initFlow(StepAddress, ref);
+    const result = await init(() => StepAddress);
     setStatus(`Order placed! ${JSON.stringify(result)}`);
   }
 
@@ -96,9 +95,9 @@ function CheckoutSection() {
       <div className="demo-checkout__header">
         <strong>Checkout</strong>
       </div>
-      <FlowOutlet ref={ref}>
+      <SequentOutlet>
         <IdleContent />
-      </FlowOutlet>
+      </SequentOutlet>
       {status && <div className="demo-checkout__status">{status}</div>}
     </div>
   );
@@ -107,15 +106,15 @@ function CheckoutSection() {
 
 ## How it works
 
-1. The `IdleContent` component is passed as children of `<FlowOutlet>` — it renders as idle content until a flow is active.
-2. `IdleContent` calls `useFlowContext()` to check if a previous flow completed — if so, the button reads "Begin Checkout Again".
-3. Clicking the button calls `initFlow(StepAddress, ref)`, which replaces the idle children with `StepAddress` inside the outlet.
+1. The `IdleContent` component is passed as children of `<SequentOutlet />` — it renders as idle content until a flow is active.
+2. `IdleContent` calls `useSequentContext()` to check if a previous flow completed — if so, the button reads "Begin Checkout Again".
+3. Clicking the button calls `init(() => StepAddress)`, which replaces the idle children with `StepAddress` inside the outlet.
 4. Each step calls `advance(NextStep)` to move forward or `retreat()` to go back.
-5. `StepReview` calls `resolve(value)` — the `await initFlow(...)` promise resolves with that value, the outlet returns to idle, and the `IdleContent` reappears with the updated button label.
+5. `StepReview` calls `resolve(value)` — the `await init(...)` promise resolves with that value, the outlet returns to idle, and the `IdleContent` reappears with the updated button label.
 
 ## Key points
 
-- **Idle children** — the outlet renders its children when no flow is active. Idle children have access to `useFlowContext`, which returns the last consumer context from the previous flow (or `undefined` on first render).
+- **Idle children** — the outlet renders its children when no flow is active. Idle children have access to `useSequentContext`, which returns the last consumer context from the previous flow (or `undefined` on first render).
 - **No central state** — each step decides what comes next via `advance(NextStep)`.
 - **History is automatic** — `retreat()` pops the history stack with no manual bookkeeping.
-- **The outlet is reusable** — the same `ref` can be passed to a new `initFlow` call to start a fresh flow.
+- **The outlet is reusable** — the same `useSequentFlow()` host can start a fresh flow with another `init()` call.

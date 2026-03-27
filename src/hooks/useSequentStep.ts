@@ -8,8 +8,7 @@ export function useSequentStep<TResult = unknown>() {
     throw new Error(
       "useSequentStep() must be called from within a rendered step component. " +
         "It is not available to chrome components or idle children — " +
-        "use useSequentContext() for flow-level access instead. " +
-        "(Legacy name: useStep())",
+        "use useSequentContext() for flow-level access instead.",
     );
   }
 

@@ -52,7 +52,7 @@ class ErrorBoundary extends Component<
   render() {
     if (this.state.error) {
       return (
-        <Alert color="red" title="useStep() — boundary violation">
+        <Alert color="red" title="useSequentStep() — boundary violation">
           <Code block style={{ whiteSpace: "pre-wrap", fontSize: 12 }}>
             {this.state.error.message}
           </Code>
@@ -64,7 +64,7 @@ class ErrorBoundary extends Component<
 }
 
 /* ------------------------------------------------------------------ */
-/*  Misuse: useStep() called outside a step — throws at render time   */
+/*  Misuse: useSequentStep() called outside a step — throws at render time   */
 /* ------------------------------------------------------------------ */
 
 function IdleChildMisuse() {
@@ -100,7 +100,7 @@ function ActiveStep() {
     <Stack>
       <Title order={5}>Active Step</Title>
       <Text c="dimmed" size="sm">
-        useStep() works normally inside a rendered step.
+        useSequentStep() works normally inside a rendered step.
       </Text>
       <Button size="xs" color="green" onClick={() => resolve()}>
         Finish flow

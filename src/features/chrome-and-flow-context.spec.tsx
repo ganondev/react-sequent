@@ -1,22 +1,18 @@
 import { describeFeature, loadFeature } from "@amiceli/vitest-cucumber";
 import { act, cleanup, render, screen } from "@testing-library/react";
 import type React from "react";
-import { useRef } from "react";
 import { expect, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
-import { FlowOutlet, type FlowOutletHandle } from "../components/FlowOutlet";
-import { useFlowContext } from "../hooks/useFlowContext";
-import { useFlowInit } from "../hooks/useFlowInit";
-import { useStep } from "../hooks/useStep";
-
-// ── Fixture components ───────────────────────────────────────────────
+import { useSequentContext } from "../hooks/useSequentContext";
+import { useSequentFlow } from "../hooks/useSequentFlow";
+import { useSequentStep } from "../hooks/useSequentStep";
 
 function ChromeHeader(): React.ReactElement {
   return <div>Chrome Header</div>;
 }
 
 function ContextChrome(): React.ReactElement {
-  const { context: ctx } = useFlowContext<{ title: string }>();
+  const { context: ctx } = useSequentContext<{ title: string }>();
   return <div>Title: {ctx.title}</div>;
 }
 
@@ -24,10 +20,10 @@ function SyncStep(): React.ReactElement {
   return <div>Step Content</div>;
 }
 
-let capturedAdvance: ReturnType<typeof useStep>["advance"];
+let capturedAdvance: ReturnType<typeof useSequentStep>["advance"];
 
 function Step1(): React.ReactElement {
-  const { advance } = useStep();
+  const { advance } = useSequentStep();
   capturedAdvance = advance;
   return <div>Step 1 Content</div>;
 }
@@ -37,7 +33,7 @@ function Step2(): React.ReactElement {
 }
 
 function ContextStep1(): React.ReactElement {
-  const { advance } = useStep();
+  const { advance } = useSequentStep();
   capturedAdvance = advance;
   return <div>Context Step 1</div>;
 }
@@ -50,44 +46,36 @@ let capturedAbortFromChrome: (() => void) | null = null;
 let capturedResolveFromChrome: ((value?: unknown) => void) | null = null;
 
 function ChromeWithAbort(): React.ReactElement {
-  const { abort } = useFlowContext();
+  const { abort } = useSequentContext();
   capturedAbortFromChrome = () => abort("chrome-cancelled");
   return <div>Chrome Abort</div>;
 }
 
 function ChromeWithResolve(): React.ReactElement {
-  const { resolve } = useFlowContext();
+  const { resolve } = useSequentContext();
   capturedResolveFromChrome = (value?: unknown) => resolve(value);
   return <div>Chrome Resolve</div>;
 }
 
 function ChromeWithStep(): React.ReactElement {
-  // Deliberate misuse — useStep() must not be callable from chrome
-  useStep();
+  useSequentStep();
   return <div>Chrome Step</div>;
 }
-
-// ── Feature ──────────────────────────────────────────────────────────
 
 const feature = await loadFeature("src/features/chrome-and-flow-context.feature");
 
 describeFeature(feature, ({ Scenario }) => {
-  // ── Scenario 1 ─────────────────────────────────────────────────────
   Scenario("Chrome receives step slot and renders it", ({ Given, When, Then }) => {
-    let capturedInitFlow: ReturnType<typeof useFlowInit>["initFlow"];
-    let capturedRef: React.RefObject<FlowOutletHandle | null>;
+    let capturedInit: ReturnType<typeof useSequentFlow>["init"];
 
-    Given("a host with FlowOutlet configured with a chrome render prop", () => {
+    Given("a host with SequentOutlet configured with a chrome render prop", () => {
       cleanup();
 
       function TestHost() {
-        const ref = useRef<FlowOutletHandle>(null);
-        const { initFlow } = useFlowInit();
-        capturedInitFlow = initFlow;
-        capturedRef = ref;
+        const { init, SequentOutlet } = useSequentFlow();
+        capturedInit = init;
         return (
-          <FlowOutlet
-            ref={ref}
+          <SequentOutlet
             fallback={<div>Loading…</div>}
             chrome={(slot) => (
               <>
@@ -100,12 +88,12 @@ describeFeature(feature, ({ Scenario }) => {
       }
 
       render(<TestHost />);
-      expect(capturedInitFlow).toBeDefined();
+      expect(capturedInit).toBeDefined();
     });
 
-    When("initFlow is called with a sync step", () => {
+    When("init is called with a sync step", () => {
       act(() => {
-        capturedInitFlow(() => SyncStep, capturedRef);
+        capturedInit(() => SyncStep);
       });
     });
 
@@ -115,22 +103,17 @@ describeFeature(feature, ({ Scenario }) => {
     });
   });
 
-  // ── Scenario 2 ─────────────────────────────────────────────────────
   Scenario("Chrome persists across step advancement", ({ Given, When, Then, And }) => {
-    let capturedInitFlow: ReturnType<typeof useFlowInit>["initFlow"];
-    let capturedRef: React.RefObject<FlowOutletHandle | null>;
+    let capturedInit: ReturnType<typeof useSequentFlow>["init"];
 
-    Given("a host with FlowOutlet configured with a chrome render prop", () => {
+    Given("a host with SequentOutlet configured with a chrome render prop", () => {
       cleanup();
 
       function TestHost() {
-        const ref = useRef<FlowOutletHandle>(null);
-        const { initFlow } = useFlowInit();
-        capturedInitFlow = initFlow;
-        capturedRef = ref;
+        const { init, SequentOutlet } = useSequentFlow();
+        capturedInit = init;
         return (
-          <FlowOutlet
-            ref={ref}
+          <SequentOutlet
             fallback={<div>Loading…</div>}
             chrome={(slot) => (
               <>
@@ -143,12 +126,12 @@ describeFeature(feature, ({ Scenario }) => {
       }
 
       render(<TestHost />);
-      expect(capturedInitFlow).toBeDefined();
+      expect(capturedInit).toBeDefined();
     });
 
     And("the flow has been activated with a sync step", () => {
       act(() => {
-        capturedInitFlow(() => Step1, capturedRef);
+        capturedInit(() => Step1);
       });
       expect(screen.getByText("Step 1 Content")).toBeInTheDocument();
       expect(screen.getByText("Chrome Header")).toBeInTheDocument();
@@ -170,24 +153,19 @@ describeFeature(feature, ({ Scenario }) => {
     });
   });
 
-  // ── Scenario 3 ─────────────────────────────────────────────────────
   Scenario("Chrome reads patched consumer context", ({ Given, When, Then, And }) => {
-    let capturedInitFlow: ReturnType<typeof useFlowInit>["initFlow"];
-    let capturedRef: React.RefObject<FlowOutletHandle | null>;
+    let capturedInit: ReturnType<typeof useSequentFlow>["init"];
 
     Given(
-      "a host with FlowOutlet configured with a chrome render prop that displays context",
+      "a host with SequentOutlet configured with a chrome render prop that displays context",
       () => {
         cleanup();
 
         function TestHost() {
-          const ref = useRef<FlowOutletHandle>(null);
-          const { initFlow } = useFlowInit();
-          capturedInitFlow = initFlow;
-          capturedRef = ref;
+          const { init, SequentOutlet } = useSequentFlow();
+          capturedInit = init;
           return (
-            <FlowOutlet
-              ref={ref}
+            <SequentOutlet
               fallback={<div>Loading…</div>}
               chrome={(slot) => (
                 <>
@@ -200,13 +178,13 @@ describeFeature(feature, ({ Scenario }) => {
         }
 
         render(<TestHost />);
-        expect(capturedInitFlow).toBeDefined();
+        expect(capturedInit).toBeDefined();
       },
     );
 
     And("the flow has been activated with initial context", () => {
       act(() => {
-        capturedInitFlow(() => ContextStep1, capturedRef, { title: "Initial" });
+        capturedInit(() => ContextStep1, { title: "Initial" });
       });
       expect(screen.getByText("Title: Initial")).toBeInTheDocument();
     });
@@ -222,29 +200,25 @@ describeFeature(feature, ({ Scenario }) => {
     });
   });
 
-  // ── Scenario 4 ─────────────────────────────────────────────────────
   Scenario("Outlet renders without chrome", ({ Given, When, Then }) => {
-    let capturedInitFlow: ReturnType<typeof useFlowInit>["initFlow"];
-    let capturedRef: React.RefObject<FlowOutletHandle | null>;
+    let capturedInit: ReturnType<typeof useSequentFlow>["init"];
 
-    Given("a host with FlowOutlet configured without chrome", () => {
+    Given("a host with SequentOutlet configured without chrome", () => {
       cleanup();
 
       function TestHost() {
-        const ref = useRef<FlowOutletHandle>(null);
-        const { initFlow } = useFlowInit();
-        capturedInitFlow = initFlow;
-        capturedRef = ref;
-        return <FlowOutlet ref={ref} />;
+        const { init, SequentOutlet } = useSequentFlow();
+        capturedInit = init;
+        return <SequentOutlet />;
       }
 
       render(<TestHost />);
-      expect(capturedInitFlow).toBeDefined();
+      expect(capturedInit).toBeDefined();
     });
 
-    When("initFlow is called with a sync step", () => {
+    When("init is called with a sync step", () => {
       act(() => {
-        capturedInitFlow(() => SyncStep, capturedRef);
+        capturedInit(() => SyncStep);
       });
     });
 
@@ -254,23 +228,18 @@ describeFeature(feature, ({ Scenario }) => {
     });
   });
 
-  // ── Scenario 5 ─────────────────────────────────────────────────────
-  Scenario("Chrome aborts flow via useFlowContext", ({ Given, When, Then, And }) => {
-    let capturedInitFlow: ReturnType<typeof useFlowInit>["initFlow"];
-    let capturedRef: React.RefObject<FlowOutletHandle | null>;
+  Scenario("Chrome aborts flow via useSequentContext", ({ Given, When, Then, And }) => {
+    let capturedInit: ReturnType<typeof useSequentFlow>["init"];
 
-    Given("a host with FlowOutlet configured with a chrome render prop that can abort", () => {
+    Given("a host with SequentOutlet configured with a chrome render prop that can abort", () => {
       cleanup();
       capturedAbortFromChrome = null;
 
       function TestHost() {
-        const ref = useRef<FlowOutletHandle>(null);
-        const { initFlow } = useFlowInit();
-        capturedInitFlow = initFlow;
-        capturedRef = ref;
+        const { init, SequentOutlet } = useSequentFlow();
+        capturedInit = init;
         return (
-          <FlowOutlet
-            ref={ref}
+          <SequentOutlet
             chrome={(slot) => (
               <>
                 <ChromeWithAbort />
@@ -282,18 +251,18 @@ describeFeature(feature, ({ Scenario }) => {
       }
 
       render(<TestHost />);
-      expect(capturedInitFlow).toBeDefined();
+      expect(capturedInit).toBeDefined();
     });
 
     And("the flow has been activated with a sync step", () => {
       act(() => {
-        capturedInitFlow(() => SyncStep, capturedRef);
+        capturedInit(() => SyncStep);
       });
       expect(screen.getByText("Chrome Abort")).toBeInTheDocument();
       expect(screen.getByText("Step Content")).toBeInTheDocument();
     });
 
-    When("the chrome component calls abort via useFlowContext", () => {
+    When("the chrome component calls abort via useSequentContext", () => {
       expect(capturedAbortFromChrome).not.toBeNull();
       act(() => {
         capturedAbortFromChrome?.();
@@ -306,23 +275,18 @@ describeFeature(feature, ({ Scenario }) => {
     });
   });
 
-  // ── Scenario 6 ─────────────────────────────────────────────────────
-  Scenario("Chrome resolves flow via useFlowContext", ({ Given, When, Then, And }) => {
-    let capturedInitFlow: ReturnType<typeof useFlowInit>["initFlow"];
-    let capturedRef: React.RefObject<FlowOutletHandle | null>;
+  Scenario("Chrome resolves flow via useSequentContext", ({ Given, When, Then, And }) => {
+    let capturedInit: ReturnType<typeof useSequentFlow>["init"];
 
-    Given("a host with FlowOutlet configured with a chrome render prop that can resolve", () => {
+    Given("a host with SequentOutlet configured with a chrome render prop that can resolve", () => {
       cleanup();
       capturedResolveFromChrome = null;
 
       function TestHost() {
-        const ref = useRef<FlowOutletHandle>(null);
-        const { initFlow } = useFlowInit();
-        capturedInitFlow = initFlow;
-        capturedRef = ref;
+        const { init, SequentOutlet } = useSequentFlow();
+        capturedInit = init;
         return (
-          <FlowOutlet
-            ref={ref}
+          <SequentOutlet
             chrome={(slot) => (
               <>
                 <ChromeWithResolve />
@@ -334,18 +298,18 @@ describeFeature(feature, ({ Scenario }) => {
       }
 
       render(<TestHost />);
-      expect(capturedInitFlow).toBeDefined();
+      expect(capturedInit).toBeDefined();
     });
 
     And("the flow has been activated with a sync step", () => {
       act(() => {
-        capturedInitFlow(() => SyncStep, capturedRef);
+        capturedInit(() => SyncStep);
       });
       expect(screen.getByText("Chrome Resolve")).toBeInTheDocument();
       expect(screen.getByText("Step Content")).toBeInTheDocument();
     });
 
-    When("the chrome component calls resolve via useFlowContext", () => {
+    When("the chrome component calls resolve via useSequentContext", () => {
       expect(capturedResolveFromChrome).not.toBeNull();
       act(() => {
         capturedResolveFromChrome?.("chrome-resolved");
@@ -358,24 +322,19 @@ describeFeature(feature, ({ Scenario }) => {
     });
   });
 
-  // ── Scenario 7 ─────────────────────────────────────────────────────
-  Scenario("Chrome calling useStep throws immediately", ({ Given, When, Then }) => {
-    let capturedInitFlow: ReturnType<typeof useFlowInit>["initFlow"];
-    let capturedRef: React.RefObject<FlowOutletHandle | null>;
+  Scenario("Chrome calling useSequentStep throws immediately", ({ Given, When, Then }) => {
+    let capturedInit: ReturnType<typeof useSequentFlow>["init"];
     let caughtError: unknown = null;
 
-    Given("a host with a FlowOutlet configured with a chrome component that calls useStep", () => {
+    Given("a host with a SequentOutlet configured with a chrome component that calls useSequentStep", () => {
       cleanup();
       caughtError = null;
 
       function TestHost() {
-        const ref = useRef<FlowOutletHandle>(null);
-        const { initFlow } = useFlowInit();
-        capturedInitFlow = initFlow;
-        capturedRef = ref;
+        const { init, SequentOutlet } = useSequentFlow();
+        capturedInit = init;
         return (
-          <FlowOutlet
-            ref={ref}
+          <SequentOutlet
             chrome={(slot) => (
               <>
                 <ChromeWithStep />
@@ -387,14 +346,14 @@ describeFeature(feature, ({ Scenario }) => {
       }
 
       render(<TestHost />);
-      expect(capturedInitFlow).toBeDefined();
+      expect(capturedInit).toBeDefined();
     });
 
-    When("initFlow is called with a sync step", () => {
+    When("init is called with a sync step", () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       try {
         act(() => {
-          capturedInitFlow(() => SyncStep, capturedRef);
+          capturedInit(() => SyncStep);
         });
       } catch (err) {
         caughtError = err;
@@ -404,7 +363,7 @@ describeFeature(feature, ({ Scenario }) => {
 
     Then("an error is thrown immediately when the chrome component renders", () => {
       expect(caughtError).toBeInstanceOf(Error);
-      expect((caughtError as Error).message).toContain("useStep()");
+      expect((caughtError as Error).message).toContain("useSequentStep()");
       expect((caughtError as Error).message).toContain("rendered step component");
     });
   });

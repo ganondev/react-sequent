@@ -1,45 +1,45 @@
 Feature: Chrome and flow context
 
-  FlowOutlet accepts an optional chrome render prop. Chrome receives the step slot as
+  SequentOutlet accepts an optional chrome render prop. Chrome receives the step slot as
   its argument, can wrap or compose around it, stays mounted across step transitions,
   and can read flow context.
 
   Scenario: Chrome receives step slot and renders it
-    Given a host with FlowOutlet configured with a chrome render prop
-    When  initFlow is called with a sync step
+    Given a host with SequentOutlet configured with a chrome render prop
+    When  init is called with a sync step
     Then  both the chrome and the step are visible
 
   Scenario: Chrome persists across step advancement
-    Given a host with FlowOutlet configured with a chrome render prop
+    Given a host with SequentOutlet configured with a chrome render prop
     And   the flow has been activated with a sync step
     When  the step advances to a new step
     Then  the chrome component is still visible
     And   the new step is rendered
 
   Scenario: Chrome reads patched consumer context
-    Given a host with FlowOutlet configured with a chrome render prop that displays context
+    Given a host with SequentOutlet configured with a chrome render prop that displays context
     And   the flow has been activated with initial context
     When  the step advances with a contextPatch
     Then  the chrome component displays the updated context value
 
   Scenario: Outlet renders without chrome
-    Given a host with FlowOutlet configured without chrome
-    When  initFlow is called with a sync step
+    Given a host with SequentOutlet configured without chrome
+    When  init is called with a sync step
     Then  only the step content is rendered
 
-  Scenario: Chrome aborts flow via useFlowContext
-    Given a host with FlowOutlet configured with a chrome render prop that can abort
+  Scenario: Chrome aborts flow via useSequentContext
+    Given a host with SequentOutlet configured with a chrome render prop that can abort
     And   the flow has been activated with a sync step
-    When  the chrome component calls abort via useFlowContext
+    When  the chrome component calls abort via useSequentContext
     Then  the outlet returns to idle
 
-  Scenario: Chrome resolves flow via useFlowContext
-    Given a host with FlowOutlet configured with a chrome render prop that can resolve
+  Scenario: Chrome resolves flow via useSequentContext
+    Given a host with SequentOutlet configured with a chrome render prop that can resolve
     And   the flow has been activated with a sync step
-    When  the chrome component calls resolve via useFlowContext
+    When  the chrome component calls resolve via useSequentContext
     Then  the outlet returns to idle
 
-  Scenario: Chrome calling useStep throws immediately
-    Given a host with a FlowOutlet configured with a chrome component that calls useStep
-    When  initFlow is called with a sync step
+  Scenario: Chrome calling useSequentStep throws immediately
+    Given a host with a SequentOutlet configured with a chrome component that calls useSequentStep
+    When  init is called with a sync step
     Then  an error is thrown immediately when the chrome component renders

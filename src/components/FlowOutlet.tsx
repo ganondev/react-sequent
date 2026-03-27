@@ -65,7 +65,7 @@ export const FlowOutlet = forwardRef<
   const abortRef = useRef<((reason?: unknown) => void) | null>(null);
   /** Monotonically increasing token — invalidates stale resolve/abort closures. */
   const flowIdRef = useRef(0);
-  /** Retains the last consumer context value after a flow resolves, so idle children can read it via `useFlowContext`. */
+  /** Retains the last consumer context value after a flow resolves, so idle children can read it via `useSequentContext`. */
   const lastConsumerContextRef = useRef<unknown>(undefined);
 
   const handleResolve = useCallback((value?: unknown) => {

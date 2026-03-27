@@ -5,7 +5,7 @@ title: Singleton Modal with Hook
 
 # Singleton Modal with Hook
 
-A flow rendered inside a **shared singleton modal** — a single `<FlowOutlet>` lives at the top of the tree inside a context provider. This enables an application to enter modal flows with a single shared `useModal` hook: any component in the subtree calls `useModal()` to open a flow without ever touching a ref or rendering an outlet itself.
+A flow rendered inside a **shared singleton modal** — a single `SequentOutlet` lives at the top of the tree inside a context provider. This enables an application to enter modal flows with a single shared `useModal` hook: any component in the subtree calls `useModal()` to open a flow without ever touching a ref or rendering an outlet itself.
 
 Click **Open Setup Flow** below to try it.
 
@@ -16,7 +16,7 @@ function SharedModalDemo() {
   const ModalContext = React.createContext(null);
 
   function ModalChrome({ children }) {
-    const { context: ctx, abort } = useFlowContext();
+    const { context: ctx, abort } = useSequentContext();
     return (
       <div className="demo-modal">
         <div className="demo-modal__header">
@@ -29,19 +29,17 @@ function SharedModalDemo() {
   }
 
   function ModalProvider({ children }) {
-    const ref = useRef(null);
-    const { initFlow } = useFlowInit();
+    const { init, SequentOutlet } = useSequentFlow();
 
     async function openModal(firstStep, ctx) {
-      return initFlow(firstStep, ref, ctx);
+      return init(firstStep, ctx);
     }
 
     return (
       <ModalContext.Provider value={{ openModal }}>
         {children}
         <div style={{ pointerEvents: "auto" }}>
-          <FlowOutlet
-            ref={ref}
+          <SequentOutlet
             chrome={(slot) => (
               <div className="demo-modal-overlay">
                 <ModalChrome>{slot}</ModalChrome>
@@ -58,12 +56,12 @@ function SharedModalDemo() {
   // ── Steps ─────────────────────────────────────────────────────────────────
 
   function StepWelcome() {
-    const { advance, abort } = useStep();
+    const { advance, abort } = useSequentStep();
     return (
       <div>
         <p className="demo-para">Welcome to the setup flow. This will only take a minute.</p>
         <div className="demo-actions">
-          <button onClick={() => advance(StepDetails, { title: "Details" })}>Get Started →</button>
+          <button onClick={() => advance(() => StepDetails, { title: "Details" })}>Get Started →</button>
           <button className="demo-btn-ghost" onClick={() => abort("cancelled")}>Cancel</button>
         </div>
       </div>
@@ -71,8 +69,8 @@ function SharedModalDemo() {
   }
 
   function StepDetails() {
-    const { retreat, advance, abort } = useStep();
-    const { context: ctx } = useFlowContext();
+    const { retreat, advance, abort } = useSequentStep();
+    const { context: ctx } = useSequentContext();
     const [email, setEmail] = useState("");
     return (
       <div>
@@ -89,7 +87,7 @@ function SharedModalDemo() {
         </div>
         <div className="demo-actions">
           <button className="demo-btn-ghost" onClick={retreat}>← Back</button>
-          <button onClick={() => advance(StepDone, { ...ctx, email, title: "All done!" })}>Continue →</button>
+          <button onClick={() => advance(() => StepDone, { ...ctx, email, title: "All done!" })}>Continue →</button>
           <button className="demo-btn-ghost" onClick={() => abort("cancelled")}>Cancel</button>
         </div>
       </div>
@@ -97,8 +95,8 @@ function SharedModalDemo() {
   }
 
   function StepDone() {
-    const { resolve } = useStep();
-    const { context: ctx } = useFlowContext();
+    const { resolve } = useSequentStep();
+    const { context: ctx } = useSequentContext();
     return (
       <div>
         <p className="demo-para">You're all set! 🎉</p>
@@ -116,7 +114,7 @@ function SharedModalDemo() {
     async function handleOpen() {
       setLog("");
       try {
-        const result = await openModal(StepWelcome, { title: "Welcome" });
+        const result = await openModal(() => StepWelcome, { title: "Welcome" });
         setLog(`Setup complete with result: ${JSON.stringify(result)}`);
       } catch {
         setLog("Flow aborted.");

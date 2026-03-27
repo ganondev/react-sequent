@@ -94,15 +94,16 @@ const config: Config = {
             { label: "Subsection Flow", to: "/docs/demos/subsection-flow" },
             { label: "Modal", to: "/docs/demos/modal" },
             { label: "Full-Screen Wizard", to: "/docs/demos/wizard" },
+            { label: "Toast", to: "/docs/demos/toast" },
           ],
         },
         {
           title: "API",
           items: [
-            { label: "useFlowInit", to: "/docs/api/use-flow-init" },
-            { label: "useStep", to: "/docs/api/use-step" },
-            { label: "useFlowContext", to: "/docs/api/use-flow-context" },
-            { label: "FlowOutlet", to: "/docs/api/flow-outlet" },
+            { label: "useSequentFlow", to: "/docs/api/use-sequent-flow" },
+            { label: "useSequentStep", to: "/docs/api/use-sequent-step" },
+            { label: "useSequentContext", to: "/docs/api/use-sequent-context" },
+            { label: "Types", to: "/docs/api/types" },
           ],
         },
         {
