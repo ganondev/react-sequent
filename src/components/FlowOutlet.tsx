@@ -27,6 +27,13 @@ import { FlowErrorBoundary } from "../internal/FlowErrorBoundary";
 import type { StepLoader } from "../internal/normalizer";
 import { normalizeStepLoader } from "../internal/normalizer";
 
+export interface FlowOutletProps {
+  children?: ReactNode;
+  fallback?: ReactNode;
+  errorFallback?: ReactNode;
+  chrome?: (children: ReactNode) => ReactNode;
+}
+
 // #region doc:handle
 /** Imperative handle exposed by FlowOutlet via its forwarded ref. */
 export interface FlowOutletHandle {
@@ -37,8 +44,6 @@ export interface FlowOutletHandle {
     onResolve?: (value?: unknown) => void,
     onAbort?: (reason?: unknown) => void,
   ) => void;
-  /** Abort the active flow. No-op when the outlet is idle. */
-  abort: (reason?: unknown) => void;
 }
 // #endregion doc:handle
 
@@ -49,192 +54,185 @@ interface FlowState {
 }
 
 // #region doc:props
-export const FlowOutlet = forwardRef<
-  FlowOutletHandle,
-  {
-    children?: ReactNode;
-    fallback?: ReactNode;
-    errorFallback?: ReactNode;
-    chrome?: (children: ReactNode) => ReactNode;
-  }
->(function FlowOutlet(props, ref) {
-  // #endregion doc:props
-  const [flowState, setFlowState] = useState<FlowState | null>(null);
-  const errorBoundaryRef = useRef<FlowErrorBoundary>(null);
-  const resolveRef = useRef<((value?: unknown) => void) | null>(null);
-  const abortRef = useRef<((reason?: unknown) => void) | null>(null);
-  /** Monotonically increasing token — invalidates stale resolve/abort closures. */
-  const flowIdRef = useRef(0);
-  /** Retains the last consumer context value after a flow resolves, so idle children can read it via `useSequentContext`. */
-  const lastConsumerContextRef = useRef<unknown>(undefined);
+export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
+  function FlowOutlet(props, ref) {
+    // #endregion doc:props
+    const [flowState, setFlowState] = useState<FlowState | null>(null);
+    const errorBoundaryRef = useRef<FlowErrorBoundary>(null);
+    const resolveRef = useRef<((value?: unknown) => void) | null>(null);
+    const abortRef = useRef<((reason?: unknown) => void) | null>(null);
+    /** Monotonically increasing token — invalidates stale resolve/abort closures. */
+    const flowIdRef = useRef(0);
+    /** Retains the last consumer context value after a flow resolves, so idle children can read it via `useSequentContext`. */
+    const lastConsumerContextRef = useRef<unknown>(undefined);
 
-  const handleResolve = useCallback((value?: unknown) => {
-    const cb = resolveRef.current;
-    resolveRef.current = null;
-    abortRef.current = null;
-    flowIdRef.current += 1;
-    setFlowState((prev) => {
-      if (prev !== null) {
-        lastConsumerContextRef.current = prev.consumerContext;
-      }
-      return null;
-    });
-    cb?.(value);
-  }, []);
-
-  const handleAbort = useCallback((reason?: unknown) => {
-    const cb = abortRef.current;
-    resolveRef.current = null;
-    abortRef.current = null;
-    flowIdRef.current += 1;
-    setFlowState(null);
-    cb?.(reason);
-  }, []);
-
-  const activeFlowId = flowIdRef.current;
-
-  const advance = useCallback(
-    (nextStep: StepLoader, contextPatch?: unknown) => {
-      if (flowIdRef.current !== activeFlowId) return;
-      const nextActiveStep = normalizeStepLoader(nextStep);
-      if (flowIdRef.current !== activeFlowId) return;
-      errorBoundaryRef.current?.resetError();
+    const handleResolve = useCallback((value?: unknown) => {
+      const cb = resolveRef.current;
+      resolveRef.current = null;
+      abortRef.current = null;
+      flowIdRef.current += 1;
       setFlowState((prev) => {
-        if (prev === null) return prev;
-        const newContext =
-          contextPatch !== undefined
-            ? typeof prev.consumerContext === "object" &&
-              prev.consumerContext !== null &&
-              typeof contextPatch === "object" &&
-              contextPatch !== null
-              ? {
-                  ...(prev.consumerContext as Record<string, unknown>),
-                  ...(contextPatch as Record<string, unknown>),
-                }
-              : contextPatch
-            : prev.consumerContext;
-        return {
-          history: [...prev.history, prev.activeStep],
-          activeStep: nextActiveStep,
-          consumerContext: newContext,
-        };
+        if (prev !== null) {
+          lastConsumerContextRef.current = prev.consumerContext;
+        }
+        return null;
       });
-    },
-    [activeFlowId],
-  );
+      cb?.(value);
+    }, []);
 
-  const retreat = useCallback(() => {
-    errorBoundaryRef.current?.resetError();
-    setFlowState((prev) => {
-      if (prev === null || prev.history.length === 0) return prev;
-      const previousStep = prev.history[prev.history.length - 1];
-      return {
-        history: prev.history.slice(0, -1),
-        activeStep: previousStep,
-        consumerContext: prev.consumerContext,
-      };
-    });
-  }, []);
+    const handleAbort = useCallback((reason?: unknown) => {
+      const cb = abortRef.current;
+      resolveRef.current = null;
+      abortRef.current = null;
+      flowIdRef.current += 1;
+      setFlowState(null);
+      cb?.(reason);
+    }, []);
 
-  useImperativeHandle(
-    ref,
-    () => ({
-      activate(
-        stepLoader: StepLoader,
-        initialContext?: unknown,
-        onResolve?: (value?: unknown) => void,
-        onAbort?: (reason?: unknown) => void,
-      ) {
-        const activeFlowId = flowIdRef.current;
-        const activeStep = normalizeStepLoader(stepLoader);
+    const activeFlowId = flowIdRef.current;
+
+    const advance = useCallback(
+      (nextStep: StepLoader, contextPatch?: unknown) => {
+        if (flowIdRef.current !== activeFlowId) return;
+        const nextActiveStep = normalizeStepLoader(nextStep);
         if (flowIdRef.current !== activeFlowId) return;
         errorBoundaryRef.current?.resetError();
-        flowIdRef.current += 1;
-        resolveRef.current = onResolve ?? null;
-        abortRef.current = onAbort ?? null;
-        setFlowState({
-          history: [],
-          activeStep,
-          consumerContext: initialContext,
+        setFlowState((prev) => {
+          if (prev === null) return prev;
+          const newContext =
+            contextPatch !== undefined
+              ? typeof prev.consumerContext === "object" &&
+                prev.consumerContext !== null &&
+                typeof contextPatch === "object" &&
+                contextPatch !== null
+                ? {
+                    ...(prev.consumerContext as Record<string, unknown>),
+                    ...(contextPatch as Record<string, unknown>),
+                  }
+                : contextPatch
+              : prev.consumerContext;
+          return {
+            history: [...prev.history, prev.activeStep],
+            activeStep: nextActiveStep,
+            consumerContext: newContext,
+          };
         });
       },
-      abort(reason?: unknown) {
-        handleAbort(reason);
-      },
-    }),
-    [handleAbort],
-  );
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: idle callbacks are stable
-  const idleContextValue: FlowContextValue = useMemo(
-    () => ({
-      consumerContext: lastConsumerContextRef.current,
-      resolve: () => {
-        throw new Error(
-          "FlowOutlet resolve() called while no flow is active. These callbacks are only valid during an active flow.",
-        );
-      },
-      abort: () => {
-        throw new Error(
-          "FlowOutlet abort() called while no flow is active. These callbacks are only valid during an active flow.",
-        );
-      },
-    }),
-    [flowState],
-  );
-
-  if (flowState === null) {
-    return (
-      <FlowContext.Provider value={idleContextValue}>{props.children ?? null}</FlowContext.Provider>
+      [activeFlowId],
     );
-  }
 
-  const ActiveStep = flowState.activeStep;
+    const retreat = useCallback(() => {
+      errorBoundaryRef.current?.resetError();
+      setFlowState((prev) => {
+        if (prev === null || prev.history.length === 0) return prev;
+        const previousStep = prev.history[prev.history.length - 1];
+        return {
+          history: prev.history.slice(0, -1),
+          activeStep: previousStep,
+          consumerContext: prev.consumerContext,
+        };
+      });
+    }, []);
 
-  // Capture the current flow ID so that stale closures (e.g. async
-  // callbacks from a previous flow's step) no-op instead of resolving
-  // or aborting the wrong flow.
-  const capturedFlowId = flowIdRef.current;
+    useImperativeHandle(
+      ref,
+      () => ({
+        activate(
+          stepLoader: StepLoader,
+          initialContext?: unknown,
+          onResolve?: (value?: unknown) => void,
+          onAbort?: (reason?: unknown) => void,
+        ) {
+          const activeFlowId = flowIdRef.current;
+          const activeStep = normalizeStepLoader(stepLoader);
+          if (flowIdRef.current !== activeFlowId) return;
+          errorBoundaryRef.current?.resetError();
+          flowIdRef.current += 1;
+          resolveRef.current = onResolve ?? null;
+          abortRef.current = onAbort ?? null;
+          setFlowState({
+            history: [],
+            activeStep,
+            consumerContext: initialContext,
+          });
+        },
+      }),
+      [],
+    );
 
-  const guardedResolve = (value?: unknown) => {
-    if (flowIdRef.current !== capturedFlowId) return;
-    handleResolve(value);
-  };
+    // biome-ignore lint/correctness/useExhaustiveDependencies: idle callbacks are stable
+    const idleContextValue: FlowContextValue = useMemo(
+      () => ({
+        consumerContext: lastConsumerContextRef.current,
+        resolve: () => {
+          throw new Error(
+            "FlowOutlet resolve() called while no flow is active. These callbacks are only valid during an active flow.",
+          );
+        },
+        abort: () => {
+          throw new Error(
+            "FlowOutlet abort() called while no flow is active. These callbacks are only valid during an active flow.",
+          );
+        },
+      }),
+      [flowState],
+    );
 
-  const guardedAbort = (reason?: unknown) => {
-    if (flowIdRef.current !== capturedFlowId) return;
-    handleAbort(reason);
-  };
+    if (flowState === null) {
+      return (
+        <FlowContext.Provider value={idleContextValue}>
+          {props.children ?? null}
+        </FlowContext.Provider>
+      );
+    }
 
-  // Outer context — available to chrome components and idle children.
-  const flowContextValue: FlowContextValue = {
-    consumerContext: flowState.consumerContext,
-    resolve: guardedResolve,
-    abort: guardedAbort,
-  };
+    const ActiveStep = flowState.activeStep;
 
-  // Inner context — only injected inside the step slot subtree.
-  const stepContextValue: StepContextValue = {
-    advance,
-    retreat,
-    resolve: guardedResolve,
-    abort: guardedAbort,
-    consumerContext: flowState.consumerContext,
-  };
+    // Capture the current flow ID so that stale closures (e.g. async
+    // callbacks from a previous flow's step) no-op instead of resolving
+    // or aborting the wrong flow.
+    const capturedFlowId = flowIdRef.current;
 
-  const stepSlot = (
-    <StepContext.Provider value={stepContextValue}>
-      <FlowErrorBoundary ref={errorBoundaryRef} errorFallback={props.errorFallback}>
-        <Suspense fallback={props.fallback ?? null}>
-          <ActiveStep />
-        </Suspense>
-      </FlowErrorBoundary>
-    </StepContext.Provider>
-  );
+    const guardedResolve = (value?: unknown) => {
+      if (flowIdRef.current !== capturedFlowId) return;
+      handleResolve(value);
+    };
 
-  return (
-    <FlowContext.Provider value={flowContextValue}>
-      {props.chrome ? props.chrome(stepSlot) : stepSlot}
-    </FlowContext.Provider>
-  );
-});
+    const guardedAbort = (reason?: unknown) => {
+      if (flowIdRef.current !== capturedFlowId) return;
+      handleAbort(reason);
+    };
+
+    // Outer context — available to chrome components and idle children.
+    const flowContextValue: FlowContextValue = {
+      consumerContext: flowState.consumerContext,
+      resolve: guardedResolve,
+      abort: guardedAbort,
+    };
+
+    // Inner context — only injected inside the step slot subtree.
+    const stepContextValue: StepContextValue = {
+      advance,
+      retreat,
+      resolve: guardedResolve,
+      abort: guardedAbort,
+      consumerContext: flowState.consumerContext,
+    };
+
+    const stepSlot = (
+      <StepContext.Provider value={stepContextValue}>
+        <FlowErrorBoundary ref={errorBoundaryRef} errorFallback={props.errorFallback}>
+          <Suspense fallback={props.fallback ?? null}>
+            <ActiveStep />
+          </Suspense>
+        </FlowErrorBoundary>
+      </StepContext.Provider>
+    );
+
+    return (
+      <FlowContext.Provider value={flowContextValue}>
+        {props.chrome ? props.chrome(stepSlot) : stepSlot}
+      </FlowContext.Provider>
+    );
+  },
+);
