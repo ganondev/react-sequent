@@ -20,6 +20,9 @@ export function useSequentFlow<TResult = unknown>(): UseSequentFlowReturn<TResul
 
   const init = useCallback((stepLoader: StepLoader, initialContext?: unknown): Promise<TResult> => {
     const outlet = outletRef.current;
+    // TODO instead of throwing, we could queue the init call and execute it once the outlet mounts.
+    // This would allow init() to be called before the outlet is rendered.
+    // This reduces edge cases and dev friction.
     if (!outlet) {
       throw new Error(
         "SequentOutlet is not mounted. Ensure <SequentOutlet /> is rendered before calling init().",
