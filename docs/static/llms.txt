@@ -1,0 +1,465 @@
+# react-sequent
+
+> react-sequent is a lightweight React 19+ utility for building UX flows — multi-step forms, onboarding wizards, modal flows, or any UI that moves through discrete states — where each step owns its own transition logic instead of a centralized state map.
+
+- Docs: https://ganondev.github.io/react-sequent/
+- GitHub: https://github.com/ganondev/react-sequent
+- License: MIT
+- Current version: 0.1.0-alpha
+- Peer dependencies: React 19+, React DOM 19+
+
+## Philosophy
+
+Most state machine libraries (XState, Zag, etc.) require all states and transitions to be defined upfront in a centralized config. The machine sits above the components in the control hierarchy.
+
+react-sequent inverts this. Flows are **implicit** — transitions emerge from step-level logic rather than a global declaration:
+
+- Add, remove, or reorder steps without touching a central config.
+- Branching logic lives where it's most readable — in the step itself. Branching is just an `if` statement; there is no special branching API.
+- Steps are easy to test in isolation because each one is self-contained.
+
+The library's API is deliberately minimal. When in doubt, it does less. If a consumer could implement a feature themselves in five lines, it probably doesn't belong in the library.
+
+Important notes:
+
+- `context` is consumer-owned — the library carries it, never inspects or mutates it. It is a delivery mechanism, not a state management feature.
+- `retreat()` navigates backward; it does **not** restore step-local state. If state must survive a retreat, write it into context before advancing.
+- Typed flows via `defineSequentFlow` are entirely opt-in and perform no runtime work — they are a type boundary, not a registry or provider.
+- The library uses two nested React contexts internally (`FlowContext` and `StepContext`) to enforce strict hook compartmentalization. Consumers never interact with them directly.
+
+## Vocabulary
+
+| Term | Meaning |
+|---|---|
+| Flow | A sequence of steps managed as a unit |
+| Step | A discrete state in a flow; owns its own transition logic |
+| Advance | Move to the next step as determined by the current step's logic |
+| Retreat | Move to the previous step by popping the history stack |
+| Context | Flow-scoped, consumer-owned data carried across all steps |
+| Outlet | The mount point where the active step renders (`SequentOutlet`) |
+| Chrome | Stable UI (headers, progress bars) rendered inside the outlet but outside the step's Suspense boundary |
+| Resolve | A flow completes successfully, returning a value |
+| Abort | A flow exits without completing |
+| StepLoader | A zero-arg factory returning a component sync or async |
+
+## Public API Surface
+
+The library exports three hooks, one factory function, and associated types. There is no JSX the consumer imports directly — the outlet component is returned from `useSequentFlow()`.
+
+### `useSequentFlow<TResult>()`
+
+Primary hook for creating and controlling a single flow host.
+
+```typescript
+function useSequentFlow<TResult = unknown>(): {
+  init: (stepLoader: StepLoader, initialContext?: unknown) => Promise<TResult>;
+  SequentOutlet: FunctionComponent<SequentOutletProps>;
+};
+```
+
+- `init(stepLoader, initialContext?)` — starts a flow. Returns a promise that resolves when the step calls `resolve(value)` or rejects when a step calls `abort(reason)`. Throws if `SequentOutlet` is not currently mounted.
+- `SequentOutlet` — a bound outlet component for this hook instance. Renders idle children when no flow is active. Accepts `children`, `fallback`, `errorFallback`, and `chrome` props.
+
+One `useSequentFlow()` call creates one isolated flow host. Multiple hosts can coexist via separate `useSequentFlow()` calls.
+
+### `useSequentStep<TResult>()`
+
+Hook for active step components only. Throws immediately if called outside the active step's subtree (e.g. from chrome or idle children).
+
+```typescript
+function useSequentStep<TResult = unknown>(): {
+  advance: (nextStep: StepLoader, contextPatch?: unknown) => void;
+  retreat: () => void;
+  resolve: (value?: TResult) => void;
+  abort: (reason?: unknown) => void;
+  context: unknown;
+};
+```
+
+- `advance(nextStep, contextPatch?)` — pushes the current step to history and renders `nextStep`. If `contextPatch` is provided and both the current context and patch are objects, they are shallow-merged; otherwise the patch replaces the context.
+- `retreat()` — pops the history stack and renders the previous step. Always synchronous. No-ops if history is empty.
+- `resolve(value?)` — ends the flow successfully. The promise from `init()` resolves with `value`.
+- `abort(reason?)` — ends the flow without completing. The promise from `init()` rejects with `reason`.
+- `context` — the current flow context value (typed as `unknown` unless using `defineSequentFlow`).
+
+### `useSequentContext<TContext>()`
+
+Hook for chrome components, idle children, and any component inside the outlet's provider boundary. Does not throw outside a step — it is available wherever `FlowContext` is provided.
+
+```typescript
+function useSequentContext<TContext = unknown>(): {
+  context: TContext;
+  resolve: (value?: unknown) => void;
+  abort: (reason?: unknown) => void;
+};
+```
+
+- `context` — during an active flow, the current consumer context. While idle, the context from the last *resolved* flow, or `undefined` if no flow has resolved yet. Aborted flows do not update idle context.
+- `resolve` / `abort` — terminate the flow. Throws if called while idle (no active flow).
+- Has **no navigation capabilities** — `advance` and `retreat` are exclusive to `useSequentStep`.
+
+### `defineSequentFlow<TContext, TResult>()`
+
+Factory that creates a typed scope for a flow. Performs no runtime coordination and creates no provider or registry.
+
+```typescript
+function defineSequentFlow<
+  TContext extends object = Record<string, never>,
+  TResult = unknown,
+>(): SequentFlowDefinition<TContext, TResult>;
+```
+
+Returns `{ useSequentFlow, useSequentStep, useSequentContext }` — typed wrappers around the base hooks:
+
+- `useSequentFlow().init()` requires `initialContext: TContext` (no longer optional)
+- `useSequentStep().context` is `TContext`; `advance()` patch is `Partial<TContext>`
+- `useSequentStep().resolve()` accepts `TResult`
+- `useSequentContext().context` is `TContext | undefined`
+
+`TContext` must be a plain object type — arrays and functions are rejected at the type level.
+
+### `StepLoader`
+
+```typescript
+type StepLoader = () =>
+  | ComponentType
+  | { default: ComponentType }
+  | Promise<ComponentType | { default: ComponentType }>;
+```
+
+Steps are always passed as zero-arg factories. The library normalizes async factories into `React.lazy` components internally:
+
+- Sync: `() => MyStep` — renders immediately, no Suspense fallback
+- Async: `() => import("./MyStep")` — suspends at the outlet boundary, showing the `fallback` prop
+
+### `SequentOutletProps`
+
+```typescript
+type SequentOutletProps = {
+  children?: ReactNode;     // Idle content — rendered when no flow is active
+  fallback?: ReactNode;     // Suspense fallback for async step loading
+  errorFallback?: ReactNode; // Error boundary fallback for step render errors
+  chrome?: (children: ReactNode) => ReactNode; // Stable wrapper around the step slot
+};
+```
+
+### Exported Types
+
+```typescript
+interface SequentFlowDefinition<TContext extends object, TResult = unknown> {
+  useSequentFlow(): TypedUseFlowReturn<TContext, TResult>;
+  useSequentStep(): TypedUseStepReturn<TContext, TResult>;
+  useSequentContext(): TypedUseContextReturn<TContext, TResult>;
+}
+
+interface TypedUseFlowReturn<TContext extends object, TResult = unknown> {
+  init: (stepLoader: StepLoader, initialContext: TContext) => Promise<TResult>;
+  SequentOutlet: FunctionComponent<SequentOutletProps>;
+}
+
+interface TypedUseStepReturn<TContext extends object, TResult = unknown> {
+  advance: (nextStep: StepLoader, contextPatch?: Partial<TContext>) => void;
+  retreat: () => void;
+  resolve: (value?: TResult) => void;
+  abort: (reason?: unknown) => void;
+  context: TContext;
+}
+
+interface TypedUseContextReturn<TContext extends object, TResult = unknown> {
+  context: TContext | undefined;
+  resolve: (value?: TResult) => void;
+  abort: (reason?: unknown) => void;
+}
+```
+
+## Outlet Architecture
+
+The outlet has two states: **idle** and **active**.
+
+- **Idle** — renders `children` if provided, otherwise nothing. Idle children are wrapped in `FlowContext.Provider` so they can call `useSequentContext()`.
+- **Active** — renders the active step inside a `StepContext.Provider`, wrapped by `FlowErrorBoundary` and `Suspense`. If a `chrome` render prop is provided, chrome receives the step slot (error boundary + Suspense + step) and returns JSX.
+
+The component tree during an active flow with chrome:
+
+```
+SequentOutlet
+└─ FlowContext.Provider        ← outer context (chrome + idle children can read)
+   └─ chrome(stepSlot)         ← stable across step transitions
+      └─ StepContext.Provider  ← inner context (only active step can read)
+         └─ FlowErrorBoundary  ← catches step render errors
+            └─ Suspense        ← handles async step loading
+               └─ ActiveStep   ← swaps on each transition
+```
+
+Chrome renders inside `FlowContext` but outside `StepContext`. This means chrome can call `useSequentContext()` but not `useSequentStep()` — enforced by an immediate throw.
+
+## Async Step Loading
+
+- Sync step loaders render immediately with no Suspense involvement.
+- Async step loaders suspend at the outlet's `Suspense` boundary; the consumer's `fallback` is shown.
+- The library normalizes `() => import('./Step')` into `React.lazy` internally — consumers never need to call `React.lazy` themselves.
+- `retreat()` is always synchronous — the previous step is already loaded and in the history stack.
+
+## Error Boundary
+
+The outlet wraps steps in a `FlowErrorBoundary`. If a step throws during render:
+
+- The `errorFallback` prop is rendered in place of the broken step.
+- The outlet itself remains mounted.
+- Advancing to a new step or re-activating the outlet resets the error boundary automatically.
+
+## Context Merging
+
+When `advance(nextStep, contextPatch)` is called:
+
+- If both the existing context and the patch are non-null objects, they are **shallow-merged** (`{ ...prevContext, ...patch }`).
+- Otherwise, the patch replaces the context entirely.
+
+Context is never deep-merged, cloned, or inspected by the library.
+
+## Idle Children & Post-Flow Context
+
+`SequentOutlet` accepts `children` that render when idle (no active flow). These idle children can call `useSequentContext()`:
+
+- Before any flow has resolved: `context` is `undefined`.
+- After a flow resolves: `context` is the consumer context from the last resolved flow.
+- After a flow aborts: `context` is unchanged (aborted flows do not update idle context).
+
+This enables patterns like a "Start Again" button that knows whether a previous flow completed.
+
+## Code Snippets
+
+### Minimal Two-Step Flow
+
+```tsx
+import { useSequentFlow, useSequentStep } from "react-sequent";
+
+function Step1() {
+  const { advance } = useSequentStep();
+  return <button onClick={() => advance(() => Step2)}>Next</button>;
+}
+
+function Step2() {
+  const { retreat, resolve } = useSequentStep();
+  return (
+    <>
+      <button onClick={() => retreat()}>Back</button>
+      <button onClick={() => resolve("done")}>Finish</button>
+    </>
+  );
+}
+
+function App() {
+  const { init, SequentOutlet } = useSequentFlow();
+  const start = async () => {
+    const result = await init(() => Step1);
+    console.log("Flow resolved:", result);
+  };
+  return (
+    <>
+      <SequentOutlet />
+      <button onClick={start}>Start</button>
+    </>
+  );
+}
+```
+
+### Branching
+
+```tsx
+function PaymentStep() {
+  const { advance } = useSequentStep();
+  const onSelect = (method: string) => {
+    if (method === "credit") {
+      advance(() => CreditCardForm);
+    } else {
+      advance(() => BankTransferForm);
+    }
+  };
+  return <PaymentMethodPicker onSelect={onSelect} />;
+}
+```
+
+### Async Step Loading
+
+```tsx
+// Dynamic import — outlet shows fallback while loading
+advance(() => import("./HeavyStep"));
+```
+
+### Flow Context
+
+```tsx
+// Start with initial context
+init(() => Step1, { name: "Alice", plan: "pro" });
+
+// Read and patch context inside a step
+function Step1() {
+  const { advance, context } = useSequentStep();
+  return (
+    <button onClick={() => advance(() => Step2, { step1Complete: true })}>
+      Hello, {context.name}!
+    </button>
+  );
+}
+```
+
+### Typed Flow with defineSequentFlow
+
+```tsx
+import { defineSequentFlow } from "react-sequent";
+
+interface CheckoutContext {
+  cartId: string;
+  shippingAddress?: string;
+}
+
+interface CheckoutResult {
+  orderId: string;
+}
+
+const { useSequentFlow, useSequentStep } = defineSequentFlow<
+  CheckoutContext,
+  CheckoutResult
+>();
+
+function ShippingStep() {
+  const { context, advance } = useSequentStep();
+  return (
+    <button onClick={() => advance(() => ReviewStep, { shippingAddress: "123 Main" })}>
+      Ship to {context.cartId}
+    </button>
+  );
+}
+
+function ReviewStep() {
+  const { context, resolve } = useSequentStep();
+  return (
+    <button onClick={() => resolve({ orderId: context.cartId })}>
+      Place Order
+    </button>
+  );
+}
+
+function CheckoutPage() {
+  const { init, SequentOutlet } = useSequentFlow();
+  return (
+    <>
+      <SequentOutlet />
+      <button onClick={() => init(() => ShippingStep, { cartId: "cart-1" })}>
+        Begin Checkout
+      </button>
+    </>
+  );
+}
+```
+
+### Chrome Render Prop
+
+```tsx
+function ModalChrome({ children }: { children: ReactNode }) {
+  const { context, abort } = useSequentContext();
+  return (
+    <div className="modal">
+      <header>
+        <h2>{context.title}</h2>
+        <button onClick={() => abort("cancelled")}>✕</button>
+      </header>
+      <div className="modal-body">{children}</div>
+    </div>
+  );
+}
+
+function App() {
+  const { init, SequentOutlet } = useSequentFlow();
+  return (
+    <SequentOutlet
+      chrome={(slot) => <ModalChrome>{slot}</ModalChrome>}
+      fallback={<div>Loading…</div>}
+      errorFallback={<div>Something went wrong.</div>}
+    />
+  );
+}
+```
+
+### Singleton Modal Pattern
+
+```tsx
+const ModalContext = React.createContext(null);
+
+function ModalProvider({ children }) {
+  const { init, SequentOutlet } = useSequentFlow();
+  const openModal = (firstStep, ctx) => init(firstStep, ctx);
+  return (
+    <ModalContext.Provider value={{ openModal }}>
+      {children}
+      <SequentOutlet chrome={(slot) => <ModalOverlay>{slot}</ModalOverlay>} />
+    </ModalContext.Provider>
+  );
+}
+
+function useModal() { return React.useContext(ModalContext); }
+
+// Any component in the subtree can open a modal flow:
+function SomeButton() {
+  const { openModal } = useModal();
+  const handleClick = async () => {
+    const result = await openModal(() => WelcomeStep, { title: "Welcome" });
+  };
+  return <button onClick={handleClick}>Open</button>;
+}
+```
+
+### Self-Terminating Step (Toast)
+
+```tsx
+function ToastStep() {
+  const { resolve } = useSequentStep();
+  const { context } = useSequentContext();
+
+  useEffect(() => {
+    const id = setTimeout(() => resolve("dismissed"), 5000);
+    return () => clearTimeout(id);
+  }, [resolve]);
+
+  return <div>{context.message}</div>;
+}
+```
+
+### Idle Children
+
+```tsx
+function IdleContent() {
+  const { context } = useSequentContext();
+  return <button>{context ? "Start Again" : "Begin"}</button>;
+}
+
+<SequentOutlet>
+  <IdleContent />
+</SequentOutlet>
+```
+
+## Docs
+
+- [Getting Started](https://ganondev.github.io/react-sequent/docs/getting-started): Installation, quick start, and first flow walkthrough
+- [Core Concepts](https://ganondev.github.io/react-sequent/docs/concepts): Philosophy, vocabulary, hook separation, outlet lifecycle, history, async loading, chrome, and typed flows
+
+## API Reference
+
+- [useSequentFlow](https://ganondev.github.io/react-sequent/docs/api/use-sequent-flow): Flow initialization hook and bound outlet component
+- [useSequentStep](https://ganondev.github.io/react-sequent/docs/api/use-sequent-step): Step-level transitions, context access, and flow termination
+- [useSequentContext](https://ganondev.github.io/react-sequent/docs/api/use-sequent-context): Flow-level context for chrome and idle children
+- [defineSequentFlow](https://ganondev.github.io/react-sequent/docs/api/define-sequent-flow): Typed flow scope factory
+- [Types](https://ganondev.github.io/react-sequent/docs/api/types): All exported TypeScript types and interfaces
+
+## Demos
+
+- [Subsection Flow](https://ganondev.github.io/react-sequent/docs/demos/subsection-flow): Inline multi-step form with idle children and retreat
+- [Singleton Modal](https://ganondev.github.io/react-sequent/docs/demos/modal): Shared modal context provider pattern with chrome and abort
+- [Full-Screen Wizard](https://ganondev.github.io/react-sequent/docs/demos/wizard): Onboarding wizard with progress bar, async steps, and context accumulation
+- [Auto-Dismissing Toast](https://ganondev.github.io/react-sequent/docs/demos/toast): Self-terminating step using resolve inside useEffect
+
+## Optional
+
+- [GitHub Repository](https://github.com/ganondev/react-sequent): Source code, issue tracker, and contribution guidelines
+- [npm Package](https://www.npmjs.com/package/react-sequent): Package registry listing
