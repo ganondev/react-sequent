@@ -7,6 +7,63 @@ title: Types
 
 Exported types from `react-sequent`.
 
+## `SequentFlowDefinition`
+
+```typescript
+interface SequentFlowDefinition<
+  TContext extends object,
+  TResult = unknown,
+> {
+  useSequentFlow(): TypedUseFlowReturn<TContext, TResult>;
+  useSequentStep(): TypedUseStepReturn<TContext, TResult>;
+  useSequentContext(): TypedUseContextReturn<TContext, TResult>;
+}
+```
+
+Typed flow scope returned by `defineSequentFlow()`.
+
+## `TypedUseFlowReturn`
+
+```typescript
+interface TypedUseFlowReturn<
+  TContext extends object,
+  TResult = unknown,
+> {
+  init: (stepLoader: StepLoader, initialContext: TContext) => Promise<TResult>;
+  SequentOutlet: FunctionComponent<SequentOutletProps>;
+}
+```
+
+## `TypedUseStepReturn`
+
+```typescript
+interface TypedUseStepReturn<
+  TContext extends object,
+  TResult = unknown,
+> {
+  advance: (nextStep: StepLoader, contextPatch?: Partial<TContext>) => void;
+  retreat: () => void;
+  resolve: (value?: TResult) => void;
+  abort: (reason?: unknown) => void;
+  context: TContext;
+}
+```
+
+## `TypedUseContextReturn`
+
+```typescript
+interface TypedUseContextReturn<
+  TContext extends object,
+  TResult = unknown,
+> {
+  context: TContext | undefined;
+  resolve: (value?: TResult) => void;
+  abort: (reason?: unknown) => void;
+}
+```
+
+These typed wrappers are intended for plain object context shapes.
+
 ## `StepLoader`
 
 ```typescript

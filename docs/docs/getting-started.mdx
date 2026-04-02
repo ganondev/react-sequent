@@ -136,3 +136,43 @@ function Step1() {
 - [**useSequentFlow**](/docs/api/use-sequent-flow) — flow initialization and the bound outlet
 - [**useSequentStep**](/docs/api/use-sequent-step) — transitions, context, and flow completion
 - [**useSequentContext**](/docs/api/use-sequent-context) — flow-level context for chrome and idle children
+
+## Adding type safety
+
+If you want `init()`, `useSequentStep()`, and `useSequentContext()` to share the same context type, define a typed scope at module level:
+
+```tsx
+import { defineSequentFlow } from "react-sequent";
+
+interface SignupContext {
+  email: string;
+  plan?: string;
+}
+
+const { useSequentFlow, useSequentStep } = defineSequentFlow<SignupContext, string>();
+
+function PlanStep() {
+  const { context, advance } = useSequentStep();
+
+  return (
+    <button onClick={() => advance(() => ConfirmStep, { plan: "pro" })}>
+      Continue {context.email}
+    </button>
+  );
+}
+
+function App() {
+  const { init, SequentOutlet } = useSequentFlow();
+
+  return (
+    <>
+      <SequentOutlet />
+      <button onClick={() => init(() => PlanStep, { email: "alice@example.com" })}>
+        Start signup
+      </button>
+    </>
+  );
+}
+```
+
+See [**defineSequentFlow**](/docs/api/define-sequent-flow) for the full API.

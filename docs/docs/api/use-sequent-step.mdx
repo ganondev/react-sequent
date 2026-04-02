@@ -44,3 +44,5 @@ function PaymentStep() {
 :::tip
 `useSequentStep()` is only valid inside the active step subtree. Chrome and idle children should use `useSequentContext()`.
 :::
+
+For a typed scope that narrows `context` and `advance()` patches consistently through `useSequentStep()`, see [**defineSequentFlow**](/docs/api/define-sequent-flow).

@@ -1,0 +1,82 @@
+---
+sidebar_position: 1
+title: defineSequentFlow
+---
+
+# defineSequentFlow
+
+Creates a typed scope for a flow.
+
+`defineSequentFlow()` performs no runtime coordination and creates no provider or registry. It returns a typed bundle of wrappers around the existing hooks so `init()`, `useSequentStep()`, and `useSequentContext()` agree on the same context and result types.
+
+## Signature
+
+```typescript
+function defineSequentFlow<
+  TContext extends object = Record<string, never>,
+  TResult = unknown,
+>(): SequentFlowDefinition<TContext, TResult>;
+```
+
+## Example
+
+```tsx
+import { defineSequentFlow } from "react-sequent";
+
+interface CheckoutContext {
+  cartId: string;
+  shippingAddress?: string;
+}
+
+interface CheckoutResult {
+  orderId: string;
+}
+
+const { useSequentFlow, useSequentStep } = defineSequentFlow<
+  CheckoutContext,
+  CheckoutResult
+>();
+
+function ShippingStep() {
+  const { context, advance } = useSequentStep();
+
+  return (
+    <button
+      onClick={() =>
+        advance(() => ReviewStep, { shippingAddress: `${context.cartId}-ship` })
+      }
+    >
+      Continue
+    </button>
+  );
+}
+
+function ReviewStep() {
+  const { context, resolve } = useSequentStep();
+  return <button onClick={() => resolve({ orderId: context.cartId })}>Finish</button>;
+}
+
+function CheckoutPage() {
+  const { init, SequentOutlet } = useSequentFlow();
+
+  return (
+    <>
+      <SequentOutlet />
+      <button onClick={() => init(() => ShippingStep, { cartId: "cart-1" })}>Start</button>
+    </>
+  );
+}
+```
+
+## Returned wrappers
+
+- `useSequentFlow()` narrows `init()` so typed flows require an initial context of `TContext`
+- `useSequentStep()` narrows `context` to `TContext` and `advance()` patches to `Partial<TContext>`
+- `useSequentContext()` narrows `context` to `TContext | undefined` and `resolve()` to `TResult`
+
+## Notes
+
+- Typed flows are optional. The existing raw hooks are unchanged.
+- Typed contexts are intended for plain object shapes.
+- `useSequentContext().context` is `undefined` while the outlet is idle before the first resolved flow.
+- The typed scope only constrains TypeScript. Runtime behavior stays the same.

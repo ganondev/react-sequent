@@ -52,6 +52,12 @@ The library exposes a primary flow hook plus two runtime hooks with **strictly s
 - Available to any component inside the outlet's **flow-level** provider boundary (chrome, idle children, and steps)
 - Has **no navigation capabilities** — cannot `advance` or `retreat`
 
+### `defineSequentFlow` — for typed scopes
+
+- Declares a flow's context and result types once at module scope
+- Returns typed wrappers around `useSequentFlow`, `useSequentStep`, and `useSequentContext`
+- Performs **no runtime work** — it is a type boundary, not a registry or provider
+
 This compartmentalization is a hard requirement, not a preference. A step must never be able to access initializer-level capabilities, and vice versa.
 
 `useSequentStep()` is enforced at the React tree level — it throws immediately if called outside the active step's subtree (e.g. from chrome or an idle child). The correct hook for those contexts is `useSequentContext()`.
@@ -102,3 +108,36 @@ Chrome is stable UI that wraps the step — modal headers, progress indicators, 
 ```
 
 Chrome reads flow state via `useSequentContext()`. Steps write chrome-relevant data into context via `advance`'s `contextPatch` parameter.
+
+## Typed Flows
+
+The base hooks are intentionally minimal. `useSequentStep().context` is `unknown` by default, and `advance()` accepts an untyped patch.
+
+If you want all three hooks to agree on a single context and result type, create a typed scope with `defineSequentFlow()`:
+
+```tsx
+import { defineSequentFlow } from "react-sequent";
+
+interface CheckoutContext {
+  cartId: string;
+  shippingAddress?: string;
+}
+
+interface CheckoutResult {
+  orderId: string;
+}
+
+const { useSequentFlow, useSequentStep, useSequentContext } = defineSequentFlow<
+  CheckoutContext,
+  CheckoutResult
+>();
+```
+
+From there:
+
+- `useSequentFlow().init()` requires an initial `CheckoutContext`
+- `useSequentStep().context` is `CheckoutContext`
+- `useSequentStep().advance()` accepts `Partial<CheckoutContext>`
+- `useSequentContext().context` is `CheckoutContext | undefined`
+
+Typed scopes are entirely opt-in. They do not change runtime behavior or the implicit flow model.
