@@ -135,26 +135,28 @@ function TestHost({ children, onInit }: { children?: ReactNode; onInit?: (init: 
   );
 }
 
-function TestHostWithPromise({
-  onPromise,
-  step,
-}: {
-  onPromise?: (promise: Promise<unknown>) => void;
-  step: Parameters<InitFn>[0];
-}) {
-  const { init, SequentOutlet } = useSequentFlow();
+function TestHostWithFlowState({ step }: { step: Parameters<InitFn>[0] }) {
+  const { init, status, result, SequentOutlet } = useSequentFlow();
+
+  const resultLabel =
+    result === null
+      ? "none"
+      : result.status === "resolved"
+        ? `resolved:${JSON.stringify(result.value)}`
+        : `aborted:${JSON.stringify(result.reason)}`;
 
   return (
     <>
       <button
         type="button"
         onClick={() => {
-          const promise = init(step);
-          onPromise?.(promise);
+          init(step);
         }}
       >
         Init
       </button>
+      <div>status:{status}</div>
+      <div>result:{resultLabel}</div>
       <SequentOutlet />
     </>
   );
@@ -245,27 +247,25 @@ describe("useSequentFlow", () => {
       expect(screen.queryByText("Resolve")).not.toBeInTheDocument();
     });
 
-    it("resolves the init promise with the value passed to resolve()", async () => {
-      let promise: Promise<unknown> | undefined;
+    it("stores resolved result state with the value passed to resolve()", async () => {
+      render(<TestHostWithFlowState step={() => StepWithResolveValue} />);
 
-      render(
-        <TestHostWithPromise
-          onPromise={(nextPromise) => {
-            promise = nextPromise;
-          }}
-          step={() => StepWithResolveValue}
-        />,
-      );
+      expect(screen.getByText("status:idle")).toBeInTheDocument();
+      expect(screen.getByText("result:none")).toBeInTheDocument();
 
       await act(async () => {
         screen.getByText("Init").click();
       });
 
+      expect(screen.getByText("status:active")).toBeInTheDocument();
+      expect(screen.getByText("result:none")).toBeInTheDocument();
+
       await act(async () => {
         screen.getByText("ResolveValue").click();
       });
 
-      await expect(promise).resolves.toBe("success-value");
+      expect(screen.getByText("status:idle")).toBeInTheDocument();
+      expect(screen.getByText('result:resolved:"success-value"')).toBeInTheDocument();
     });
   });
 
@@ -291,27 +291,25 @@ describe("useSequentFlow", () => {
       expect(screen.queryByText("Abort")).not.toBeInTheDocument();
     });
 
-    it("rejects the init promise with the reason passed to abort()", async () => {
-      let promise: Promise<unknown> | undefined;
+    it("stores aborted result state with the reason passed to abort()", async () => {
+      render(<TestHostWithFlowState step={() => StepWithAbortReason} />);
 
-      render(
-        <TestHostWithPromise
-          onPromise={(nextPromise) => {
-            promise = nextPromise;
-          }}
-          step={() => StepWithAbortReason}
-        />,
-      );
+      expect(screen.getByText("status:idle")).toBeInTheDocument();
+      expect(screen.getByText("result:none")).toBeInTheDocument();
 
       await act(async () => {
         screen.getByText("Init").click();
       });
 
+      expect(screen.getByText("status:active")).toBeInTheDocument();
+      expect(screen.getByText("result:none")).toBeInTheDocument();
+
       await act(async () => {
         screen.getByText("AbortReason").click();
       });
 
-      await expect(promise).rejects.toBe("abort-reason");
+      expect(screen.getByText("status:idle")).toBeInTheDocument();
+      expect(screen.getByText('result:aborted:"abort-reason"')).toBeInTheDocument();
     });
   });
 
@@ -546,6 +544,28 @@ describe("useSequentFlow", () => {
         screen.getByText("Init").click();
       });
       expect(screen.getByText("Resolve")).toBeInTheDocument();
+    });
+
+    it("keeps the last result while a new flow is active", async () => {
+      render(<TestHostWithFlowState step={() => StepWithResolveValue} />);
+
+      await act(async () => {
+        screen.getByText("Init").click();
+      });
+
+      await act(async () => {
+        screen.getByText("ResolveValue").click();
+      });
+
+      expect(screen.getByText('result:resolved:"success-value"')).toBeInTheDocument();
+      expect(screen.getByText("status:idle")).toBeInTheDocument();
+
+      await act(async () => {
+        screen.getByText("Init").click();
+      });
+
+      expect(screen.getByText('result:resolved:"success-value"')).toBeInTheDocument();
+      expect(screen.getByText("status:active")).toBeInTheDocument();
     });
   });
 

@@ -70,7 +70,7 @@ function CheckoutPage() {
 
 ## Returned wrappers
 
-- `useSequentFlow()` narrows `init()` so typed flows require an initial context of `TContext`
+- `useSequentFlow()` narrows `init()` so typed flows require an initial context of `TContext`, while preserving `status` and typed `result`
 - `useSequentStep()` narrows `context` to `TContext` and `advance()` patches to `Partial<TContext>`
 - `useSequentContext()` narrows `context` to `TContext | undefined` and `resolve()` to `TResult`
 

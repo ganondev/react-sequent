@@ -1,6 +1,10 @@
 import { type FunctionComponent, useCallback } from "react";
 import { type SequentContextReturn, useSequentContext } from "./hooks/useSequentContext";
-import { type SequentOutletProps, useSequentFlow } from "./hooks/useSequentFlow";
+import {
+  type SequentOutletProps,
+  type SequentResult,
+  useSequentFlow,
+} from "./hooks/useSequentFlow";
 import { useSequentStep } from "./hooks/useSequentStep";
 import type { StepLoader } from "./internal/normalizer";
 
@@ -11,7 +15,9 @@ type InvalidTypedContextArgs<TContext extends object> = TContext extends readonl
     : [];
 
 export interface TypedUseFlowReturn<TContext extends object, TResult = unknown> {
-  init: (stepLoader: StepLoader, initialContext: TContext) => Promise<TResult>;
+  init: (stepLoader: StepLoader, initialContext: TContext) => void;
+  status: "idle" | "active";
+  result: SequentResult<TResult> | null;
   SequentOutlet: FunctionComponent<SequentOutletProps>;
 }
 
@@ -41,7 +47,7 @@ export function defineSequentFlow<
 >(..._invalidContext: InvalidTypedContextArgs<TContext>): SequentFlowDefinition<TContext, TResult> {
   return {
     useSequentFlow(): TypedUseFlowReturn<TContext, TResult> {
-      const { init, SequentOutlet } = useSequentFlow<TResult>();
+      const { init, status, result, SequentOutlet } = useSequentFlow<TResult>();
 
       const typedInit = useCallback(
         (stepLoader: StepLoader, initialContext: TContext) => init(stepLoader, initialContext),
@@ -50,6 +56,8 @@ export function defineSequentFlow<
 
       return {
         init: typedInit,
+        status,
+        result,
         SequentOutlet,
       };
     },

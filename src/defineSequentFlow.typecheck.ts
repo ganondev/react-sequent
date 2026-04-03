@@ -20,9 +20,22 @@ declare const flowApi: ReturnType<typeof useSequentFlow>;
 declare const stepApi: ReturnType<typeof useSequentStep>;
 declare const contextApi: ReturnType<typeof useSequentContext>;
 
-const flowPromise: Promise<CheckoutResult> = flowApi.init(() => StepComponent, {
+const initResult: undefined = flowApi.init(() => StepComponent, {
   cartId: "cart-1",
 });
+const flowStatus: "idle" | "active" = flowApi.status;
+const flowResult = flowApi.result;
+
+if (flowResult?.status === "resolved") {
+  const resolvedOrderId: string = flowResult.value.orderId;
+  void resolvedOrderId;
+}
+
+if (flowResult?.status === "aborted") {
+  const abortReason: unknown = flowResult.reason;
+  void abortReason;
+}
+
 const activeContext: CheckoutContext = stepApi.context;
 const maybeIdleContext: CheckoutContext | undefined = contextApi.context;
 
@@ -30,7 +43,9 @@ stepApi.advance(() => StepComponent, { shippingAddress: "123 Main" });
 stepApi.resolve({ orderId: "order-1" });
 contextApi.resolve({ orderId: "order-2" });
 
-void flowPromise;
+void initResult;
+void flowStatus;
+void flowResult;
 void activeContext;
 void maybeIdleContext;
 

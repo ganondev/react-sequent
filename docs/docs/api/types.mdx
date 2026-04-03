@@ -29,10 +29,22 @@ interface TypedUseFlowReturn<
   TContext extends object,
   TResult = unknown,
 > {
-  init: (stepLoader: StepLoader, initialContext: TContext) => Promise<TResult>;
+  init: (stepLoader: StepLoader, initialContext: TContext) => void;
+  status: "idle" | "active";
+  result: SequentResult<TResult> | null;
   SequentOutlet: FunctionComponent<SequentOutletProps>;
 }
 ```
+
+## `SequentResult`
+
+```typescript
+type SequentResult<TResult = unknown> =
+  | { status: "resolved"; value: TResult }
+  | { status: "aborted"; reason: unknown };
+```
+
+Latest terminal outcome exposed by `useSequentFlow().result`.
 
 ## `TypedUseStepReturn`
 

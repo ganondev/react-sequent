@@ -1,5 +1,4 @@
 import { Alert, Button, Group, Paper, Stack, Text, Title } from "@mantine/core";
-import { useSequentContext } from "../hooks/useSequentContext";
 import { useSequentFlow } from "../hooks/useSequentFlow";
 import { useSequentStep } from "../hooks/useSequentStep";
 
@@ -30,13 +29,11 @@ function BrokenStep(): never {
 function TerminalStep(): React.ReactElement {
   const { context, resolve } = useSequentStep<{ recovered?: boolean }>();
   const recoveredContext = context as Record<string, unknown> | null;
-  const wasRecovered = recoveredContext?.["recovered"] === true;
+  const wasRecovered = recoveredContext?.recovered === true;
 
   return (
     <Stack>
-      {wasRecovered ? (
-        <Alert color="green" title="Flow recovered successfully"/>
-      ) : null}
+      {wasRecovered ? <Alert color="green" title="Flow recovered successfully" /> : null}
       <Title order={4}>Terminal</Title>
       <Text c="dimmed">The flow reached the terminal step successfully.</Text>
       <Group justify="flex-end">
@@ -68,7 +65,12 @@ function ErrorFallback() {
         >
           Recover
         </Button>
-        <Button size="xs" variant="light" color="red" onClick={() => abort("aborted-from-fallback")}>
+        <Button
+          size="xs"
+          variant="light"
+          color="red"
+          onClick={() => abort("aborted-from-fallback")}
+        >
           Abort!
         </Button>
       </Group>
@@ -76,12 +78,16 @@ function ErrorFallback() {
   );
 }
 
-function IdleContent({ init }: { init: ReturnType<typeof useSequentFlow>["init"] }) {
-  const { status } = useSequentContext();
-
+function IdleContent({
+  init,
+  result,
+}: {
+  init: ReturnType<typeof useSequentFlow>["init"];
+  result: ReturnType<typeof useSequentFlow>["result"];
+}) {
   return (
     <Stack>
-      {status === "aborted" ? (
+      {result?.status === "aborted" ? (
         <Alert color="yellow" title="Flow aborted">
           The flow was aborted and returned to the idle state.
         </Alert>
@@ -97,11 +103,11 @@ function IdleContent({ init }: { init: ReturnType<typeof useSequentFlow>["init"]
 }
 
 function Host() {
-  const { init, SequentOutlet } = useSequentFlow();
+  const { init, result, SequentOutlet } = useSequentFlow();
   return (
     <Paper withBorder p="xl" maw={400} mx="auto" mt="xl" radius="md">
       <SequentOutlet errorFallback={<ErrorFallback />}>
-        <IdleContent init={init} />
+        <IdleContent init={init} result={result} />
       </SequentOutlet>
     </Paper>
   );

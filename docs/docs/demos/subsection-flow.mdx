@@ -11,8 +11,8 @@ Click **Begin Checkout** below to start the flow directly on this page.
 
 ```jsx live
 function CheckoutSection() {
-  const { init, SequentOutlet } = useSequentFlow();
-  const [status, setStatus] = React.useState(null);
+  const { init, status: flowStatus, result, SequentOutlet } = useSequentFlow();
+  const [message, setMessage] = React.useState(null);
 
   function StepAddress() {
     const { advance } = useSequentStep();
@@ -84,11 +84,16 @@ function CheckoutSection() {
     );
   }
 
-  async function start() {
-    setStatus(null);
-    const result = await init(() => StepAddress);
-    setStatus(`Order placed! ${JSON.stringify(result)}`);
+  function start() {
+    setMessage(null);
+    init(() => StepAddress);
   }
+
+  React.useEffect(() => {
+    if (flowStatus === "idle" && result?.status === "resolved") {
+      setMessage(`Order placed! ${JSON.stringify(result.value)}`);
+    }
+  }, [flowStatus, result]);
 
   return (
     <div className="demo-checkout">
@@ -98,7 +103,7 @@ function CheckoutSection() {
       <SequentOutlet>
         <IdleContent />
       </SequentOutlet>
-      {status && <div className="demo-checkout__status">{status}</div>}
+      {message && <div className="demo-checkout__status">{message}</div>}
     </div>
   );
 }
@@ -110,7 +115,7 @@ function CheckoutSection() {
 2. `IdleContent` calls `useSequentContext()` to check if a previous flow completed — if so, the button reads "Begin Checkout Again".
 3. Clicking the button calls `init(() => StepAddress)`, which replaces the idle children with `StepAddress` inside the outlet.
 4. Each step calls `advance(NextStep)` to move forward or `retreat()` to go back.
-5. `StepReview` calls `resolve(value)` — the `await init(...)` promise resolves with that value, the outlet returns to idle, and the `IdleContent` reappears with the updated button label.
+5. `StepReview` calls `resolve(value)` — `useSequentFlow().result` captures the resolved value, the outlet returns to idle, and the `IdleContent` reappears with the updated button label.
 
 ## Key points
 

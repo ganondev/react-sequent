@@ -53,12 +53,17 @@ function Step2() {
 
 // Host — owns the outlet and starts the flow
 function App() {
-  const { init, SequentOutlet } = useSequentFlow();
+  const { init, status, result, SequentOutlet } = useSequentFlow();
 
-  const start = async () => {
-    const result = await init(() => Step1);
-    console.log("Flow resolved:", result);
+  const start = () => {
+    init(() => Step1);
   };
+
+  React.useEffect(() => {
+    if (status === "idle" && result?.status === "resolved") {
+      console.log("Flow resolved:", result.value);
+    }
+  }, [status, result]);
 
   return (
     <div>
@@ -74,7 +79,7 @@ function App() {
 1. **`useSequentFlow`** gives you `init` and a bound **`SequentOutlet`**.
 2. **`<SequentOutlet>`** is where the flow renders. It's idle until `init()` activates it.
 3. **`useSequentStep`** is called inside step components. It returns `advance`, `retreat`, `resolve`, and `abort`.
-4. When `resolve("completed!")` is called, the promise returned by `init()` resolves with that value.
+4. When `resolve("completed!")` is called, `useSequentFlow().result` becomes `{ status: "resolved", value: "completed!" }`.
 
 ## Key Concepts
 

@@ -16,7 +16,9 @@ It returns:
 
 ```typescript
 function useSequentFlow<TResult = unknown>(): {
-  init: (stepLoader: StepLoader, initialContext?: unknown) => Promise<TResult>;
+  init: (stepLoader: StepLoader, initialContext?: unknown) => void;
+  status: "idle" | "active";
+  result: SequentResult<TResult> | null;
   SequentOutlet: (props: SequentOutletProps) => ReactElement;
 };
 ```
@@ -37,12 +39,17 @@ function Step2() {
 }
 
 function App() {
-  const { init, SequentOutlet } = useSequentFlow<string>();
+  const { init, status, result, SequentOutlet } = useSequentFlow<string>();
 
-  const start = async () => {
-    const result = await init(() => Step1);
-    console.log(result);
+  const start = () => {
+    init(() => Step1);
   };
+
+  React.useEffect(() => {
+    if (status === "idle" && result?.status === "resolved") {
+      console.log(result.value);
+    }
+  }, [status, result]);
 
   return (
     <>
@@ -57,6 +64,8 @@ function App() {
 
 - One `useSequentFlow()` call creates one isolated flow host.
 - `SequentOutlet` stays idle until `init()` is called.
+- `status` reports whether a flow is currently active.
+- `result` stores the latest terminal outcome (`resolved` or `aborted`).
 - `children`, `fallback`, `errorFallback`, and `chrome` are still configured on `SequentOutlet`.
 - `init()` accepts any `StepLoader`, including factories that return JSX elements.
 - `init()` throws if `SequentOutlet` is not currently mounted.
