@@ -9,6 +9,8 @@ A flow rendered inside a **shared singleton modal** — a single `SequentOutlet`
 
 Click **Open Setup Flow** below to try it.
 
+This example mixes both step-loader styles: the first transition uses a component loader, while the last transition returns JSX directly and merges the final title into context to signal chrome updates.
+
 ```jsx live
 function SharedModalDemo() {
   // ── Modal infrastructure (would live in its own module in a real app) ─────
@@ -70,7 +72,6 @@ function SharedModalDemo() {
 
   function StepDetails() {
     const { retreat, advance, abort } = useSequentStep();
-    const { context: ctx } = useSequentContext();
     const [email, setEmail] = useState("");
     return (
       <div>
@@ -87,20 +88,22 @@ function SharedModalDemo() {
         </div>
         <div className="demo-actions">
           <button className="demo-btn-ghost" onClick={retreat}>← Back</button>
-          <button onClick={() => advance(() => StepDone, { ...ctx, email, title: "All done!" })}>Continue →</button>
+          <button onClick={() => advance(() => <StepDone email={email} />, { title: "All done!" })}>
+            Continue →
+          </button>
           <button className="demo-btn-ghost" onClick={() => abort("cancelled")}>Cancel</button>
         </div>
       </div>
     );
   }
 
-  function StepDone() {
+  function StepDone({ email }) {
     const { resolve } = useSequentStep();
-    const { context: ctx } = useSequentContext();
     return (
       <div>
         <p className="demo-para">You're all set! 🎉</p>
-        <button onClick={() => resolve(ctx)}>Close</button>
+        <p className="demo-para">Thanks {email}</p>
+        <button onClick={() => resolve({ email })}>Close</button>
       </div>
     );
   }

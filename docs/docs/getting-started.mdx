@@ -100,18 +100,24 @@ function PaymentStep() {
 
 ### Async steps just work
 
-Pass a dynamic import instead of a component — Suspense handles the rest:
+Pass a dynamic import instead of a component — or return an element after async work. Suspense handles both:
 
 ```tsx
 const { advance } = useSequentStep();
 
 // Lazy-loaded step — the outlet shows the fallback while loading
 advance(() => import("./HeavyStep"));
+
+// Async decision + props hydration — fetch first, then render the next step
+advance(async () => {
+  const user = await fetchUser();
+  return <ProfileStep user={user} />;
+});
 ```
 
 ### Flow context
 
-Carry data across steps without prop-drilling:
+Carry shared data across steps without prop-drilling:
 
 ```tsx
 // Start with initial context

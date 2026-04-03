@@ -89,4 +89,32 @@ describeFeature(feature, ({ Scenario }) => {
       expect(screen.getByText("hello")).toBeInTheDocument();
     });
   });
+
+  Scenario("Initialize a flow with an element-returning step loader", ({ Given, When, Then }) => {
+    let capturedInit!: InitFn;
+
+    Given("a host component with useSequentFlow and SequentOutlet", () => {
+      cleanup();
+
+      render(
+        <Host
+          onCapture={(init) => {
+            capturedInit = init;
+          }}
+        />,
+      );
+
+      expect(capturedInit).toBeDefined();
+    });
+
+    When("init is called with an element-returning step loader", () => {
+      act(() => {
+        capturedInit(() => <div>Element Step Content</div>);
+      });
+    });
+
+    Then("the returned element renders inside the outlet", () => {
+      expect(screen.getByText("Element Step Content")).toBeInTheDocument();
+    });
+  });
 });

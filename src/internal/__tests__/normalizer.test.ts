@@ -1,3 +1,6 @@
+import { render, screen } from "@testing-library/react";
+import "@testing-library/jest-dom/vitest";
+import { createElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { normalizeStepLoader } from "../normalizer";
 
@@ -22,6 +25,15 @@ describe("normalizeStepLoader", () => {
     expect(result).toBe(SyncComponent);
   });
 
+  it("wraps sync element return values in a component", () => {
+    const loader = () => createElement("div", null, "Element Step");
+    const result = normalizeStepLoader(loader);
+
+    render(createElement(result));
+
+    expect(screen.getByText("Element Step")).toBeInTheDocument();
+  });
+
   it("wraps async module factories with React.lazy", () => {
     const loader = () => Promise.resolve({ default: SyncComponent });
     const result = normalizeStepLoader(loader);
@@ -31,6 +43,13 @@ describe("normalizeStepLoader", () => {
 
   it("wraps async component factories with React.lazy", () => {
     const loader = () => Promise.resolve(SyncComponent);
+    const result = normalizeStepLoader(loader);
+    expect(result).toHaveProperty("$$typeof");
+    expect(result).not.toBe(loader);
+  });
+
+  it("wraps async element factories with React.lazy", () => {
+    const loader = () => Promise.resolve(createElement("div", null, "Async Element Step"));
     const result = normalizeStepLoader(loader);
     expect(result).toHaveProperty("$$typeof");
     expect(result).not.toBe(loader);

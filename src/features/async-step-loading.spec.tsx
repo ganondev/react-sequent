@@ -92,4 +92,53 @@ describeFeature(feature, ({ Scenario }) => {
       expect(screen.queryByText("Loading…")).not.toBeInTheDocument();
     });
   });
+
+  Scenario(
+    "Async element loader shows fallback then renders the step",
+    ({ Given, When, Then, And }) => {
+      let capturedInit: ReturnType<typeof useSequentFlow>["init"];
+      let resolveElement!: () => void;
+      let asyncLoader!: () => Promise<React.ReactElement>;
+
+      Given("a host with SequentOutlet configured with a fallback", () => {
+        cleanup();
+
+        const stepPromise = new Promise<React.ReactElement>((resolve) => {
+          resolveElement = () => resolve(<div>Async Element Content</div>);
+        });
+        asyncLoader = () => stepPromise;
+
+        function TestHost() {
+          const { init, SequentOutlet } = useSequentFlow();
+          capturedInit = init;
+          return <SequentOutlet fallback={<div>Loading…</div>} />;
+        }
+
+        render(<TestHost />);
+        expect(capturedInit).toBeDefined();
+      });
+
+      When("init is called with an async element loader", () => {
+        act(() => {
+          capturedInit(asyncLoader);
+        });
+      });
+
+      Then("the fallback is shown during loading", () => {
+        expect(screen.getByText("Loading…")).toBeInTheDocument();
+        expect(screen.queryByText("Async Element Content")).not.toBeInTheDocument();
+      });
+
+      And("the element step renders after loading completes", async () => {
+        await act(async () => {
+          resolveElement();
+        });
+
+        await waitFor(() => {
+          expect(screen.getByText("Async Element Content")).toBeInTheDocument();
+        });
+        expect(screen.queryByText("Loading…")).not.toBeInTheDocument();
+      });
+    },
+  );
 });

@@ -58,6 +58,7 @@ function App() {
 - One `useSequentFlow()` call creates one isolated flow host.
 - `SequentOutlet` stays idle until `init()` is called.
 - `children`, `fallback`, `errorFallback`, and `chrome` are still configured on `SequentOutlet`.
+- `init()` accepts any `StepLoader`, including factories that return JSX elements.
 - `init()` throws if `SequentOutlet` is not currently mounted.
 
 For a typed scope that keeps `init()`, `useSequentStep()`, and `useSequentContext()` aligned, see [**defineSequentFlow**](/docs/api/define-sequent-flow).
