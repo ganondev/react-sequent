@@ -43,8 +43,8 @@
     "docs:serve": "yarn --cwd docs serve"
   },
   "peerDependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react": "^16.14.0 || ^17 || ^18 || ^19",
+    "react-dom": "^16.14.0 || ^17 || ^18 || ^19"
   },
   "devDependencies": {
     "@amiceli/vitest-cucumber": "^6.3.0",
