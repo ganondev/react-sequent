@@ -213,75 +213,12 @@ yarn link react-sequent
 
 ---
 
-### Type Safety Trade-offs
+### Impacts of Changes
 
-`useSequentFlow<TResult>()` threads a generic through to `init()`, which returns `Promise<TResult>`. The outlet implementation accepts `onResolve` / `onAbort` callbacks, wiring the promise lifecycle to the outlet's `resolve` / `abort` context functions.
-
-`useSequentStep<TResult>()` and `useSequentContext<TContext>()` also accept generics, casting the internally `unknown`-typed context values to the consumer-specified type.
-
-**Acknowledged limitation:** TypeScript cannot verify at compile time that a step component is rendered inside the correct outlet. A step reused across flows with different `TResult` types would silently receive the wrong type. This is an acceptable trade-off because:
-
-1. Steps are designed to be portable — the paradigm encourages step-level transition logic, not global type coordination
-2. The generic is most valuable at the `init()` call site, where the consumer controls both the flow shape and the result handling
-3. Runtime behavior is unaffected — the generic is erased at compile time and the library uses `unknown` internally
-
-If a consumer needs tighter type safety between `init()` and `useSequentStep()`, they can create a thin typed wrapper hook around `useSequentStep<MyResultType>()` co-located with the flow definition.
-
-### Projected Examples
-
-This is an example of what a minimal use case could look like.
-
-```tsx
-function Step1() {
-  const { advance } = useSequentStep();
-
-  const next = () => {
-    advance(() => Step2);
-  };
-
-  return (
-    <>
-      step 1 content
-      <button onClick={next}>Next</button>
-    </>
-  );
-}
-
-function Step2() {
-  return <>step 2 content</>;
-}
-
-function SomeComponent() {
-  const { init, SequentOutlet } = useSequentFlow();
-
-  const onClick = () => {
-    init(() => Step1);
-  };
-
-  return (
-    <>
-      <SequentOutlet />
-      <button onClick={onClick}>Start</button>
-    </>
-  );
-}
-```
-
-> Update this section as work progresses. It is the fastest way for an agent to orient itself at the start of a session.
-
----
-
-## Open Questions
-
-> Running list of unresolved design decisions. Add to this rather than making an arbitrary call.
-
-- ~~**History / back-navigation**~~ — Resolved. See *On retreat and state persistence* in API Constraints.
-- ~~**Async step loading**~~ — Resolved. Suspense at the outlet boundary; sync steps bypass it entirely.
-- ~~**Hooks API shape**~~ — Resolved. `useSequentFlow` + `useSequentStep` + `useSequentContext`, strictly compartmentalized.
-- ~~**Outlet association**~~ — Resolved. `useSequentFlow()` returns a bound `SequentOutlet` component. Idiomatic React; the library absorbs the `forwardRef` ceremony so consumers don't have to.
-- ~~**Conditional advance / branching**~~ — Resolved. `advance` takes a loader directly; branching is just an if-statement in the step. No special API needed — the "step decides what comes next" paradigm *is* the branching mechanism.
-- ~~**Typed `resolve`/`abort` payloads**~~ — Resolved. Generic goes on `useSequentFlow<ResultType>()`, which types the return value of `init()` (the promise the consumer handles) and carries a typed `resolve` through internal context to `useSequentStep()`. This is best-effort — TypeScript cannot verify at compile time that a step is rendered inside the correct outlet, so the type is trustworthy in practice but not airtight. A step used across flows with different resolve types would silently get the wrong type; this is an acceptable trade-off given that steps are designed to be portable. If the generic approach proves unworkable, the fallback is `resolve` accepting `unknown` in `useSequentStep()` with type safety living exclusively at the `init()` return value.
-- ~~**Multiple concurrent flows — v1 scope**~~ — Resolved. Out of scope for v1. Multiple outlets can coexist naturally via separate `useSequentFlow()` + `SequentOutlet` pairs; coordinating flows is a different problem deferred to a later version.
-- ~~**Error boundary story**~~ — Resolved. `SequentOutlet` owns an error boundary alongside its Suspense boundary. Accepts an `errorFallback` prop analogous to `fallback`, keeping broken step blast radius contained to the outlet.
-- ~~**Chrome / outlet composition**~~ — Resolved. See *Outlet* and *Chrome and `useSequentContext`* in Architecture. `SequentOutlet` is idle until `init()` activates it. An optional chrome child is rendered outside the Suspense boundary (stable across transitions) but inside the provider boundary (can call `useSequentContext`). Steps remain chrome-free and fully portable. `useSequentContext` provides context (read-only), `resolve`, and `abort` — enabling chrome to terminate flows without accessing navigation capabilities.
-- ~~**Outlet association by ref**~~ — Resolved. See *Outlet association* above.
+Whenever something needs to be changed about the code itself, consider other places that need to be
+changed downstream so the project stays internally consistent. Ask yourself if the following
+need patches to reflect new state:
+* Docusaurus Documentation?
+* Storybook Demos?
+* docs/static/llms.txt?
+* Comments, in general? - Units of code may not be fully self-contextualizing.
