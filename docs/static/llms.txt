@@ -1,12 +1,12 @@
 # react-sequent
 
-> react-sequent is a lightweight React 19+ utility for building UX flows — multi-step forms, onboarding wizards, modal flows, or any UI that moves through discrete states — where each step owns its own transition logic instead of a centralized state map.
+> react-sequent is a lightweight React utility for building UX flows — multi-step forms, onboarding wizards, modal flows, or any UI that moves through discrete states — where each step owns its own transition logic instead of a centralized state map.
 
 - Docs: https://ganondev.github.io/react-sequent/
 - GitHub: https://github.com/ganondev/react-sequent
 - License: MIT
 - Current version: 0.1.0-alpha
-- Peer dependencies: React 19+, React DOM 19+
+- Peer dependencies: React ^16.14.0 || ^17 || ^18 || ^19, React DOM ^16.14.0 || ^17 || ^18 || ^19
 
 ## Philosophy
 

@@ -4,6 +4,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     name: Lint
@@ -46,8 +49,20 @@ jobs:
         run: yarn typecheck
 
   test:
-    name: Test
+    name: Test (React ${{ matrix.react-version }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - react-version: '16.14.0'
+            testing-library-react-version: '12.1.5'
+          - react-version: '17'
+            testing-library-react-version: '12.1.5'
+          - react-version: '18'
+            testing-library-react-version: '16.3.2'
+          - react-version: '19'
+            testing-library-react-version: '16.3.2'
     steps:
       - uses: actions/checkout@v4
 
@@ -61,6 +76,9 @@ jobs:
 
       - name: Install dependencies
         run: yarn install --immutable
+
+      - name: Install React ${{ matrix.react-version }} test dependencies
+        run: yarn add --dev react@${{ matrix.react-version }} react-dom@${{ matrix.react-version }} @testing-library/react@${{ matrix.testing-library-react-version }}
 
       - name: Unit tests
         run: yarn test:unit
