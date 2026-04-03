@@ -57,6 +57,44 @@ function StepWithAdvanceAndContext() {
   );
 }
 
+function StepWithElementAdvance() {
+  const { advance } = useSequentStep();
+  return (
+    <button type="button" onClick={() => advance(() => <div>Element Step</div>)}>
+      AdvanceElement
+    </button>
+  );
+}
+
+function StepWithAsyncElementAdvance() {
+  const { advance } = useSequentStep();
+  return (
+    <button
+      type="button"
+      onClick={() =>
+        advance(
+          async () => {
+            function AsyncElementStep() {
+              const { context } = useSequentStep();
+              return (
+                <div>
+                  <div>Async Element Step</div>
+                  <div>context:{JSON.stringify(context)}</div>
+                </div>
+              );
+            }
+
+            return <AsyncElementStep />;
+          },
+          { loaded: true },
+        )
+      }
+    >
+      AdvanceAsyncElement
+    </button>
+  );
+}
+
 function StepWithRetreat() {
   const { retreat } = useSequentStep();
   return (
@@ -148,6 +186,22 @@ describe("useSequentFlow", () => {
       });
 
       expect(screen.getByText("Step 1")).toBeInTheDocument();
+    });
+
+    it("renders an element returned by the step loader", async () => {
+      render(
+        <TestHost
+          onInit={(init) => {
+            init(() => <div>Element Init Step</div>);
+          }}
+        />,
+      );
+
+      await act(async () => {
+        screen.getByText("Init").click();
+      });
+
+      expect(screen.getByText("Element Init Step")).toBeInTheDocument();
     });
   });
 
@@ -283,6 +337,47 @@ describe("useSequentFlow", () => {
 
       expect(screen.getByText("Step 2")).toBeInTheDocument();
       expect(screen.queryByText("Advance")).not.toBeInTheDocument();
+    });
+
+    it("renders an element returned by advance()", async () => {
+      render(
+        <TestHost
+          onInit={(init) => {
+            init(() => StepWithElementAdvance);
+          }}
+        />,
+      );
+
+      await act(async () => {
+        screen.getByText("Init").click();
+      });
+
+      await act(async () => {
+        screen.getByText("AdvanceElement").click();
+      });
+
+      expect(screen.getByText("Element Step")).toBeInTheDocument();
+    });
+
+    it("renders an async element returned by advance() and still merges context", async () => {
+      render(
+        <TestHost
+          onInit={(init) => {
+            init(() => StepWithAsyncElementAdvance, { initial: true });
+          }}
+        />,
+      );
+
+      await act(async () => {
+        screen.getByText("Init").click();
+      });
+
+      await act(async () => {
+        screen.getByText("AdvanceAsyncElement").click();
+      });
+
+      expect(screen.getByText("Async Element Step")).toBeInTheDocument();
+      expect(screen.getByText('context:{"initial":true,"loaded":true}')).toBeInTheDocument();
     });
   });
 

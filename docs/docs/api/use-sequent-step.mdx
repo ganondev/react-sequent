@@ -41,6 +41,15 @@ function PaymentStep() {
 }
 ```
 
+`advance()` accepts any `StepLoader`, including factories that return JSX directly:
+
+```tsx
+advance(async () => {
+  const quote = await loadQuote();
+  return <ConfirmStep quote={quote} />;
+});
+```
+
 :::tip
 `useSequentStep()` is only valid inside the active step subtree. Chrome and idle children should use `useSequentContext()`.
 :::

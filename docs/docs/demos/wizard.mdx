@@ -5,9 +5,9 @@ title: Full-Screen Wizard
 
 # Full-Screen Wizard
 
-A **full-screen onboarding wizard** with a persistent progress bar in the chrome, async step loading, and a final `resolve` that returns the collected data.
+A **full-screen onboarding wizard** with a persistent progress bar in the chrome, a mix of component and element-returning loaders, and a final `resolve` that returns the collected data.
 
-Steps 2 and 3 load asynchronously (simulating code-split chunks). The progress bar updates **immediately** on `advance` — before the async step resolves — because chrome renders outside Suspense.
+The first transition uses a normal component loader. The final transition simulates async work before returning JSX with hydrated props. The progress bar updates **immediately** on `advance` — before the async step resolves — because chrome renders outside Suspense.
 
 Click **Start Onboarding** below to try it.
 
@@ -70,7 +70,7 @@ function WizardDemo() {
           />
         </div>
         <div className="demo-actions-center">
-          <button onClick={() => advance(loadStepPreferences, { step: 2, total: 3, data: { name: name || "User" } })}>
+          <button onClick={() => advance(() => StepPreferences, { step: 2, total: 3, data: { name: name || "User" } })}>
             Continue →
           </button>
           <button className="demo-btn-ghost" onClick={() => abort("cancelled")}>Cancel</button>
@@ -100,7 +100,24 @@ function WizardDemo() {
         </div>
         <div className="demo-actions-center">
           <button className="demo-btn-ghost" onClick={() => retreat()}>← Back</button>
-          <button onClick={() => advance(loadStepConfirm, { ...ctx, step: 3, data: { ...ctx.data, notifications: notif } })}>
+          <button
+            onClick={() =>
+              advance(async () => {
+                const summary = await new Promise((resolve) =>
+                  setTimeout(
+                    () =>
+                      resolve({
+                        ...ctx,
+                        step: 3,
+                        data: { ...ctx.data, notifications: notif },
+                      }),
+                    700,
+                  ),
+                );
+                return <StepConfirm summary={summary} />;
+              }, { ...ctx, step: 3, data: { ...ctx.data, notifications: notif } })
+            }
+          >
             Continue →
           </button>
           <button className="demo-btn-ghost" onClick={() => abort("cancelled")}>Cancel</button>
@@ -109,27 +126,21 @@ function WizardDemo() {
     );
   }
 
-  function StepConfirm() {
+  function StepConfirm({ summary }) {
     const { retreat, resolve, abort } = useSequentStep();
-    const { context: ctx } = useSequentContext();
     return (
       <div className="demo-wizard__step">
         <h2 className="demo-wizard__title">All set! 🎉</h2>
         <p className="demo-wizard__subtitle">Your profile is ready.</p>
+        <pre className="demo-summary">{JSON.stringify(summary, null, 2)}</pre>
         <div className="demo-actions-center">
           <button className="demo-btn-ghost" onClick={() => retreat()}>← Back</button>
-          <button onClick={() => resolve(ctx.data)}>Finish</button>
+          <button onClick={() => resolve(summary.data)}>Finish</button>
           <button className="demo-btn-ghost" onClick={() => abort("cancelled")}>Cancel</button>
         </div>
       </div>
     );
   }
-
-  // --- Async loaders ---
-  const loadStepPreferences = () =>
-    new Promise((res) => setTimeout(() => res({ default: StepPreferences }), 700));
-  const loadStepConfirm = () =>
-    new Promise((res) => setTimeout(() => res({ default: StepConfirm }), 700));
 
   // --- Consumer button that uses the singleton hook ---
   function StartOnboarding() {
@@ -163,25 +174,25 @@ function WizardDemo() {
 
 ## Async step loading
 
-Steps 2 and 3 use async loaders — functions that return `Promise<{ default: ComponentType }>`, mirroring a real dynamic `import()`:
+The final step waits on a simulated async lookup and then returns JSX with hydrated props:
 
 ```js
-// Real-world code splitting
-const loadStepPreferences = () => import("./StepPreferences");
-
-// Simulated in this example
-const loadStepPreferences = () =>
-  new Promise((res) => setTimeout(() => res({ default: StepPreferences }), 700));
+advance(async () => {
+  const summary = await loadWizardSummary();
+  return <StepConfirm summary={summary} />;
+});
 ```
 
 `advance(loader, newContext)` accepts a step loader function. That loader can synchronously return a component or asynchronously return a promise. While the loader is pending, the `<Suspense>` fallback inside `WizardChrome` shows the loading indicator.
+
+This uses a timeout to mimic a fetch or server-side decision rather than a lazy import, which is often the more practical case for passing props into the next step.
 
 ## Progress via context
 
 The progress bar reads `ctx.step` and `ctx.total` from `useSequentContext()`. Each `advance` call passes updated context:
 
 ```js
-advance(loadStepPreferences, { step: 2, total: 3, data: { name: "…" } })
+advance(() => StepPreferences, { step: 2, total: 3, data: { name: "…" } })
 ```
 
 Because chrome renders **outside** the Suspense boundary, the progress bar jumps from 33% → 66% **immediately** when `advance` is called — before the next step finishes loading.
@@ -189,5 +200,5 @@ Because chrome renders **outside** the Suspense boundary, the progress bar jumps
 ## Key points
 
 - **Chrome outlives async loads** — the progress bar and step counter stay mounted while the next step resolves.
-- **Context carries accumulated data** — each step merges its data into context so the final step can `resolve(ctx.data)`.
+- **Context still carries shared flow state** — progress metadata stays in context while the final step also receives a hydrated `summary` prop.
 - **No centralized step list** — the total step count is just data passed through context; you can change it without touching any config.

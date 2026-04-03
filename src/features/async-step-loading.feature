@@ -14,3 +14,9 @@ Feature: Async step loading
     When  init is called with a sync step loader
     Then  the step renders immediately
     And   the fallback is never shown
+
+  Scenario: Async element loader shows fallback then renders the step
+    Given a host with SequentOutlet configured with a fallback
+    When  init is called with an async element loader
+    Then  the fallback is shown during loading
+    And   the element step renders after loading completes

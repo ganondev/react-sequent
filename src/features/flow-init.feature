@@ -12,3 +12,8 @@ Feature: Flow initialization
     Given a host component with useSequentFlow and SequentOutlet
     When  init is called with a step loader and initial context
     Then  the step can read the context via useSequentStep
+
+  Scenario: Initialize a flow with an element-returning step loader
+    Given a host component with useSequentFlow and SequentOutlet
+    When  init is called with an element-returning step loader
+    Then  the returned element renders inside the outlet
