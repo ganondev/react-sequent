@@ -1,7 +1,7 @@
 import { act, cleanup, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import type { ReactNode } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { useSequentContext } from "../useSequentContext";
 import { useSequentFlow } from "../useSequentFlow";
 import { useSequentStep } from "../useSequentStep";
@@ -517,6 +517,53 @@ describe("useSequentFlow", () => {
       }).toThrowError(
         "SequentOutlet is not mounted. Ensure <SequentOutlet /> is rendered before calling init().",
       );
+    });
+
+    it("keeps status idle when the initial step loader throws during activation", () => {
+      const loaderError = new Error("loader failed");
+      let capturedInit!: InitFn;
+      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+      function CaptureFlowState() {
+        const { init, status, result, SequentOutlet } = useSequentFlow();
+        capturedInit = init;
+
+        const resultLabel =
+          result === null
+            ? "none"
+            : result.status === "resolved"
+              ? `resolved:${JSON.stringify(result.value)}`
+              : `aborted:${JSON.stringify(result.reason)}`;
+
+        return (
+          <>
+            <div>status:{status}</div>
+            <div>result:{resultLabel}</div>
+            <SequentOutlet />
+          </>
+        );
+      }
+
+      render(<CaptureFlowState />);
+
+      expect(screen.getByText("status:idle")).toBeInTheDocument();
+      expect(screen.getByText("result:none")).toBeInTheDocument();
+
+      expect(() => {
+        capturedInit(() => {
+          throw loaderError;
+        });
+      }).toThrow(loaderError);
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining("FlowOutlet.activate() failed while normalizing a step loader"),
+        loaderError,
+      );
+
+      expect(screen.getByText("status:idle")).toBeInTheDocument();
+      expect(screen.getByText("result:none")).toBeInTheDocument();
+
+      consoleErrorSpy.mockRestore();
     });
   });
 

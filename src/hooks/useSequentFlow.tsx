@@ -38,7 +38,6 @@ export function useSequentFlow<TResult = unknown>(): UseSequentFlowReturn<TResul
       );
     }
 
-    setStatus("active");
     outlet.activate(
       stepLoader,
       initialContext,
@@ -49,6 +48,9 @@ export function useSequentFlow<TResult = unknown>(): UseSequentFlowReturn<TResul
       (reason) => {
         setResult({ status: "aborted", reason });
         setStatus("idle");
+      },
+      () => {
+        setStatus("active");
       },
     );
   }, []);

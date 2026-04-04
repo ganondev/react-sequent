@@ -43,6 +43,7 @@ export interface FlowOutletHandle {
     initialContext?: unknown,
     onResolve?: (value?: unknown) => void,
     onAbort?: (reason?: unknown) => void,
+    onActivated?: () => void,
   ) => void;
 }
 // #endregion doc:handle
@@ -51,6 +52,13 @@ interface FlowState {
   history: ComponentType[];
   activeStep: ComponentType;
   consumerContext: unknown;
+}
+
+function reportLoaderError(phase: "activate" | "advance", error: unknown) {
+  console.error(
+    `FlowOutlet.${phase}() failed while normalizing a step loader. The flow was left idle.`,
+    error,
+  );
 }
 
 // #region doc:props
@@ -94,7 +102,13 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
     const advance = useCallback(
       (nextStep: StepLoader, contextPatch?: unknown) => {
         if (flowIdRef.current !== activeFlowId) return;
-        const nextActiveStep = normalizeStepLoader(nextStep);
+        let nextActiveStep: ComponentType;
+        try {
+          nextActiveStep = normalizeStepLoader(nextStep);
+        } catch (error) {
+          reportLoaderError("advance", error);
+          throw error;
+        }
         if (flowIdRef.current !== activeFlowId) return;
         errorBoundaryRef.current?.resetError();
         setFlowState((prev) => {
@@ -142,9 +156,16 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
           initialContext?: unknown,
           onResolve?: (value?: unknown) => void,
           onAbort?: (reason?: unknown) => void,
+          onActivated?: () => void,
         ) {
           const activeFlowId = flowIdRef.current;
-          const activeStep = normalizeStepLoader(stepLoader);
+          let activeStep: ComponentType;
+          try {
+            activeStep = normalizeStepLoader(stepLoader);
+          } catch (error) {
+            reportLoaderError("activate", error);
+            throw error;
+          }
           if (flowIdRef.current !== activeFlowId) return;
           errorBoundaryRef.current?.resetError();
           flowIdRef.current += 1;
@@ -155,6 +176,7 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
             activeStep,
             consumerContext: initialContext,
           });
+          onActivated?.();
         },
       }),
       [],
