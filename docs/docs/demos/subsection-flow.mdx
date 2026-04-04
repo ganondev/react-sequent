@@ -12,7 +12,13 @@ Click **Begin Checkout** below to start the flow directly on this page.
 ```jsx live
 function CheckoutSection() {
   const { init, status: flowStatus, result, SequentOutlet } = useSequentFlow();
-  const [message, setMessage] = React.useState(null);
+  const message = React.useMemo(() => {
+    if (flowStatus === "idle" && result?.status === "resolved") {
+      return `Order placed! ${JSON.stringify(result.value)}`;
+    }
+
+    return null;
+  }, [flowStatus, result]);
 
   function StepAddress() {
     const { advance } = useSequentStep();
@@ -85,15 +91,8 @@ function CheckoutSection() {
   }
 
   function start() {
-    setMessage(null);
     init(() => StepAddress);
   }
-
-  React.useEffect(() => {
-    if (flowStatus === "idle" && result?.status === "resolved") {
-      setMessage(`Order placed! ${JSON.stringify(result.value)}`);
-    }
-  }, [flowStatus, result]);
 
   return (
     <div className="demo-checkout">

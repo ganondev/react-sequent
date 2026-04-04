@@ -69,22 +69,21 @@ function ToastDemo() {
 
   function SaveButton() {
     const { toast, status, result } = useToast();
-    const [log, setLog] = React.useState("");
+    const log = React.useMemo(() => {
+      if (status === "active") {
+        return "Toast active…";
+      }
+
+      if (status === "idle" && result?.status === "resolved") {
+        return "Toast dismissed.";
+      }
+
+      return "";
+    }, [status, result]);
 
     function handleClick() {
       toast("Changes saved successfully!");
     }
-
-    React.useEffect(() => {
-      if (status === "active") {
-        setLog("Toast active…");
-        return;
-      }
-
-      if (status === "idle" && result?.status === "resolved") {
-        setLog("Toast dismissed.");
-      }
-    }, [status, result]);
 
     return (
       <div className="demo-sandbox">
