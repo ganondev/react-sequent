@@ -20,7 +20,7 @@ declare const flowApi: ReturnType<typeof useSequentFlow>;
 declare const stepApi: ReturnType<typeof useSequentStep>;
 declare const contextApi: ReturnType<typeof useSequentContext>;
 
-const initResult: undefined = flowApi.init(() => StepComponent, {
+flowApi.init(() => StepComponent, {
   cartId: "cart-1",
 });
 const flowStatus: "idle" | "active" = flowApi.status;
@@ -43,7 +43,6 @@ stepApi.advance(() => StepComponent, { shippingAddress: "123 Main" });
 stepApi.resolve({ orderId: "order-1" });
 contextApi.resolve({ orderId: "order-2" });
 
-void initResult;
 void flowStatus;
 void flowResult;
 void activeContext;
