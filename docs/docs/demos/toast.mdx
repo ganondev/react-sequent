@@ -47,14 +47,14 @@ function ToastDemo() {
   }
 
   function ToastProvider({ children }) {
-    const { init, SequentOutlet } = useSequentFlow();
+    const { init, status, result, SequentOutlet } = useSequentFlow();
 
-    async function toast(message) {
-      return init(() => ToastStep, { message });
+    function toast(message) {
+      init(() => ToastStep, { message });
     }
 
     return (
-      <ToastContext.Provider value={{ toast }}>
+      <ToastContext.Provider value={{ toast, status, result }}>
         {children}
         <SequentOutlet
           chrome={(slot) => <div className="demo-toast__chrome">{slot}</div>}
@@ -68,13 +68,21 @@ function ToastDemo() {
   // ── Consumer ──────────────────────────────────────────────────────────────
 
   function SaveButton() {
-    const { toast } = useToast();
-    const [log, setLog] = React.useState("");
+    const { toast, status, result } = useToast();
+    const log = React.useMemo(() => {
+      if (status === "active") {
+        return "Toast active…";
+      }
 
-    async function handleClick() {
-      setLog("Toast active…");
-      await toast("Changes saved successfully!");
-      setLog("Toast dismissed.");
+      if (status === "idle" && result?.status === "resolved") {
+        return "Toast dismissed.";
+      }
+
+      return "";
+    }, [status, result]);
+
+    function handleClick() {
+      toast("Changes saved successfully!");
     }
 
     return (
@@ -144,11 +152,11 @@ The chrome positions the outlet in the corner without knowing anything about tim
 />
 ```
 
-The `toast()` helper seeds context with the message and returns the same promise as `init`, so callers can `await` it if they need to act after the toast disappears.
+The `toast()` helper seeds context with the message and starts the flow. Consumers can react to dismissal by observing `status` and `result` from `useSequentFlow()`.
 
 ## Key points
 
 - **Self-terminating step** — `resolve` called from `useEffect` after a delay ends the flow without any external timer or state.
 - **Chrome is the container** — positioning and z-index live in the chrome, keeping the step itself presentational.
-- **Awaitable** — because `init()` returns a promise, callers can optionally `await toast(...)` to react after dismissal.
+- **Reactive completion** — callers can react after dismissal by checking `status === "idle"` and `result?.status === "resolved"`.
 - **Not a replacement for a toast library** — dedicated libraries offer queuing, stacking, and animation out of the box. Use this approach when you specifically want to avoid adding a dependency.

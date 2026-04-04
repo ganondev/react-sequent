@@ -60,13 +60,23 @@ function TypedHost({
   children?: ReactNode;
   onInit?: (init: InitFn) => void;
 }) {
-  const { init, SequentOutlet } = useSequentFlow();
+  const { init, status, result, SequentOutlet } = useSequentFlow();
+
+  const resultLabel =
+    result === null
+      ? "none"
+      : result.status === "resolved"
+        ? `resolved:${result.value.orderId}`
+        : "aborted";
 
   return (
     <>
       <button type="button" onClick={() => onInit?.(init)}>
         Init
       </button>
+      <div>
+        flow:{status}:{resultLabel}
+      </div>
       <SequentOutlet
         chrome={(step) => (
           <>
@@ -141,12 +151,10 @@ describe("defineSequentFlow", () => {
   });
 
   it("resolves with the typed TResult and preserves last resolved idle context", async () => {
-    let promise: Promise<CheckoutResult> | undefined;
-
     render(
       <TypedHost
         onInit={(init) => {
-          promise = init(() => ShippingStep, { cartId: "cart-3", shippingAddress: "saved" });
+          init(() => ShippingStep, { cartId: "cart-3", shippingAddress: "saved" });
         }}
       >
         <IdleReader />
@@ -167,7 +175,7 @@ describe("defineSequentFlow", () => {
       screen.getByText("Finish:cart-3-ship").click();
     });
 
-    await expect(promise).resolves.toEqual({ orderId: "cart-3" });
+    expect(screen.getByText("flow:idle:resolved:cart-3")).toBeInTheDocument();
     expect(screen.getByText("idle:cart-3-ship")).toBeInTheDocument();
   });
 });
