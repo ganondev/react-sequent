@@ -1,0 +1,209 @@
+---
+sidebar_position: 2
+title: FlowOutlet
+---
+
+# FlowOutlet
+
+`FlowOutlet` is where the flow appears in the UI.
+It renders the active step, the loading state, the error state, and the idle
+content for the flow host.
+
+`FlowOutlet` is not exposed directly. It is returned as `SequentOutlet` from
+[useSequentFlow](/docs/api/use-sequent-flow), which binds the outlet to its
+control functions and reactive state.
+
+## Props
+
+### `children`
+
+Content rendered when no flow is active.
+
+See: [Idle state](#idle) below.
+
+### `fallback`
+
+The placeholder shown while the active step is loading.
+
+This is the loading surface for async step loaders before the step becomes available.
+
+Behavior:
+
+- shown only while the current step is loading, defined as the time between
+  an async step loader being activated and its promise resolving
+- hidden once the step is ready
+- if omitted, no loading UI is shown
+- should be lightweight, because it may appear during transitions
+
+### `errorStep`
+
+Custom error UI for a step that fails while rendering or during a step transition.
+
+Signature:
+
+```typescript
+errorStep?: (context: ErrorStepContext) => ReactNode;
+```
+
+The callback receives an `ErrorStepContext` object with:
+
+- `error` — the thrown value
+- `componentStack` — the React component stack when available
+- `failedStep` — the step component that failed
+- `phase` — the phase in which the error occurred
+
+Behavior:
+
+- used when the active step throws an error
+- replaces the active step UI with your error UI
+- if omitted, the outlet renders no special error UI
+
+The `phase` value helps you distinguish between a failure that happened while a step was rendering and one that happened during a step change.
+
+### `chrome`
+
+A wrapper for the active step area.
+
+Signature:
+
+```typescript
+chrome?: (children: ReactNode) => ReactNode;
+```
+
+This is the surrounding UI for the active step, such as:
+
+- a layer and frame for a modal or side panel
+- a card or sheet layout
+- a header with a close button
+- a progress indicator
+- a fixed footer or toolbar
+
+Behavior:
+
+- receives the rendered step area as `children`
+- wraps the active step and any loading or error UI inside that shell
+- is not used while the outlet is idle
+- if omitted, the outlet renders the step area directly
+
+## Public states
+
+The outlet has a small set of user-facing states that matter when you build against it.
+
+### Idle
+
+No flow is currently active.
+
+What you see:
+
+- `children`
+
+What this means:
+
+- this is the default state before a flow starts
+- idle content reappears after a flow ends
+- this is the place for entry UI or post-flow content
+
+### Active
+
+A flow is in progress and the current step is being shown.
+
+What you see:
+
+- the active step
+- optional `chrome` around that step
+
+What this means:
+
+- the step uses the flow and step hooks to continue, resolve, or abort the flow
+- the outlet no longer renders the idle `children`
+
+### Loading
+
+The current step is not yet ready because its loader is asynchronous.
+
+What you see:
+
+- `fallback`
+
+What this means:
+
+- this state is temporary
+- it exists only for async step loaders
+- the current flow remains in progress while the fallback is shown
+
+### Error
+
+The active step failed.
+
+What you see:
+
+- the result of `errorStep`, if provided
+
+What this means:
+
+- the error UI may describe the failure and can provide a retry path
+- the outlet remains in an error state until the flow changes or is restarted
+
+### Finished
+
+The flow resolved or was aborted.
+
+What you see:
+
+- the outlet returns to idle and renders `children` again
+
+What this means:
+
+- the flow is no longer active
+- this is the terminal outcome for the current run of the flow
+- the next flow starts from the idle state again
+
+## Example
+
+```tsx
+function CheckoutShell() {
+	const { SequentOutlet } = useSequentFlow();
+
+	return (
+		<SequentOutlet
+			fallback={<div>Loading step…</div>}
+			errorStep={({ error, phase }) => (
+				<div>
+					<h2>Something went wrong</h2>
+					<p>Phase: {phase}</p>
+					<pre>{String(error)}</pre>
+				</div>
+			)}
+			chrome={(step) => <div className="sheet">{step}</div>}
+		>
+			<main>
+				<p>Nothing is active yet.</p>
+			</main>
+		</SequentOutlet>
+	);
+}
+```
+
+## Relationship to `useSequentFlow`
+
+[useSequentFlow](/docs/api/use-sequent-flow) returns the flow controller and the bound outlet component together.
+
+The outlet defines the visible shell for the flow. The control functions start the flow and report its status and result.
+
+A good mental model is:
+
+- the hook starts and reports on the flow
+- the outlet renders the flow
+- the steps perform the flow logic
+
+## Conclusion
+
+The outlet is the place where flow UI lives:
+
+- `children` for idle content
+- `fallback` for loading UI
+- `errorStep` for error UI
+- `chrome` for surrounding layout
+
+That keeps the outlet easy to reason about and keeps flow logic inside the hooks and steps where it belongs.
+
