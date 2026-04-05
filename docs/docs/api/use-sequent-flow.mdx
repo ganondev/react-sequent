@@ -66,7 +66,7 @@ function App() {
 - `SequentOutlet` stays idle until `init()` is called.
 - `status` reports whether a flow is currently active.
 - `result` stores the latest terminal outcome (`resolved` or `aborted`).
-- `children`, `fallback`, `errorFallback`, and `chrome` are still configured on `SequentOutlet`.
+- `children`, `fallback`, `errorStep`, and `chrome` are still configured on `SequentOutlet`.
 - `init()` accepts any `StepLoader`, including factories that return JSX elements.
 - `init()` throws if `SequentOutlet` is not currently mounted.
 

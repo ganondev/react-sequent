@@ -1,6 +1,7 @@
 import { Alert, Button, Group, Paper, Stack, Text, Title } from "@mantine/core";
 import { useSequentFlow } from "../hooks/useSequentFlow";
 import { useSequentStep } from "../hooks/useSequentStep";
+import type { ErrorStepContext } from "../internal/FlowErrorBoundary";
 
 export default {
   title: "Flow/ErrorBoundary",
@@ -29,11 +30,13 @@ function BrokenStep(): never {
 function TerminalStep(): React.ReactElement {
   const { context, resolve } = useSequentStep<{ recovered?: boolean }>();
   const recoveredContext = context as Record<string, unknown> | null;
-  const wasRecovered = recoveredContext?.recovered === true;
+  const wasRecovered = recoveredContext?.["recovered"] === true;
 
   return (
     <Stack>
-      {wasRecovered ? <Alert color="green" title="Flow recovered successfully" /> : null}
+      {wasRecovered ? (
+        <Alert color="green" title="Flow recovered successfully"/>
+      ) : null}
       <Title order={4}>Terminal</Title>
       <Text c="dimmed">The flow reached the terminal step successfully.</Text>
       <Group justify="flex-end">
@@ -45,16 +48,22 @@ function TerminalStep(): React.ReactElement {
   );
 }
 
-function ErrorFallback() {
+function ErrorFallback(props: ErrorStepContext) {
   const { advance, retreat, abort } = useSequentStep();
+  const errorMessage =
+    props.error instanceof Error ? props.error.message : "A step encountered an unknown error.";
+  const failedStepName = props.failedStep.displayName ?? props.failedStep.name ?? "AnonymousStep";
 
   return (
     <Alert color="red" title="Something went wrong">
       <Text size="sm" mb="sm">
-        A step encountered an error.
+        {errorMessage}
       </Text>
-      <Group justify="flex-end">
-        <Button size="xs" variant="subtle" color="red" onClick={() => retreat()}>
+      <Text size="xs" c="dimmed" mb="sm">
+        Failed step: {failedStepName} · phase: {props.phase}
+      </Text>
+      <Group gap="xs">
+        <Button size="xs" variant="white" color="red" onClick={() => retreat()}>
           Go back
         </Button>
         <Button
@@ -65,12 +74,7 @@ function ErrorFallback() {
         >
           Recover
         </Button>
-        <Button
-          size="xs"
-          variant="light"
-          color="red"
-          onClick={() => abort("aborted-from-fallback")}
-        >
+        <Button size="xs" variant="white" color="red" onClick={() => abort("Abort!")}>
           Abort!
         </Button>
       </Group>
@@ -78,36 +82,24 @@ function ErrorFallback() {
   );
 }
 
-function IdleContent({
-  init,
-  result,
-}: {
-  init: ReturnType<typeof useSequentFlow>["init"];
-  result: ReturnType<typeof useSequentFlow>["result"];
-}) {
-  return (
-    <Stack>
-      {result?.status === "aborted" ? (
-        <Alert color="yellow" title="Flow aborted">
-          The flow was aborted and returned to the idle state.
-        </Alert>
-      ) : null}
-      <Text c="dimmed">
-        Click the button below. Step 2 will throw an error caught by the error boundary.
-      </Text>
-      <Button variant="light" fullWidth onClick={() => init(() => Step1)}>
-        Start Flow
-      </Button>
-    </Stack>
-  );
-}
-
 function Host() {
-  const { init, result, SequentOutlet } = useSequentFlow();
+  const { init, SequentOutlet } = useSequentFlow();
+
+  const handleStart = () => {
+    init(() => Step1);
+  };
+
   return (
     <Paper withBorder p="xl" maw={400} mx="auto" mt="xl" radius="md">
-      <SequentOutlet errorFallback={<ErrorFallback />}>
-        <IdleContent init={init} result={result} />
+      <SequentOutlet errorStep={(context) => <ErrorFallback {...context} />}>
+        <Stack>
+          <Text c="dimmed">
+            Click the button below. Step 2 will throw an error caught by the error boundary.
+          </Text>
+          <Button variant="light" fullWidth onClick={handleStart}>
+            Start Flow
+          </Button>
+        </Stack>
       </SequentOutlet>
     </Paper>
   );

@@ -4,7 +4,7 @@
  * Owns the internal React context provider, wraps children in a
  * `FlowErrorBoundary` for step-level error handling, acts as the
  * Suspense boundary for async step loading, and accepts `fallback`
- * and `errorFallback` props.
+ * and `errorStep` props.
  */
 import {
   type ComponentType,
@@ -12,6 +12,7 @@ import {
   type ReactNode,
   Suspense,
   useCallback,
+  useEffect,
   useImperativeHandle,
   useMemo,
   useRef,
@@ -23,14 +24,18 @@ import {
   StepContext,
   type StepContextValue,
 } from "../internal/context";
-import { FlowErrorBoundary } from "../internal/FlowErrorBoundary";
+import {
+  FlowErrorBoundary,
+  type ErrorStepContext,
+  type ErrorStepPhase,
+} from "../internal/FlowErrorBoundary";
 import type { StepLoader } from "../internal/normalizer";
 import { normalizeStepLoader } from "../internal/normalizer";
 
 export interface FlowOutletProps {
   children?: ReactNode;
   fallback?: ReactNode;
-  errorFallback?: ReactNode;
+  errorStep?: (context: ErrorStepContext) => ReactNode;
   chrome?: (children: ReactNode) => ReactNode;
 }
 
@@ -71,8 +76,13 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
     const abortRef = useRef<((reason?: unknown) => void) | null>(null);
     /** Monotonically increasing token — invalidates stale resolve/abort closures. */
     const flowIdRef = useRef(0);
+    const errorPhaseRef = useRef<ErrorStepPhase>("render");
     /** Retains the last consumer context value after a flow resolves, so idle children can read it via `useSequentContext`. */
     const lastConsumerContextRef = useRef<unknown>(undefined);
+
+    useEffect(() => {
+      errorPhaseRef.current = "render";
+    }, [flowState?.activeStep]);
 
     const handleResolve = useCallback((value?: unknown) => {
       const cb = resolveRef.current;
@@ -110,6 +120,7 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
           throw error;
         }
         if (flowIdRef.current !== activeFlowId) return;
+        errorPhaseRef.current = "transition";
         errorBoundaryRef.current?.resetError();
         setFlowState((prev) => {
           if (prev === null) return prev;
@@ -136,6 +147,7 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
     );
 
     const retreat = useCallback(() => {
+      errorPhaseRef.current = "transition";
       errorBoundaryRef.current?.resetError();
       setFlowState((prev) => {
         if (prev === null || prev.history.length === 0) return prev;
@@ -167,6 +179,7 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
             throw error;
           }
           if (flowIdRef.current !== activeFlowId) return;
+          errorPhaseRef.current = "render";
           errorBoundaryRef.current?.resetError();
           flowIdRef.current += 1;
           resolveRef.current = onResolve ?? null;
@@ -243,7 +256,12 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
 
     const stepSlot = (
       <StepContext.Provider value={stepContextValue}>
-        <FlowErrorBoundary ref={errorBoundaryRef} errorFallback={props.errorFallback}>
+        <FlowErrorBoundary
+          ref={errorBoundaryRef}
+          failedStep={ActiveStep}
+          phase={errorPhaseRef.current}
+          errorStep={props.errorStep}
+        >
           <Suspense fallback={props.fallback ?? null}>
             <ActiveStep />
           </Suspense>

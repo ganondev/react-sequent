@@ -116,8 +116,15 @@ advance(async () => <Step1 plan={await loadPlan()} />);
 type SequentOutletProps = {
   children?: ReactNode;
   fallback?: ReactNode;
-  errorFallback?: ReactNode;
+  errorStep?: (context: ErrorStepContext) => ReactNode;
   chrome?: (children: ReactNode) => ReactNode;
+};
+
+type ErrorStepContext = {
+  error: unknown;
+  componentStack: string | null;
+  failedStep: ComponentType;
+  phase: "render" | "transition";
 };
 ```
 
