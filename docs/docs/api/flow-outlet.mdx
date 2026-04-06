@@ -15,6 +15,22 @@ control functions and reactive state.
 
 ## Props
 
+```typescript
+type SequentOutletProps = {
+    children?: ReactNode;
+    fallback?: ReactNode;
+    errorStep?: (context: ErrorStepContext) => ReactNode;
+    chrome?: (children: ReactNode) => ReactNode;
+};
+
+type ErrorStepContext = {
+    error: unknown;
+    componentStack: string | null;
+    failedStep: ComponentType;
+    phase: "render" | "transition";
+};
+```
+
 ### `children`
 
 Content rendered when no flow is active.
@@ -39,12 +55,6 @@ Behavior:
 
 Custom error UI for a step that fails while rendering or during a step transition.
 
-Signature:
-
-```typescript
-errorStep?: (context: ErrorStepContext) => ReactNode;
-```
-
 The callback receives an `ErrorStepContext` object with:
 
 - `error` — the thrown value
@@ -63,12 +73,6 @@ The `phase` value helps you distinguish between a failure that happened while a 
 ### `chrome`
 
 A wrapper for the active step area.
-
-Signature:
-
-```typescript
-chrome?: (children: ReactNode) => ReactNode;
-```
 
 This is the surrounding UI for the active step, such as:
 
@@ -162,25 +166,25 @@ What this means:
 
 ```tsx
 function CheckoutShell() {
-	const { SequentOutlet } = useSequentFlow();
+  const { SequentOutlet } = useSequentFlow();
 
-	return (
-		<SequentOutlet
-			fallback={<div>Loading step…</div>}
-			errorStep={({ error, phase }) => (
-				<div>
-					<h2>Something went wrong</h2>
-					<p>Phase: {phase}</p>
-					<pre>{String(error)}</pre>
-				</div>
-			)}
-			chrome={(step) => <div className="sheet">{step}</div>}
-		>
-			<main>
-				<p>Nothing is active yet.</p>
-			</main>
-		</SequentOutlet>
-	);
+  return (
+    <SequentOutlet
+      fallback={<div>Loading step…</div>}
+      errorStep={({ error, phase }) => (
+        <div>
+          <h2>Something went wrong</h2>
+          <p>Phase: {phase}</p>
+          <pre>{String(error)}</pre>
+        </div>
+      )}
+      chrome={(step) => <div className="sheet">{step}</div>}
+    >
+      <main>
+        <p>Nothing is active yet.</p>
+      </main>
+    </SequentOutlet>
+  );
 }
 ```
 

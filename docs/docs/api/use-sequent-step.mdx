@@ -19,6 +19,40 @@ function useSequentStep<TResult = unknown>(): {
 };
 ```
 
+## `StepLoader`
+
+```typescript
+type StepLoader = () =>
+  | ComponentType
+  | ReactElement
+  | { default: ComponentType }
+  | Promise<ComponentType | ReactElement | { default: ComponentType }>;
+```
+
+A step is always passed as a factory:
+
+- **Sync factory** — returns a component reference immediately
+- **Element factory** — returns JSX directly, useful when async work determines props
+- **Async factory** — returns a promise resolving to a component, JSX element, or `{ default: ComponentType }` (matching `import()`)
+
+The library normalizes async factories into `React.lazy` components internally. You never need to call `React.lazy` yourself.
+
+```tsx
+import Step1 from "./Step1";
+
+// Sync
+advance(() => Step1);
+
+// Sync element
+advance(() => <Step1 plan="pro" />);
+
+// Async (dynamic import)
+advance(() => import("./Step1"));
+
+// Async element after data loading
+advance(async () => <Step1 plan={await loadPlan()} />);
+```
+
 ## Responsibilities
 
 - Move forward with `advance()`
