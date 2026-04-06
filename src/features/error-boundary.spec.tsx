@@ -102,45 +102,48 @@ describeFeature(feature, ({ Scenario }) => {
     });
   });
 
-  Scenario("Re-activating after an error resets the error boundary", ({ Given, And, When, Then }) => {
-    let capturedInit: ReturnType<typeof useSequentFlow>["init"];
-    let consoleSpy: ReturnType<typeof vi.spyOn>;
+  Scenario(
+    "Re-activating after an error resets the error boundary",
+    ({ Given, And, When, Then }) => {
+      let capturedInit: ReturnType<typeof useSequentFlow>["init"];
+      let consoleSpy: ReturnType<typeof vi.spyOn>;
 
-    Given("a host with SequentOutlet configured with an errorStep", () => {
-      cleanup();
-      consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      Given("a host with SequentOutlet configured with an errorStep", () => {
+        cleanup();
+        consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-      function TestHost() {
-        const { init, SequentOutlet } = useSequentFlow();
-        capturedInit = init;
-        return <SequentOutlet errorStep={() => <div>Something went wrong</div>} />;
-      }
+        function TestHost() {
+          const { init, SequentOutlet } = useSequentFlow();
+          capturedInit = init;
+          return <SequentOutlet errorStep={() => <div>Something went wrong</div>} />;
+        }
 
-      render(<TestHost />);
-    });
-
-    And("the flow has been activated with a step that throws during render", () => {
-      act(() => {
-        capturedInit(() => ThrowingStep);
+        render(<TestHost />);
       });
-      expect(screen.getByText("Something went wrong")).toBeInTheDocument();
-    });
 
-    When("the outlet is re-activated with a healthy step", () => {
-      act(() => {
-        capturedInit(() => HealthyStep);
+      And("the flow has been activated with a step that throws during render", () => {
+        act(() => {
+          capturedInit(() => ThrowingStep);
+        });
+        expect(screen.getByText("Something went wrong")).toBeInTheDocument();
       });
-    });
 
-    Then("the healthy step is rendered", () => {
-      expect(screen.getByText("Healthy step rendered")).toBeInTheDocument();
-    });
+      When("the outlet is re-activated with a healthy step", () => {
+        act(() => {
+          capturedInit(() => HealthyStep);
+        });
+      });
 
-    And("the errorStep is no longer visible", () => {
-      expect(screen.queryByText("Something went wrong")).not.toBeInTheDocument();
-      consoleSpy.mockRestore();
-    });
-  });
+      Then("the healthy step is rendered", () => {
+        expect(screen.getByText("Healthy step rendered")).toBeInTheDocument();
+      });
+
+      And("the errorStep is no longer visible", () => {
+        expect(screen.queryByText("Something went wrong")).not.toBeInTheDocument();
+        consoleSpy.mockRestore();
+      });
+    },
+  );
 
   Scenario(
     "Tearing down after an error and re-activating shows the new step",

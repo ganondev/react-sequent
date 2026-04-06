@@ -25,9 +25,9 @@ import {
   type StepContextValue,
 } from "../internal/context";
 import {
-  FlowErrorBoundary,
   type ErrorStepContext,
   type ErrorStepPhase,
+  FlowErrorBoundary,
 } from "../internal/FlowErrorBoundary";
 import type { StepLoader } from "../internal/normalizer";
 import { normalizeStepLoader } from "../internal/normalizer";

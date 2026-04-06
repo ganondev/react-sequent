@@ -34,9 +34,7 @@ function TerminalStep(): React.ReactElement {
 
   return (
     <Stack>
-      {wasRecovered ? (
-        <Alert color="green" title="Flow recovered successfully"/>
-      ) : null}
+      {wasRecovered ? <Alert color="green" title="Flow recovered successfully" /> : null}
       <Title order={4}>Terminal</Title>
       <Text c="dimmed">The flow reached the terminal step successfully.</Text>
       <Group justify="flex-end">
