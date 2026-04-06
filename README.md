@@ -2,7 +2,7 @@
 
 `react-sequent` is a lightweight React library for building UX flows where each step owns its own transition logic. It is designed for multi-step forms, onboarding wizards, modal flows, and other UI sequences that move through discrete states without requiring a centralized state machine configuration.
 
-The library is currently published as `0.1.0-alpha`, with a deliberately small API centered on `useSequentFlow()`, `useSequentStep()`, `useSequentContext()`, and `defineSequentFlow()`.
+The library deliberately exposes a small API centered on `useSequentFlow()`, `useSequentStep()`, `useSequentContext()`, and `defineSequentFlow()`.
 
 ## Technology Stack
 
