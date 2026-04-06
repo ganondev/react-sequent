@@ -6,11 +6,12 @@ import { expect, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
 import { useSequentFlow } from "../hooks/useSequentFlow";
 import { useSequentStep } from "../hooks/useSequentStep";
+import type { ErrorStepContext } from "../internal/FlowErrorBoundary";
 
-// ── Fixture step components ──────────────────────────────────────────
+const THROWING_ERROR = new Error("Step exploded!");
 
 function ThrowingStep(): React.ReactElement {
-  throw new Error("Step exploded!");
+  throw THROWING_ERROR;
 }
 
 function HealthyStep(): React.ReactElement {
@@ -28,19 +29,18 @@ function ResolvingStep(): null {
 const feature = await loadFeature("src/features/error-boundary.feature");
 
 describeFeature(feature, ({ Scenario }) => {
-  // ── Scenario 1 ─────────────────────────────────────────────────────
-  Scenario("A step that throws renders the errorFallback", ({ Given, When, Then, And }) => {
+  Scenario("A step that throws renders the errorStep", ({ Given, When, Then, And }) => {
     let capturedInit: ReturnType<typeof useSequentFlow>["init"];
     let consoleSpy: ReturnType<typeof vi.spyOn>;
 
-    Given("a host with SequentOutlet configured with an errorFallback", () => {
+    Given("a host with SequentOutlet configured with an errorStep", () => {
       cleanup();
       consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
       function TestHost() {
         const { init, SequentOutlet } = useSequentFlow();
         capturedInit = init;
-        return <SequentOutlet errorFallback={<div>Something went wrong</div>} />;
+        return <SequentOutlet errorStep={() => <div>Something went wrong</div>} />;
       }
 
       render(<TestHost />);
@@ -53,7 +53,7 @@ describeFeature(feature, ({ Scenario }) => {
       });
     });
 
-    Then("the errorFallback is rendered", () => {
+    Then("the errorStep is rendered", () => {
       expect(screen.getByText("Something went wrong")).toBeInTheDocument();
     });
 
@@ -63,12 +63,11 @@ describeFeature(feature, ({ Scenario }) => {
     });
   });
 
-  // ── Scenario 2 ─────────────────────────────────────────────────────
   Scenario("The outlet remains mounted after an error", ({ Given, When, Then }) => {
     let capturedInit: ReturnType<typeof useSequentFlow>["init"];
     let consoleSpy: ReturnType<typeof vi.spyOn>;
 
-    Given("a host with SequentOutlet configured with an errorFallback", () => {
+    Given("a host with SequentOutlet configured with an errorStep", () => {
       cleanup();
       consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -77,7 +76,7 @@ describeFeature(feature, ({ Scenario }) => {
         capturedInit = init;
         return (
           <div data-testid="outlet-wrapper">
-            <SequentOutlet errorFallback={<div>Something went wrong</div>} />
+            <SequentOutlet errorStep={() => <div>Something went wrong</div>} />
           </div>
         );
       }
@@ -98,21 +97,20 @@ describeFeature(feature, ({ Scenario }) => {
     });
   });
 
-  // ── Scenario 3 ─────────────────────────────────────────────────────
   Scenario(
     "Re-activating after an error resets the error boundary",
     ({ Given, And, When, Then }) => {
       let capturedInit: ReturnType<typeof useSequentFlow>["init"];
       let consoleSpy: ReturnType<typeof vi.spyOn>;
 
-      Given("a host with SequentOutlet configured with an errorFallback", () => {
+      Given("a host with SequentOutlet configured with an errorStep", () => {
         cleanup();
         consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
         function TestHost() {
           const { init, SequentOutlet } = useSequentFlow();
           capturedInit = init;
-          return <SequentOutlet errorFallback={<div>Something went wrong</div>} />;
+          return <SequentOutlet errorStep={() => <div>Something went wrong</div>} />;
         }
 
         render(<TestHost />);
@@ -135,28 +133,27 @@ describeFeature(feature, ({ Scenario }) => {
         expect(screen.getByText("Healthy step rendered")).toBeInTheDocument();
       });
 
-      And("the errorFallback is no longer visible", () => {
+      And("the errorStep is no longer visible", () => {
         expect(screen.queryByText("Something went wrong")).not.toBeInTheDocument();
         consoleSpy.mockRestore();
       });
     },
   );
 
-  // ── Scenario 4 ─────────────────────────────────────────────────────
   Scenario(
     "Tearing down after an error and re-activating shows the new step",
     ({ Given, And, When, Then }) => {
       let capturedInit: ReturnType<typeof useSequentFlow>["init"];
       let consoleSpy: ReturnType<typeof vi.spyOn>;
 
-      Given("a host with SequentOutlet configured with an errorFallback", () => {
+      Given("a host with SequentOutlet configured with an errorStep", () => {
         cleanup();
         consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
         function TestHost() {
           const { init, SequentOutlet } = useSequentFlow();
           capturedInit = init;
-          return <SequentOutlet errorFallback={<div>Something went wrong</div>} />;
+          return <SequentOutlet errorStep={() => <div>Something went wrong</div>} />;
         }
 
         render(<TestHost />);
@@ -170,7 +167,6 @@ describeFeature(feature, ({ Scenario }) => {
       });
 
       When("the flow is torn down by resolving", () => {
-        // Activate a step that immediately calls resolve(), setting flowState to null.
         act(() => {
           capturedInit(() => ResolvingStep);
         });
@@ -188,4 +184,116 @@ describeFeature(feature, ({ Scenario }) => {
       });
     },
   );
+
+  Scenario("Error step receives the thrown error object", ({ Given, When, Then }) => {
+    let capturedInit: ReturnType<typeof useSequentFlow>["init"];
+    let capturedContext: ErrorStepContext | null = null;
+    let consoleSpy: ReturnType<typeof vi.spyOn>;
+
+    Given("a host with SequentOutlet configured with an errorStep that captures context", () => {
+      cleanup();
+      consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      function TestHost() {
+        const { init, SequentOutlet } = useSequentFlow();
+        capturedInit = init;
+        return (
+          <SequentOutlet
+            errorStep={(context) => {
+              capturedContext = context;
+              return <div>Something went wrong</div>;
+            }}
+          />
+        );
+      }
+
+      render(<TestHost />);
+    });
+
+    When("init is called with a step that throws during render", () => {
+      act(() => {
+        capturedInit(() => ThrowingStep);
+      });
+    });
+
+    Then("the captured error matches the thrown error", () => {
+      expect(capturedContext?.error).toBe(THROWING_ERROR);
+      consoleSpy.mockRestore();
+    });
+  });
+
+  Scenario("Error step receives the failed step component", ({ Given, When, Then }) => {
+    let capturedInit: ReturnType<typeof useSequentFlow>["init"];
+    let capturedContext: ErrorStepContext | null = null;
+    let consoleSpy: ReturnType<typeof vi.spyOn>;
+
+    Given("a host with SequentOutlet configured with an errorStep that captures context", () => {
+      cleanup();
+      consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      function TestHost() {
+        const { init, SequentOutlet } = useSequentFlow();
+        capturedInit = init;
+        return (
+          <SequentOutlet
+            errorStep={(context) => {
+              capturedContext = context;
+              return <div>Something went wrong</div>;
+            }}
+          />
+        );
+      }
+
+      render(<TestHost />);
+    });
+
+    When("init is called with a step that throws during render", () => {
+      act(() => {
+        capturedInit(() => ThrowingStep);
+      });
+    });
+
+    Then("the captured failed step matches the throwing step", () => {
+      expect(capturedContext?.failedStep).toBe(ThrowingStep);
+      consoleSpy.mockRestore();
+    });
+  });
+
+  Scenario("Error step receives the React component stack", ({ Given, When, Then }) => {
+    let capturedInit: ReturnType<typeof useSequentFlow>["init"];
+    let capturedContext: ErrorStepContext | null = null;
+    let consoleSpy: ReturnType<typeof vi.spyOn>;
+
+    Given("a host with SequentOutlet configured with an errorStep that captures context", () => {
+      cleanup();
+      consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      function TestHost() {
+        const { init, SequentOutlet } = useSequentFlow();
+        capturedInit = init;
+        return (
+          <SequentOutlet
+            errorStep={(context) => {
+              capturedContext = context;
+              return <div>Something went wrong</div>;
+            }}
+          />
+        );
+      }
+
+      render(<TestHost />);
+    });
+
+    When("init is called with a step that throws during render", () => {
+      act(() => {
+        capturedInit(() => ThrowingStep);
+      });
+    });
+
+    Then("the captured component stack is present", () => {
+      expect(capturedContext?.componentStack).toEqual(expect.any(String));
+      expect(capturedContext?.componentStack?.length).toBeGreaterThan(0);
+      consoleSpy.mockRestore();
+    });
+  });
 });

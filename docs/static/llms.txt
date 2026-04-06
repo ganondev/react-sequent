@@ -60,7 +60,7 @@ function useSequentFlow<TResult = unknown>(): {
 ```
 
 - `init(stepLoader, initialContext?)` — starts a flow. Sets `status` to `active`, then returns `void`. When the step calls `resolve(value)` or `abort(reason)`, `result` is updated and `status` returns to `idle`. Throws if `SequentOutlet` is not currently mounted.
-- `SequentOutlet` — a bound outlet component for this hook instance. Renders idle children when no flow is active. Accepts `children`, `fallback`, `errorFallback`, and `chrome` props.
+- `SequentOutlet` — a bound outlet component for this hook instance. Renders idle children when no flow is active. Accepts `children`, `fallback`, `errorStep`, and `chrome` props.
 
 One `useSequentFlow()` call creates one isolated flow host. Multiple hosts can coexist via separate `useSequentFlow()` calls.
 
@@ -140,8 +140,14 @@ Steps are always passed as zero-arg factories. The library normalizes async fact
 type SequentOutletProps = {
   children?: ReactNode;     // Idle content — rendered when no flow is active
   fallback?: ReactNode;     // Suspense fallback for async step loading
-  errorFallback?: ReactNode; // Error boundary fallback for step render errors
+  errorStep?: (context: ErrorStepContext) => ReactNode; // Error boundary render factory for step render errors
   chrome?: (children: ReactNode) => ReactNode; // Stable wrapper around the step slot
+};
+
+type ErrorStepContext = {
+  error: unknown;
+  componentStack: string | null;
+  failedStep: ComponentType;
 };
 ```
 
@@ -208,7 +214,7 @@ Chrome renders inside `FlowContext` but outside `StepContext`. This means chrome
 
 The outlet wraps steps in a `FlowErrorBoundary`. If a step throws during render:
 
-- The `errorFallback` prop is rendered in place of the broken step.
+- The `errorStep(context)` factory is rendered in place of the broken step.
 - The outlet itself remains mounted.
 - Advancing to a new step or re-activating the outlet resets the error boundary automatically.
 
@@ -384,7 +390,7 @@ function App() {
     <SequentOutlet
       chrome={(slot) => <ModalChrome>{slot}</ModalChrome>}
       fallback={<div>Loading…</div>}
-      errorFallback={<div>Something went wrong.</div>}
+      errorStep={() => <div>Something went wrong.</div>}
     />
   );
 }

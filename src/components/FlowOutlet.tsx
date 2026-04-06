@@ -4,7 +4,7 @@
  * Owns the internal React context provider, wraps children in a
  * `FlowErrorBoundary` for step-level error handling, acts as the
  * Suspense boundary for async step loading, and accepts `fallback`
- * and `errorFallback` props.
+ * and `errorStep` props.
  */
 import {
   type ComponentType,
@@ -23,14 +23,14 @@ import {
   StepContext,
   type StepContextValue,
 } from "../internal/context";
-import { FlowErrorBoundary } from "../internal/FlowErrorBoundary";
+import { type ErrorStepContext, FlowErrorBoundary } from "../internal/FlowErrorBoundary";
 import type { StepLoader } from "../internal/normalizer";
 import { normalizeStepLoader } from "../internal/normalizer";
 
 export interface FlowOutletProps {
   children?: ReactNode;
   fallback?: ReactNode;
-  errorFallback?: ReactNode;
+  errorStep?: (context: ErrorStepContext) => ReactNode;
   chrome?: (children: ReactNode) => ReactNode;
 }
 
@@ -243,7 +243,11 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
 
     const stepSlot = (
       <StepContext.Provider value={stepContextValue}>
-        <FlowErrorBoundary ref={errorBoundaryRef} errorFallback={props.errorFallback}>
+        <FlowErrorBoundary
+          ref={errorBoundaryRef}
+          failedStep={ActiveStep}
+          errorStep={props.errorStep}
+        >
           <Suspense fallback={props.fallback ?? null}>
             <ActiveStep />
           </Suspense>

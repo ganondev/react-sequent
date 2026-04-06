@@ -19,7 +19,7 @@ const sidebars: SidebarsConfig = {
             "api/use-sequent-context",
           ],
         },
-        "api/types",
+        "api/flow-outlet",
       ],
     },
   ],
