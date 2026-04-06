@@ -30,7 +30,7 @@ function BrokenStep(): never {
 function TerminalStep(): React.ReactElement {
   const { context, resolve } = useSequentStep<{ recovered?: boolean }>();
   const recoveredContext = context as Record<string, unknown> | null;
-  const wasRecovered = recoveredContext?.["recovered"] === true;
+  const wasRecovered = recoveredContext?.recovered === true;
 
   return (
     <Stack>

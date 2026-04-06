@@ -28,7 +28,11 @@ function ResolvingStep(): null {
 
 function AdvancerStep(): React.ReactElement {
   const { advance } = useSequentStep();
-  return <button onClick={() => advance(() => ThrowingStep)}>Advance now</button>;
+  return (
+    <button type="button" onClick={() => advance(() => ThrowingStep)}>
+      Advance now
+    </button>
+  );
 }
 
 const feature = await loadFeature("src/features/error-boundary.feature");
