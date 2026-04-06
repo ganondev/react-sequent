@@ -12,7 +12,6 @@ import {
   type ReactNode,
   Suspense,
   useCallback,
-  useEffect,
   useImperativeHandle,
   useMemo,
   useRef,
@@ -57,6 +56,7 @@ interface FlowState {
   history: ComponentType[];
   activeStep: ComponentType;
   consumerContext: unknown;
+  errorPhase: ErrorStepPhase;
 }
 
 function reportLoaderError(phase: "activate" | "advance", error: unknown) {
@@ -76,13 +76,8 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
     const abortRef = useRef<((reason?: unknown) => void) | null>(null);
     /** Monotonically increasing token — invalidates stale resolve/abort closures. */
     const flowIdRef = useRef(0);
-    const errorPhaseRef = useRef<ErrorStepPhase>("render");
     /** Retains the last consumer context value after a flow resolves, so idle children can read it via `useSequentContext`. */
     const lastConsumerContextRef = useRef<unknown>(undefined);
-
-    useEffect(() => {
-      errorPhaseRef.current = "render";
-    }, [flowState?.activeStep]);
 
     const handleResolve = useCallback((value?: unknown) => {
       const cb = resolveRef.current;
@@ -120,7 +115,6 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
           throw error;
         }
         if (flowIdRef.current !== activeFlowId) return;
-        errorPhaseRef.current = "transition";
         errorBoundaryRef.current?.resetError();
         setFlowState((prev) => {
           if (prev === null) return prev;
@@ -140,6 +134,7 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
             history: [...prev.history, prev.activeStep],
             activeStep: nextActiveStep,
             consumerContext: newContext,
+            errorPhase: "transition",
           };
         });
       },
@@ -147,7 +142,6 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
     );
 
     const retreat = useCallback(() => {
-      errorPhaseRef.current = "transition";
       errorBoundaryRef.current?.resetError();
       setFlowState((prev) => {
         if (prev === null || prev.history.length === 0) return prev;
@@ -156,6 +150,7 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
           history: prev.history.slice(0, -1),
           activeStep: previousStep,
           consumerContext: prev.consumerContext,
+          errorPhase: "transition",
         };
       });
     }, []);
@@ -179,7 +174,6 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
             throw error;
           }
           if (flowIdRef.current !== activeFlowId) return;
-          errorPhaseRef.current = "render";
           errorBoundaryRef.current?.resetError();
           flowIdRef.current += 1;
           resolveRef.current = onResolve ?? null;
@@ -188,6 +182,7 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
             history: [],
             activeStep,
             consumerContext: initialContext,
+            errorPhase: "render",
           });
           onActivated?.();
         },
@@ -259,7 +254,7 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
         <FlowErrorBoundary
           ref={errorBoundaryRef}
           failedStep={ActiveStep}
-          phase={errorPhaseRef.current}
+          phase={flowState.errorPhase}
           errorStep={props.errorStep}
         >
           <Suspense fallback={props.fallback ?? null}>
