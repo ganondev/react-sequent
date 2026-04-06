@@ -1,5 +1,5 @@
 import { describeFeature, loadFeature } from "@amiceli/vitest-cucumber";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import type React from "react";
 import { useEffect } from "react";
 import { expect, vi } from "vitest";
@@ -24,15 +24,6 @@ function ResolvingStep(): null {
     resolve();
   }, [resolve]);
   return null;
-}
-
-function AdvancerStep(): React.ReactElement {
-  const { advance } = useSequentStep();
-  return (
-    <button type="button" onClick={() => advance(() => ThrowingStep)}>
-      Advance now
-    </button>
-  );
 }
 
 const feature = await loadFeature("src/features/error-boundary.feature");
@@ -302,87 +293,6 @@ describeFeature(feature, ({ Scenario }) => {
     Then("the captured component stack is present", () => {
       expect(capturedContext?.componentStack).toEqual(expect.any(String));
       expect(capturedContext?.componentStack?.length).toBeGreaterThan(0);
-      consoleSpy.mockRestore();
-    });
-  });
-
-  Scenario("Error step phase is render for activation failures", ({ Given, When, Then }) => {
-    let capturedInit: ReturnType<typeof useSequentFlow>["init"];
-    let capturedContext: ErrorStepContext | null = null;
-    let consoleSpy: ReturnType<typeof vi.spyOn>;
-
-    Given("a host with SequentOutlet configured with an errorStep that captures context", () => {
-      cleanup();
-      consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
-      function TestHost() {
-        const { init, SequentOutlet } = useSequentFlow();
-        capturedInit = init;
-        return (
-          <SequentOutlet
-            errorStep={(context) => {
-              capturedContext = context;
-              return <div>Something went wrong</div>;
-            }}
-          />
-        );
-      }
-
-      render(<TestHost />);
-    });
-
-    When("init is called with a step that throws during render", () => {
-      act(() => {
-        capturedInit(() => ThrowingStep);
-      });
-    });
-
-    Then("the captured phase is render", () => {
-      expect(capturedContext?.phase).toBe("render");
-      consoleSpy.mockRestore();
-    });
-  });
-
-  Scenario("Error step phase is transition for advance failures", ({ Given, And, When, Then }) => {
-    let capturedInit: ReturnType<typeof useSequentFlow>["init"];
-    let capturedContext: ErrorStepContext | null = null;
-    let consoleSpy: ReturnType<typeof vi.spyOn>;
-
-    Given("a host with SequentOutlet configured with an errorStep that captures context", () => {
-      cleanup();
-      consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
-      function TestHost() {
-        const { init, SequentOutlet } = useSequentFlow();
-        capturedInit = init;
-        return (
-          <SequentOutlet
-            errorStep={(context) => {
-              capturedContext = context;
-              return <div>Something went wrong</div>;
-            }}
-          />
-        );
-      }
-
-      render(<TestHost />);
-    });
-
-    And("the flow has been activated with a step that advances to a throwing step", () => {
-      act(() => {
-        capturedInit(() => AdvancerStep);
-      });
-      expect(screen.getByText("Advance now")).toBeInTheDocument();
-    });
-
-    When("the step advances to the throwing step", () => {
-      act(() => {
-        fireEvent.click(screen.getByText("Advance now"));
-      });
-    });
-
-    Then("the captured phase is transition", () => {
-      expect(capturedContext?.phase).toBe("transition");
       consoleSpy.mockRestore();
     });
   });

@@ -27,7 +27,6 @@ type ErrorStepContext = {
     error: unknown;
     componentStack: string | null;
     failedStep: ComponentType;
-    phase: "render" | "transition";
 };
 ```
 
@@ -60,15 +59,12 @@ The callback receives an `ErrorStepContext` object with:
 - `error` — the thrown value
 - `componentStack` — the React component stack when available
 - `failedStep` — the step component that failed
-- `phase` — the phase in which the error occurred
 
 Behavior:
 
 - used when the active step throws an error
 - replaces the active step UI with your error UI
 - if omitted, the outlet renders no special error UI
-
-The `phase` value helps you distinguish between a failure that happened while a step was rendering and one that happened during a step change.
 
 ### `chrome`
 
@@ -171,10 +167,9 @@ function CheckoutShell() {
   return (
     <SequentOutlet
       fallback={<div>Loading step…</div>}
-      errorStep={({ error, phase }) => (
+      errorStep={({ error }) => (
         <div>
           <h2>Something went wrong</h2>
-          <p>Phase: {phase}</p>
           <pre>{String(error)}</pre>
         </div>
       )}

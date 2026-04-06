@@ -16,5 +16,5 @@ export type {
 } from "./hooks/useSequentFlow";
 export { useSequentFlow } from "./hooks/useSequentFlow";
 export { useSequentStep } from "./hooks/useSequentStep";
-export type { ErrorStepContext, ErrorStepPhase } from "./internal/FlowErrorBoundary";
+export type { ErrorStepContext } from "./internal/FlowErrorBoundary";
 export type { StepLoader } from "./internal/normalizer";

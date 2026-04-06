@@ -23,11 +23,7 @@ import {
   StepContext,
   type StepContextValue,
 } from "../internal/context";
-import {
-  type ErrorStepContext,
-  type ErrorStepPhase,
-  FlowErrorBoundary,
-} from "../internal/FlowErrorBoundary";
+import { type ErrorStepContext, FlowErrorBoundary } from "../internal/FlowErrorBoundary";
 import type { StepLoader } from "../internal/normalizer";
 import { normalizeStepLoader } from "../internal/normalizer";
 
@@ -56,7 +52,6 @@ interface FlowState {
   history: ComponentType[];
   activeStep: ComponentType;
   consumerContext: unknown;
-  errorPhase: ErrorStepPhase;
 }
 
 function reportLoaderError(phase: "activate" | "advance", error: unknown) {
@@ -134,7 +129,6 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
             history: [...prev.history, prev.activeStep],
             activeStep: nextActiveStep,
             consumerContext: newContext,
-            errorPhase: "transition",
           };
         });
       },
@@ -150,7 +144,6 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
           history: prev.history.slice(0, -1),
           activeStep: previousStep,
           consumerContext: prev.consumerContext,
-          errorPhase: "transition",
         };
       });
     }, []);
@@ -182,7 +175,6 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
             history: [],
             activeStep,
             consumerContext: initialContext,
-            errorPhase: "render",
           });
           onActivated?.();
         },
@@ -254,7 +246,6 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
         <FlowErrorBoundary
           ref={errorBoundaryRef}
           failedStep={ActiveStep}
-          phase={flowState.errorPhase}
           errorStep={props.errorStep}
         >
           <Suspense fallback={props.fallback ?? null}>

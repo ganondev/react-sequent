@@ -58,7 +58,7 @@ function ErrorFallback(props: ErrorStepContext) {
         {errorMessage}
       </Text>
       <Text size="xs" c="dimmed" mb="sm">
-        Failed step: {failedStepName} · phase: {props.phase}
+        Failed step: {failedStepName}
       </Text>
       <Group gap="xs">
         <Button size="xs" variant="white" color="red" onClick={() => retreat()}>

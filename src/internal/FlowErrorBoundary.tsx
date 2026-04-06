@@ -3,19 +3,15 @@
  */
 import { Component, type ComponentType, type ErrorInfo, type ReactNode } from "react";
 
-export type ErrorStepPhase = "render" | "transition";
-
 export interface ErrorStepContext {
   error: unknown;
   componentStack: string | null;
   failedStep: ComponentType;
-  phase: ErrorStepPhase;
 }
 
 interface FlowErrorBoundaryProps {
   children: ReactNode;
   failedStep: ComponentType;
-  phase: ErrorStepPhase;
   errorStep?: (context: ErrorStepContext) => ReactNode;
 }
 
@@ -23,28 +19,26 @@ interface FlowErrorBoundaryState {
   hasError: boolean;
   error: unknown;
   componentStack: string | null;
-  phase: ErrorStepPhase;
 }
 
 class FlowErrorBoundary extends Component<FlowErrorBoundaryProps, FlowErrorBoundaryState> {
   constructor(props: FlowErrorBoundaryProps) {
     super(props);
-    this.state = { hasError: false, error: null, componentStack: null, phase: "render" };
+    this.state = { hasError: false, error: null, componentStack: null };
   }
 
   static getDerivedStateFromError(error: unknown): FlowErrorBoundaryState {
-    return { hasError: true, error, componentStack: null, phase: "render" };
+    return { hasError: true, error, componentStack: null };
   }
 
   componentDidCatch(_error: Error, errorInfo: ErrorInfo): void {
     this.setState({
       componentStack: errorInfo.componentStack ?? null,
-      phase: this.props.phase,
     });
   }
 
   resetError(): void {
-    this.setState({ hasError: false, error: null, componentStack: null, phase: "render" });
+    this.setState({ hasError: false, error: null, componentStack: null });
   }
 
   render(): ReactNode {
@@ -54,7 +48,6 @@ class FlowErrorBoundary extends Component<FlowErrorBoundaryProps, FlowErrorBound
           error: this.state.error,
           componentStack: this.state.componentStack,
           failedStep: this.props.failedStep,
-          phase: this.state.phase,
         }) ?? null
       );
     }

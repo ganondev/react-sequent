@@ -42,14 +42,3 @@ Feature: Error boundary
     Given a host with SequentOutlet configured with an errorStep that captures context
     When  init is called with a step that throws during render
     Then  the captured component stack is present
-
-  Scenario: Error step phase is render for activation failures
-    Given a host with SequentOutlet configured with an errorStep that captures context
-    When  init is called with a step that throws during render
-    Then  the captured phase is render
-
-  Scenario: Error step phase is transition for advance failures
-    Given a host with SequentOutlet configured with an errorStep that captures context
-    And   the flow has been activated with a step that advances to a throwing step
-    When  the step advances to the throwing step
-    Then  the captured phase is transition

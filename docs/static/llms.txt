@@ -148,7 +148,6 @@ type ErrorStepContext = {
   error: unknown;
   componentStack: string | null;
   failedStep: ComponentType;
-  phase: "render" | "transition";
 };
 ```
 
