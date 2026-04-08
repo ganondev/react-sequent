@@ -5,7 +5,7 @@ import type * as Preset from "@docusaurus/preset-classic";
 const config: Config = {
   title: "react-sequent",
   tagline:
-    "Lightweight React utility for building UX flows where each step owns its own transition logic",
+    "Simple, flexible, multi-step flows without boilerplate",
   favicon: "img/favicon.ico",
 
   future: {

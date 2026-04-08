@@ -26,49 +26,6 @@ const features = [
   },
 ];
 
-const quickExample = `import {
-  useSequentFlow,
-  useSequentStep,
-} from "react-sequent";
-
-function Step1() {
-  const { advance } = useSequentStep();
-  return (
-    <div>
-      <h3>Welcome</h3>
-      <button onClick={() => advance(() => Step2)}>
-        Next
-      </button>
-    </div>
-  );
-}
-
-function Step2() {
-  const { retreat, resolve } = useSequentStep();
-  return (
-    <div>
-      <h3>Confirm</h3>
-      <button onClick={() => retreat()}>Back</button>
-      <button onClick={() => resolve("done")}>
-        Finish
-      </button>
-    </div>
-  );
-}
-
-function App() {
-  const { init, SequentOutlet } = useSequentFlow();
-
-  return (
-    <>
-      <SequentOutlet />
-      <button onClick={() => init(() => Step1)}>
-        Start Flow
-      </button>
-    </>
-  );
-}`;
-
 function HomepageHeader() {
   const { siteConfig } = useDocusaurusContext();
   return (
@@ -157,11 +114,11 @@ function RightFit() {
         <div className="row">
           <div className="col col--8 col--offset-2">
             <p className="text--center" style={{ marginBottom: "2rem" }}>
-              <strong>react-sequent</strong> is designed for short, simple flows
-              where the UI outside the flow remains stable. If you have a long,
-              complex, or highly context-sensitive flow, or if you want your
-              your flow coupled to external state, a more traditional
-              state machine or flow library might be a better fit.
+              <strong>react-sequent</strong>'s opinionated design encourages
+              isolated, self-contained, reusable steps and atomic
+              fire-and-forget flow control semantics.
+              If your flows are UX-centric and a rigid state machine is
+              unnecessary overhead, react-sequent can help you iterate faster with less.
             </p>
           </div>
         </div>
@@ -188,35 +145,26 @@ function RightFit() {
               </tr>
               <tr>
                 <td className={styles.rightFitQuestionCell}>Boilerplate?</td>
-                <td>Minimal boilerplate required.</td>
-                <td>Some boilerplate, depending on the utility.</td>
+                <td>As much as you need, as little as none.</td>
+                <td>Always some boilerplate - depends on the utility.</td>
               </tr>
               <tr>
                 <td className={styles.rightFitQuestionCell}>Flow Specialization?</td>
                 <td>Short, simple flows.</td>
                 <td>Long, complex, or context-sensitive flows.</td>
               </tr>
+              <tr>
+                <td className={styles.rightFitQuestionCell}>Observability?</td>
+                <td>Built-in customizable error states with full context and recovery.</td>
+                <td>Manual error handling usually required.</td>
+              </tr>
+              <tr>
+                <td className={styles.rightFitQuestionCell}>State Space?</td>
+                <td><strong>Implicit; Emergent</strong>. Easier to reason about individual steps and transitions.</td>
+                <td><strong>Explicit; Rigid</strong>. Easier to get the full picture.</td>
+              </tr>
             </tbody>
           </table>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function QuickExample() {
-  return (
-    <section className={styles.example}>
-      <div className="container">
-        <div className="row">
-          <div className="col col--8 col--offset-2">
-            <Heading as="h2" className="text--center">
-              Minimal example
-            </Heading>
-            <CodeBlock language="tsx" title="App.tsx">
-              {quickExample}
-            </CodeBlock>
           </div>
         </div>
       </div>
@@ -244,7 +192,6 @@ export default function Home(): ReactNode {
         </section>
         <TheParadigm />
         <RightFit />
-        <QuickExample />
       </main>
     </Layout>
   );
