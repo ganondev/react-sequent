@@ -1,6 +1,6 @@
 ---
 name: use-react-sequent
-description: 'Consumer-facing guidance for using react-sequent in React apps. Use when answering questions about multi-step forms, onboarding flows, modal flows, wizards, checkout flows, or when choosing between useSequentFlow, useSequentStep, useSequentContext, and defineSequentFlow. Prefer a light overview first, then point to the hosted docs and llms.txt for deeper API and edge-case details.'
+description: 'Consumer-facing guidance for using react-sequent in React apps. Use when answering questions about multi-step forms, onboarding flows, modal flows, wizards, checkout flows, or when choosing between useSequentFlow, useSequentStep, and useSequentContext. Prefer a light overview first, then point to the hosted docs and llms.txt for deeper API and edge-case details.'
 argument-hint: 'Describe the flow you want to build or the react-sequent API question you want answered.'
 ---
 
@@ -17,7 +17,7 @@ argument-hint: 'Describe the flow you want to build or the react-sequent API que
 
 - The user wants to build a step-based UX flow with react-sequent.
 - The user asks how react-sequent differs from a centralized state machine.
-- The user needs to choose between `useSequentFlow()`, `useSequentStep()`, `useSequentContext()`, and `defineSequentFlow()`.
+- The user needs to choose between `useSequentFlow()`, `useSequentStep()`, and `useSequentContext()`.
 - The user wants a minimal example, a migration path, or help structuring a flow around steps, context, chrome, async loading, or typed scopes.
 
 ## Core Framing
@@ -34,7 +34,6 @@ argument-hint: 'Describe the flow you want to build or the react-sequent API que
 - Use `useSequentFlow()` at the flow host. It provides `init()`, `status`, `result`, and the bound `SequentOutlet`.
 - Use `useSequentStep()` inside active step components. It provides `advance()`, `retreat()`, `resolve()`, `abort()`, and the current flow context.
 - Use `useSequentContext()` in chrome, idle children, or any flow-level consumer component that needs context or termination controls but not navigation.
-- Use `defineSequentFlow()` only when shared context and result typing materially improve the consumer experience.
 - Explain `SequentOutlet` as the render target for the active flow, with optional idle children, async fallback, stable chrome, and error handling.
 
 ## Procedure
@@ -44,8 +43,7 @@ argument-hint: 'Describe the flow you want to build or the react-sequent API que
 3. Choose the smallest relevant API surface using the guide above.
 4. Sketch a minimal host plus two or three steps. Keep branching in step code with normal conditionals.
 5. Add context only when the user needs cross-step data, persistent values across retreat, or chrome state.
-6. Add `defineSequentFlow()` only when the user will benefit from shared TypeScript context and result types.
-7. If the user asks for full signatures, prop details, or edge cases, consult the hosted docs and `llms.txt` instead of guessing.
+6. If the user asks for full signatures, prop details, or edge cases, consult the hosted docs and `llms.txt` instead of guessing.
 
 ## Implementation Guardrails
 

@@ -7,7 +7,7 @@ title: Singleton Modal with Hook
 
 A flow rendered inside a **shared singleton modal** — a single `SequentOutlet` lives at the top of the tree inside a context provider. This enables an application to enter modal flows with a single shared `useModal` hook: any component in the subtree calls `useModal()` to open a flow without ever touching a ref or rendering an outlet itself.
 
-Click **Open Setup Flow** below to try it.
+Click **Open Setup Flow** or **Report a Bug** below to try it — they are unrelated flows sharing the same outlet.
 
 This example mixes both step-loader styles: the first transition uses a component loader, while the last transition returns JSX directly and merges the final title into context to signal chrome updates.
 
@@ -108,39 +108,101 @@ function SharedModalDemo() {
     );
   }
 
-  // ── Consumer ──────────────────────────────────────────────────────────────
+  // ── A second, unrelated flow ─────────────────────────────────────────────
 
-  function SetupButton() {
-    const { openModal, status, result } = useModal();
-    const [log, setLog] = useState("");
-
-    React.useEffect(() => {
-      if (status !== "idle" || result === null) return;
-
-      if (result.status === "resolved") {
-        setLog(`Setup complete with result: ${JSON.stringify(result.value)}`);
-      } else {
-        setLog("Flow aborted.");
-      }
-    }, [status, result]);
-
-    function handleOpen() {
-      setLog("");
-      openModal(() => StepWelcome, { title: "Welcome" });
-    }
-
+  function StepBugReport() {
+    const { advance, abort } = useSequentStep();
+    const [description, setDescription] = useState("");
     return (
-      <div className="demo-sandbox">
-        <button onClick={handleOpen}>Open Setup Flow</button>
-        {log && <p className="demo-log">{log}</p>}
+      <div>
+        <p className="demo-para">Describe the issue you encountered.</p>
+        <div className="demo-input-group">
+          <textarea
+            className="demo-input demo-textarea"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="What went wrong?"
+            rows={3}
+          />
+        </div>
+        <div className="demo-actions">
+          <button
+            disabled={!description.trim()}
+            onClick={() => advance(() => <StepBugSubmitted description={description} />, { title: "Thanks!" })}
+          >
+            Submit →
+          </button>
+          <button className="demo-btn-ghost" onClick={() => abort("cancelled")}>Cancel</button>
+        </div>
       </div>
     );
   }
 
+  function StepBugSubmitted({ description }) {
+    const { resolve } = useSequentStep();
+    return (
+      <div>
+        <p className="demo-para">Bug reported!</p>
+        <p className="demo-para demo-muted">"{description}"</p>
+        <button onClick={() => resolve({ submitted: true })}>Close</button>
+      </div>
+    );
+  }
+
+  // ── Consumers (pure triggers — no lifecycle awareness) ───────────────────
+
+  function SetupButton() {
+    const { openModal } = useModal();
+    return (
+      <div className="demo-sandbox">
+        <button onClick={() => openModal(() => StepWelcome, { title: "Welcome" })}>
+          Open Setup Flow
+        </button>
+      </div>
+    );
+  }
+
+  function ReportBugButton() {
+    const { openModal } = useModal();
+    return (
+      <div className="demo-sandbox">
+        <button onClick={() => openModal(() => StepBugReport, { title: "Report a Bug" })}>
+          Report a Bug
+        </button>
+      </div>
+    );
+  }
+
+  // ── Flow observer (decoupled from whichever button started the flow) ─────
+
+  function FlowLogger() {
+    const { status, result } = useModal();
+
+    if (status !== "idle") {
+      return <p className="demo-log">Flow active — waiting for result…</p>;
+    }
+
+    if (result?.status === "resolved") {
+      return <p className="demo-log">Flow resolved: {JSON.stringify(result.value)}</p>;
+    }
+
+    if (result?.status === "aborted") { 
+      return <p className="demo-log">Flow aborted.</p>;
+    }
+
+  }
+
   return (
     <ModalProvider>
-      <SetupButton />
+      <div style={{ display: "flex", gap: "0.5rem" }}>
+        <SetupButton />
+        <ReportBugButton />
+      </div>
+      <FlowLogger />
     </ModalProvider>
   );
 }
 ```
+
+## Outlet Reuse
+Both **Setup** and **Report a Bug** are completely unrelated flows, yet they share the same `ModalProvider` and the same single `SequentOutlet`. The flow state is not tethered to either button's lifecycle — each call to `openModal()` independently activates the outlet, runs to completion (or cancellation), and returns it to idle, ready for the next flow. The provider never manages active or inactive flags per flow; the library handles that internally.

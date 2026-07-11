@@ -18,13 +18,14 @@ react-sequent inverts this. Flows are **implicit** — transitions emerge from s
 - Branching logic lives where it's most readable — in the step itself. Branching is just an `if` statement; there is no special branching API.
 - Steps are easy to test in isolation because each one is self-contained.
 
+There is a second, subtler architectural difference: **flow state lives independently of the component that starts it.** Calling `init()` from a button click, a `useEffect`, or a parent component — the outlet doesn't care. The flow isn't tethered to the caller's React lifecycle; it runs inside the outlet's provider boundary, which stays mounted as long as the outlet is rendered. This means a single outlet can host multiple unrelated flows over its lifetime — start a login flow, tear it down, start a checkout flow — without remounting chrome, losing context, or wrapping each flow in its own closure. There are no dangling active or inactive flags to track per flow; the library manages outlet state internally, so consumers never need to manage lifecycle state at all, not even remembering to tear down a completed or aborted flow.
+
 The library's API is deliberately minimal. When in doubt, it does less. If a consumer could implement a feature themselves in five lines, it probably doesn't belong in the library.
 
 Important notes:
 
 - `context` is consumer-owned — the library carries it, never inspects or mutates it. It is a delivery mechanism, not a state management feature.
 - `retreat()` navigates backward; it does **not** restore step-local state. If state must survive a retreat, write it into context before advancing.
-- Typed flows via `defineSequentFlow` are entirely opt-in and perform no runtime work — they are a type boundary, not a registry or provider.
 - The library uses two nested React contexts internally (`FlowContext` and `StepContext`) to enforce strict hook compartmentalization. Consumers never interact with them directly.
 
 ## Vocabulary
@@ -44,7 +45,7 @@ Important notes:
 
 ## Public API Surface
 
-The library exports three hooks, one factory function, and associated types. There is no JSX the consumer imports directly — the outlet component is returned from `useSequentFlow()`.
+The library exports three hooks and associated types. There is no JSX the consumer imports directly — the outlet component is returned from `useSequentFlow()`.
 
 ### `useSequentFlow<TResult>()`
 
@@ -82,7 +83,7 @@ function useSequentStep<TResult = unknown>(): {
 - `retreat()` — pops the history stack and renders the previous step. Always synchronous. No-ops if history is empty.
 - `resolve(value?)` — ends the flow successfully. `useSequentFlow().result` becomes `{ status: "resolved", value }`.
 - `abort(reason?)` — ends the flow without completing. `useSequentFlow().result` becomes `{ status: "aborted", reason }`.
-- `context` — the current flow context value (typed as `unknown` unless using `defineSequentFlow`).
+- `context` — the current flow context value.
 
 ### `useSequentContext<TContext>()`
 
@@ -99,26 +100,6 @@ function useSequentContext<TContext = unknown>(): {
 - `context` — during an active flow, the current consumer context. While idle, the context from the last *resolved* flow, or `undefined` if no flow has resolved yet. Aborted flows do not update idle context.
 - `resolve` / `abort` — terminate the flow. Throws if called while idle (no active flow).
 - Has **no navigation capabilities** — `advance` and `retreat` are exclusive to `useSequentStep`.
-
-### `defineSequentFlow<TContext, TResult>()`
-
-Factory that creates a typed scope for a flow. Performs no runtime coordination and creates no provider or registry.
-
-```typescript
-function defineSequentFlow<
-  TContext extends object = Record<string, never>,
-  TResult = unknown,
->(): SequentFlowDefinition<TContext, TResult>;
-```
-
-Returns `{ useSequentFlow, useSequentStep, useSequentContext }` — typed wrappers around the base hooks:
-
-- `useSequentFlow().init()` requires `initialContext: TContext` (no longer optional)
-- `useSequentStep().context` is `TContext`; `advance()` patch is `Partial<TContext>`
-- `useSequentStep().resolve()` accepts `TResult`
-- `useSequentContext().context` is `TContext | undefined`
-
-`TContext` must be a plain object type — arrays and functions are rejected at the type level.
 
 ### `StepLoader`
 
@@ -154,30 +135,20 @@ type ErrorStepContext = {
 ### Exported Types
 
 ```typescript
-interface SequentFlowDefinition<TContext extends object, TResult = unknown> {
-  useSequentFlow(): TypedUseFlowReturn<TContext, TResult>;
-  useSequentStep(): TypedUseStepReturn<TContext, TResult>;
-  useSequentContext(): TypedUseContextReturn<TContext, TResult>;
-}
-
-interface TypedUseFlowReturn<TContext extends object, TResult = unknown> {
-  init: (stepLoader: StepLoader, initialContext: TContext) => void;
+interface UseSequentFlowReturn<TResult = unknown> {
+  init: (stepLoader: StepLoader, initialContext?: unknown) => void;
   status: "idle" | "active";
   result: SequentResult<TResult> | null;
   SequentOutlet: FunctionComponent<SequentOutletProps>;
 }
 
-interface TypedUseStepReturn<TContext extends object, TResult = unknown> {
-  advance: (nextStep: StepLoader, contextPatch?: Partial<TContext>) => void;
-  retreat: () => void;
-  resolve: (value?: TResult) => void;
-  abort: (reason?: unknown) => void;
-  context: TContext;
-}
+type SequentResult<TResult = unknown> =
+  | { status: "resolved"; value: TResult }
+  | { status: "aborted"; reason: unknown };
 
-interface TypedUseContextReturn<TContext extends object, TResult = unknown> {
-  context: TContext | undefined;
-  resolve: (value?: TResult) => void;
+interface SequentContextReturn<TContext = unknown> {
+  context: TContext;
+  resolve: (value?: unknown) => void;
   abort: (reason?: unknown) => void;
 }
 ```
@@ -318,56 +289,6 @@ function Step1() {
 }
 ```
 
-### Typed Flow with defineSequentFlow
-
-```tsx
-import { defineSequentFlow } from "react-sequent";
-
-interface CheckoutContext {
-  cartId: string;
-  shippingAddress?: string;
-}
-
-interface CheckoutResult {
-  orderId: string;
-}
-
-const { useSequentFlow, useSequentStep } = defineSequentFlow<
-  CheckoutContext,
-  CheckoutResult
->();
-
-function ShippingStep() {
-  const { context, advance } = useSequentStep();
-  return (
-    <button onClick={() => advance(() => ReviewStep, { shippingAddress: "123 Main" })}>
-      Ship to {context.cartId}
-    </button>
-  );
-}
-
-function ReviewStep() {
-  const { context, resolve } = useSequentStep();
-  return (
-    <button onClick={() => resolve({ orderId: context.cartId })}>
-      Place Order
-    </button>
-  );
-}
-
-function CheckoutPage() {
-  const { init, SequentOutlet } = useSequentFlow();
-  return (
-    <>
-      <SequentOutlet />
-      <button onClick={() => init(() => ShippingStep, { cartId: "cart-1" })}>
-        Begin Checkout
-      </button>
-    </>
-  );
-}
-```
-
 ### Chrome Render Prop
 
 ```tsx
@@ -463,7 +384,6 @@ function IdleContent() {
 - [useSequentFlow](https://ganondev.github.io/react-sequent/docs/api/use-sequent-flow): Flow initialization hook and bound outlet component
 - [useSequentStep](https://ganondev.github.io/react-sequent/docs/api/use-sequent-step): Step-level transitions, context access, and flow termination
 - [useSequentContext](https://ganondev.github.io/react-sequent/docs/api/use-sequent-context): Flow-level context for chrome and idle children
-- [defineSequentFlow](https://ganondev.github.io/react-sequent/docs/api/define-sequent-flow): Typed flow scope factory
 - [Types](https://ganondev.github.io/react-sequent/docs/api/types): All exported TypeScript types and interfaces
 
 ## Demos

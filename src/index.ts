@@ -1,12 +1,5 @@
 // react-sequent — public API
 
-export type {
-  SequentFlowDefinition,
-  TypedUseContextReturn,
-  TypedUseFlowReturn,
-  TypedUseStepReturn,
-} from "./defineSequentFlow";
-export { defineSequentFlow } from "./defineSequentFlow";
 export type { SequentContextReturn } from "./hooks/useSequentContext";
 export { useSequentContext } from "./hooks/useSequentContext";
 export type {
