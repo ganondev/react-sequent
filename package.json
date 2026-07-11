@@ -1,6 +1,6 @@
 {
   "name": "react-sequent",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "type": "module",
   "description": "Lightweight React utility for building UX flows where each step owns its own transition logic",
   "license": "MIT",
