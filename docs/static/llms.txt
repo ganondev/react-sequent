@@ -147,7 +147,7 @@ type SequentResult<TResult = unknown> =
   | { status: "aborted"; reason: unknown };
 
 interface SequentContextReturn<TContext = unknown> {
-  context: TContext;
+  context: TContext; // `undefined` while idle until a flow resolves at least once
   resolve: (value?: unknown) => void;
   abort: (reason?: unknown) => void;
 }
