@@ -1,3 +1,8 @@
+/**
+ * @deprecated `defineSequentFlow` is deprecated and will be removed in a future release.
+ * The typing was weak, and in retrospect the strategy defeated the purpose of flow outlets being reusable.
+ * Consumers should type context and results manually on the base hooks.
+ */
 import { type FunctionComponent, useCallback } from "react";
 import { type SequentContextReturn, useSequentContext } from "./hooks/useSequentContext";
 import {
@@ -8,12 +13,14 @@ import {
 import { useSequentStep } from "./hooks/useSequentStep";
 import type { StepLoader } from "./internal/normalizer";
 
+/** @deprecated Use the base hooks directly with manual type annotations instead. */
 type InvalidTypedContextArgs<TContext extends object> = TContext extends readonly unknown[]
   ? [message: "Typed flow context must be a plain object."]
   : TContext extends (...args: never[]) => unknown
     ? [message: "Typed flow context must be a plain object."]
     : [];
 
+/** @deprecated Use the base hooks directly with manual type annotations instead. */
 export interface TypedUseFlowReturn<TContext extends object, TResult = unknown> {
   init: (stepLoader: StepLoader, initialContext: TContext) => void;
   status: "idle" | "active";
@@ -21,6 +28,7 @@ export interface TypedUseFlowReturn<TContext extends object, TResult = unknown> 
   SequentOutlet: FunctionComponent<SequentOutletProps>;
 }
 
+/** @deprecated Use the base hooks directly with manual type annotations instead. */
 export interface TypedUseStepReturn<TContext extends object, TResult = unknown> {
   advance: (nextStep: StepLoader, contextPatch?: Partial<TContext>) => void;
   retreat: () => void;
@@ -29,18 +37,21 @@ export interface TypedUseStepReturn<TContext extends object, TResult = unknown> 
   context: TContext;
 }
 
+/** @deprecated Use the base hooks directly with manual type annotations instead. */
 export interface TypedUseContextReturn<TContext extends object, TResult = unknown> {
   context: TContext | undefined;
   resolve: (value?: TResult) => void;
   abort: (reason?: unknown) => void;
 }
 
+/** @deprecated Use the base hooks directly with manual type annotations instead. */
 export interface SequentFlowDefinition<TContext extends object, TResult = unknown> {
   useSequentFlow(): TypedUseFlowReturn<TContext, TResult>;
   useSequentStep(): TypedUseStepReturn<TContext, TResult>;
   useSequentContext(): TypedUseContextReturn<TContext, TResult>;
 }
 
+/** @deprecated Use the base hooks directly with manual type annotations instead. */
 export function defineSequentFlow<
   TContext extends object = Record<string, never>,
   TResult = unknown,

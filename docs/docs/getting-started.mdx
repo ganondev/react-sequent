@@ -17,6 +17,14 @@ npm install react-sequent
 
 **Prerequisites:** React `^16.14.0 || ^17 || ^18 || ^19`
 
+## Why react-sequent?
+
+Most flow and wizard libraries require you to define the entire state graph up front in a centralized config — every state, every transition, every branch. This works for long-lived machines that exist independently of your UI, but it adds friction for flows that live **inside** a component: a modal, a checkout section, an onboarding sequence.
+
+`react-sequent` takes the opposite approach. **The step decides what comes next.** There is no separate transition map to keep in sync, no machine definition above your components. If a step needs to branch, it writes a normal `if` statement. If you remove a step, you delete a component — nothing else breaks.
+
+There's a subtler difference too: **flow state lives independently of the component that starts it.** The flow isn't tethered to the caller's lifecycle; it runs inside the outlet's provider boundary. This means a single outlet can host multiple unrelated flows without remounting chrome, losing context, or wrapping each flow in its own closure. The library manages lifecycle state internally — consumers never manage it at all.
+
 ## Quick Start
 
 A minimal two-step flow in under 40 lines:
@@ -148,42 +156,3 @@ function Step1() {
 - [**useSequentStep**](/docs/api/use-sequent-step) — transitions, context, and flow completion
 - [**useSequentContext**](/docs/api/use-sequent-context) — flow-level context for chrome and idle children
 
-## Adding type safety
-
-If you want `init()`, `useSequentStep()`, and `useSequentContext()` to share the same context type, define a typed scope at module level:
-
-```tsx
-import { defineSequentFlow } from "react-sequent";
-
-interface SignupContext {
-  email: string;
-  plan?: string;
-}
-
-const { useSequentFlow, useSequentStep } = defineSequentFlow<SignupContext, string>();
-
-function PlanStep() {
-  const { context, advance } = useSequentStep();
-
-  return (
-    <button onClick={() => advance(() => ConfirmStep, { plan: "pro" })}>
-      Continue {context.email}
-    </button>
-  );
-}
-
-function App() {
-  const { init, SequentOutlet } = useSequentFlow();
-
-  return (
-    <>
-      <SequentOutlet />
-      <button onClick={() => init(() => PlanStep, { email: "alice@example.com" })}>
-        Start signup
-      </button>
-    </>
-  );
-}
-```
-
-See [**defineSequentFlow**](/docs/api/define-sequent-flow) for the full API.

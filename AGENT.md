@@ -49,7 +49,6 @@ The exported API is intentionally small:
 - `useSequentFlow<TResult>()` — flow entry points
 - `useSequentStep<TResult>()` — active step components
 - `useSequentContext<TContext>()` — chrome, idle children, and any flow-level consumer component
-- `defineSequentFlow<TContext, TResult>()` — typed wrapper hooks for colocated flows
 
 `FlowOutlet` is an internal implementation detail. Consumers work with the bound `SequentOutlet` component returned from `useSequentFlow()`.
 
@@ -75,11 +74,6 @@ The hooks have strictly separated concerns. A step must never be able to access 
 - Returns `context` (the current flow context value), `resolve`, and `abort`
 - Available to components that need flow state but not step-only navigation
 - Has no navigation capabilities (`advance`/`retreat` remain exclusive to `useSequentStep`)
-
-**`defineSequentFlow<TContext, TResult>()`** — for typed scopes
-- Returns typed wrappers around `useSequentFlow`, `useSequentStep`, and `useSequentContext`
-- Keeps `init()`, `context`, and result handling aligned for a colocated flow
-- Performs no runtime coordination, it is essentially a TypeScript-only feature
 
 These hooks must not share a public interface beyond what is explicitly listed. Compartmentalization is a hard requirement, not a preference.
 

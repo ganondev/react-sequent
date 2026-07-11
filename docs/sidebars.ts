@@ -13,7 +13,6 @@ const sidebars: SidebarsConfig = {
           type: "category",
           label: "Hooks",
           items: [
-            "api/define-sequent-flow",
             "api/use-sequent-flow",
             "api/use-sequent-step",
             "api/use-sequent-context",

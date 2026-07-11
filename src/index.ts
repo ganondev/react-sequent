@@ -1,12 +1,13 @@
 // react-sequent — public API
 
-export type {
-  SequentFlowDefinition,
-  TypedUseContextReturn,
-  TypedUseFlowReturn,
-  TypedUseStepReturn,
+/** @deprecated Use the base hooks directly with manual type annotations instead. */
+export {
+  defineSequentFlow,
+  type SequentFlowDefinition,
+  type TypedUseContextReturn,
+  type TypedUseFlowReturn,
+  type TypedUseStepReturn,
 } from "./defineSequentFlow";
-export { defineSequentFlow } from "./defineSequentFlow";
 export type { SequentContextReturn } from "./hooks/useSequentContext";
 export { useSequentContext } from "./hooks/useSequentContext";
 export type {

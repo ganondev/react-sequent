@@ -1,35 +1,41 @@
+<div align="center">
+
 # react-sequent
 
-**Step-driven React flows for modals, onboarding, multi-step forms, and other short UI sequences.**
+**Step-driven React flows — no centralized state map required.**
 
-`react-sequent` is a lightweight React utility for flows where **the current step decides what comes next**.
+[![npm version](https://img.shields.io/npm/v/react-sequent?style=flat-square)](https://www.npmjs.com/package/react-sequent)
+[![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE.md)
+[![TypeScript](https://img.shields.io/badge/TypeScript-blue?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![GitHub Actions](https://img.shields.io/github/actions/workflow/status/ganondev/react-sequent/ci.yml?style=flat-square&label=Build)](https://github.com/ganondev/react-sequent/actions)
 
-That means no centralized transition map, no machine config to keep in sync, and no giant “wizard definition” sitting above your components. Branching lives where it is easiest to read: inside the step that is making the decision.
+</div>
 
-It is built for flows that are **short, local, and UI-driven** — the kinds of flows that usually live inside a modal, a settings section, an onboarding sequence, or a checkout subsection.
+`react-sequent` is a lightweight React utility for flows where **the current step decides what comes next** — not a centralized transition map.
 
-## Why it exists
-
-Most flow libraries ask you to define the whole graph up front.
-
-`react-sequent` takes the opposite approach:
-
-- A step can `advance()` to whatever comes next.
-- A step can branch with a normal `if` statement.
-- A step can `resolve()` or `abort()` the flow explicitly.
-- The host owns the outlet. The step owns the transition.
-
-That makes simple flows faster to build, easier to change, and less brittle when the shape of the UI changes.
-
-## Install
+Branching is a normal `if` statement. Adding a step means writing a new component, not editing a config. Async steps load on demand with no extra wiring. It is built for the kinds of flows that live in modals, drawers, onboarding paths, and checkout sections.
 
 ```bash
 npm install react-sequent
 ```
 
-**Peer dependencies:** `react` and `react-dom` `^16.14.0 || ^17 || ^18 || ^19`
+> **Peer dependencies:** `react` and `react-dom` `^16.14.0 || ^17 || ^18 || ^19`
 
-## 30-second example
+---
+
+## Why react-sequent?
+
+Most flow and wizard libraries ask you to define the entire state graph up front — every state, every transition, every branch — in a centralized config object. This works well for long-lived machines that exist independently of your UI, but it adds friction for the kinds of flows that live **inside** a UI component: a modal, a checkout section, an onboarding tooltip sequence.
+
+`react-sequent` takes the opposite approach. **The step decides what comes next.** There is no separate transition map to keep in sync, no machine definition sitting above your components. If a step needs to branch, it writes a normal `if` statement. If you remove a step, you delete a component — nothing else breaks.
+
+This makes simple flows faster to build, easier to change, and less brittle when the shape of the UI evolves. The library is intentionally opinionated about **architecture**, not about every possible flow problem.
+
+There is a second, subtler difference: **flow state lives independently of the component that starts it.** Call `init()` from a button click, a useEffect, or a parent component — the outlet doesn't care. The flow isn't tethered to the caller's lifecycle; it runs inside the outlet's provider boundary, which stays mounted as long as the outlet is rendered. This means you can reuse the same outlet for entirely different flows — start a login flow, then tear it down and start a checkout flow — without remounting chrome, losing context, or wrapping each flow in its own closure. There are no dangling active or inactive flags to track per flow either — `react-sequent` manages outlet state internally, so consumers never need to manage lifecycle state at all, not even remembering to tear down a completed or aborted flow.
+
+---
+
+## Quick start
 
 ```tsx
 import * as React from "react";
@@ -37,21 +43,16 @@ import { useSequentFlow, useSequentStep } from "react-sequent";
 
 function WelcomeStep() {
   const { advance } = useSequentStep<string>();
-
   return (
     <div>
       <h3>Welcome</h3>
-      <p>This flow is step-driven.</p>
-      <button onClick={() => advance(() => ConfirmStep)}>
-        Continue
-      </button>
+      <button onClick={() => advance(() => ConfirmStep)}>Continue</button>
     </div>
   );
 }
 
 function ConfirmStep() {
   const { retreat, resolve } = useSequentStep<string>();
-
   return (
     <div>
       <h3>Confirm</h3>
@@ -61,36 +62,34 @@ function ConfirmStep() {
   );
 }
 
-export function Example() {
-  const { init, status, result, SequentOutlet } = useSequentFlow<string>();
+export function App() {
+  const { init, result, SequentOutlet } = useSequentFlow<string>();
 
   React.useEffect(() => {
-    if (status === "idle" && result?.status === "resolved") {
+    if (result?.status === "resolved") {
       console.log("Flow completed:", result.value);
     }
-  }, [status, result]);
+  }, [result]);
 
   return (
     <>
       <SequentOutlet />
-      <button onClick={() => init(() => WelcomeStep)}>
-        Start flow
-      </button>
+      <button onClick={() => init(() => WelcomeStep)}>Start flow</button>
     </>
   );
 }
 ```
 
-## What makes it different
+---
 
-### 1. The step decides what comes next
+## Features
 
-Most wizard-style tools centralize transitions in one config object.
+### Steps own transitions
 
-With `react-sequent`, the active step decides:
+There is no wizard config, no machine definition, no centralized graph. Each step calls `advance()` with whatever comes next. Branching is a plain `if`:
 
 ```tsx
-function PaymentMethodStep() {
+function PaymentStep() {
   const { advance } = useSequentStep();
 
   const handleSelect = (method: "card" | "bank") => {
@@ -105,170 +104,122 @@ function PaymentMethodStep() {
 }
 ```
 
-Branching is just application logic. Add or remove steps without rewriting a separate transition map.
+Add, remove, or reorder steps without touching anything outside the step component itself.
 
-### 2. Async steps are a first-class path
+### Async steps, no ceremony
 
-You can advance to sync or async steps. The outlet owns the `Suspense` boundary, so step components stay focused on flow logic.
-
-```tsx
-function AccountStep() {
-  const { advance } = useSequentStep();
-
-  const handleContinue = () => {
-    advance(() => import("./HeavyProfileStep"));
-  };
-
-  return <button onClick={handleContinue}>Continue</button>;
-}
-```
-
-You can also do async work before rendering the next step:
+Pass a dynamic import — or do async work and return an element. The outlet owns the `Suspense` boundary.
 
 ```tsx
+// Lazy-load a step module
+advance(() => import("./HeavyProfileStep"));
+
+// Fetch data, then render the next step with props
 advance(async () => {
   const user = await fetchUser();
   return <ProfileStep user={user} />;
 });
 ```
 
-### 3. Stable chrome stays mounted
+> [!TIP]
+> You never need to call `React.lazy()` yourself — the library normalizes async factories internally.
 
-For modal headers, progress bars, close buttons, and other shell UI, `SequentOutlet` supports chrome that stays mounted while steps change or load.
+### Stable chrome
+
+Wrap the step in modal chrome, progress bars, or headers that stay mounted across transitions — no flicker during async step loading.
 
 ```tsx
-function CheckoutModal() {
-  const { init, SequentOutlet } = useSequentFlow();
+<SequentOutlet
+  fallback={<p>Loading step…</p>}
+  chrome={(step) => (
+    <Modal>
+      <ModalHeader title="Checkout" />
+      <ModalBody>{step}</ModalBody>
+    </Modal>
+  )}
+/>
+```
 
-  return (
-    <>
-      <SequentOutlet
-        fallback={<p>Loading step…</p>}
-        chrome={(step) => (
-          <Modal>
-            <ModalHeader title="Checkout" />
-            <ModalBody>{step}</ModalBody>
-          </Modal>
-        )}
-      />
+Chrome reads flow state via `useSequentContext()`. Steps write chrome-relevant data into context via `advance`'s `contextPatch` parameter.
 
-      <button onClick={() => init(() => ShippingStep)}>
-        Begin checkout
-      </button>
-    </>
-  );
+### Flow context
+
+Carry shared data across steps without prop-drilling:
+
+```tsx
+init(() => Step1, { name: "Alice", plan: "pro" });
+
+function Step1() {
+  const { advance, context } = useSequentStep();
+  return <button onClick={() => advance(() => Step2, { verified: true })}>Next</button>;
 }
 ```
 
-This is especially useful when the outer UI should remain visually stable across transitions.
+### Hooks with separated concerns
 
-### 4. Typed flows are opt-in, not mandatory
+| Hook | Where to use | Capabilities |
+|---|---|---|
+| `useSequentFlow` | Flow entry point (host) | `init()`, `SequentOutlet`, `status`, `result` |
+| `useSequentStep` | Inside active step components | `advance`, `retreat`, `resolve`, `abort`, `context` |
+| `useSequentContext` | Chrome, idle children, any consumer inside the outlet | `context`, `resolve`, `abort` |
 
-If you want stronger typing across the host, steps, and chrome, define a typed scope once and reuse it.
+`useSequentStep()` throws if called outside the active step's subtree — chrome and idle children must use `useSequentContext()`.
 
-```tsx
-import { defineSequentFlow } from "react-sequent";
+---
 
-interface SignupContext {
-  email: string;
-  plan?: string;
-}
-
-interface SignupResult {
-  accountId: string;
-}
-
-const {
-  useSequentFlow,
-  useSequentStep,
-  useSequentContext,
-} = defineSequentFlow<SignupContext, SignupResult>();
-```
-
-This keeps `init()`, `useSequentStep()`, and `useSequentContext()` aligned without introducing a registry or changing runtime behavior.
-
-## API at a glance
-
-### `useSequentFlow()`
-
-Creates a flow host and returns:
-
-- `init(stepLoader, initialContext?)`
-- `status`
-- `result`
-- `SequentOutlet`
-
-Use it at the point where the flow starts.
-
-### `useSequentStep()`
-
-Use this inside active step components. It gives you:
-
-- `advance`
-- `retreat`
-- `resolve`
-- `abort`
-- `context`
-
-This is the hook that drives the flow.
-
-### `useSequentContext()`
-
-Use this in outlet-level chrome or idle children when you need flow context or termination controls, but **not** navigation.
-
-### `defineSequentFlow()`
-
-Creates typed wrappers around the hooks for a specific flow context/result shape.
-
-## Good fit
+## When to use it
 
 `react-sequent` is a strong fit when your flow is:
 
-- short and UI-local
-- embedded in a modal, drawer, page section, or onboarding path
-- easier to express as step-level logic than as a centralized graph
-- likely to change shape while you iterate on the product
+- **Short and UI-local** — embedded in a modal, drawer, page section, or onboarding path
+- **Iterative** — likely to change shape as the product evolves
+- **Easier to express as step-level logic** than as a centralized graph
 
-Examples:
+Examples: onboarding flows, multi-step forms, modal confirmations, checkout sections, inline "are you sure?" sequences.
 
-- onboarding flows
-- multi-step forms
-- modal confirmations
-- embedded checkout or settings flows
-- inline “are you sure?” or “finish setup” sequences
+> [!NOTE]
+> Reach for a state machine (XState, Zag, etc.) when you need a long or highly complex flow, a global state graph independent of rendered components, strict up-front visibility of all states, or transitions driven primarily by external systems.
 
-## Not the right fit
+---
 
-Reach for a more traditional state machine or graph-oriented tool when you need:
+## API at a glance
 
-- a long or highly complex flow
-- a global state graph that exists independently of rendered components
-- strict visualization of every state and transition up front
-- transitions that are primarily driven by external systems rather than step UI
+### `useSequentFlow<TResult>()`
 
-`react-sequent` is intentionally opinionated about **architecture**, not about every possible flow problem.
+```tsx
+const { init, status, result, SequentOutlet } = useSequentFlow<string>();
+```
 
-## Mental model
+- **`init(stepLoader, initialContext?)`** — starts the flow
+- **`status`** — `"idle"` | `"active"`
+- **`result`** — `{ status: "resolved", value } | { status: "aborted", reason } | null`
+- **`SequentOutlet`** — bound outlet component for rendering the active step
 
-Think in terms of three layers:
+### `useSequentStep<TResult>()`
 
-1. **Host** — starts the flow with `init()` and renders `SequentOutlet`
-2. **Step** — owns transition logic with `advance`, `retreat`, `resolve`, and `abort`
-3. **Chrome** — stable wrapper UI that can read flow context without becoming a navigation surface
+```tsx
+const { advance, retreat, resolve, abort, context } = useSequentStep();
+```
 
-That separation is the point. It keeps the API small and the responsibilities obvious.
+- **`advance(stepLoader, contextPatch?)`** — move to the next step
+- **`retreat()`** — go back to the previous step (history stack)
+- **`resolve(value?)`** — complete the flow successfully
+- **`abort(reason?)`** — exit the flow without completing
+- **`context`** — flow-scoped data from `init()` or `advance`
 
-## Docs and demos
+### `useSequentContext<TContext>()`
 
-- [Getting Started](https://ganondev.github.io/react-sequent/docs/getting-started/)
-- [Core Concepts](https://ganondev.github.io/react-sequent/docs/concepts/)
-- [API: useSequentFlow](https://ganondev.github.io/react-sequent/docs/api/use-sequent-flow/)
+```tsx
+const { context, resolve, abort } = useSequentContext();
+```
+
+For chrome and idle children — flow state without navigation.
+
+---
+
+## Docs & demos
+
+- [Getting started](https://ganondev.github.io/react-sequent/docs/getting-started/)
+- [Core concepts](https://ganondev.github.io/react-sequent/docs/concepts/)
+- [API reference](https://ganondev.github.io/react-sequent/docs/api/use-sequent-flow/)
 - [Demos](https://ganondev.github.io/react-sequent/docs/demos/subsection-flow/)
-
-## Contributing
-
-See [CONTRIBUTING.md](./CONTRIBUTING.md).
-
-## License
-
-MIT. See [LICENSE.md](./LICENSE.md).
