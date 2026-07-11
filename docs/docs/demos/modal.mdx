@@ -31,14 +31,14 @@ function SharedModalDemo() {
   }
 
   function ModalProvider({ children }) {
-    const { init, SequentOutlet } = useSequentFlow();
+    const { init, status, result, SequentOutlet } = useSequentFlow();
 
-    async function openModal(firstStep, ctx) {
-      return init(firstStep, ctx);
+    function openModal(firstStep, ctx) {
+      init(firstStep, ctx);
     }
 
     return (
-      <ModalContext.Provider value={{ openModal }}>
+      <ModalContext.Provider value={{ openModal, status, result }}>
         {children}
         <div style={{ pointerEvents: "auto" }}>
           <SequentOutlet
@@ -111,17 +111,22 @@ function SharedModalDemo() {
   // ── Consumer ──────────────────────────────────────────────────────────────
 
   function SetupButton() {
-    const { openModal } = useModal();
+    const { openModal, status, result } = useModal();
     const [log, setLog] = useState("");
 
-    async function handleOpen() {
-      setLog("");
-      try {
-        const result = await openModal(() => StepWelcome, { title: "Welcome" });
-        setLog(`Setup complete with result: ${JSON.stringify(result)}`);
-      } catch {
+    React.useEffect(() => {
+      if (status !== "idle" || result === null) return;
+
+      if (result.status === "resolved") {
+        setLog(`Setup complete with result: ${JSON.stringify(result.value)}`);
+      } else {
         setLog("Flow aborted.");
       }
+    }, [status, result]);
+
+    function handleOpen() {
+      setLog("");
+      openModal(() => StepWelcome, { title: "Welcome" });
     }
 
     return (

@@ -33,14 +33,14 @@ function WizardDemo() {
   }
 
   function WizardProvider({ children }) {
-    const { init, SequentOutlet } = useSequentFlow();
+    const { init, status, result, SequentOutlet } = useSequentFlow();
 
-    async function openWizard(firstStep, ctx) {
-      return init(firstStep, ctx);
+    function openWizard(firstStep, ctx) {
+      init(firstStep, ctx);
     }
 
     return (
-      <WizardContext.Provider value={{ openWizard }}>
+      <WizardContext.Provider value={{ openWizard, status, result }}>
         {children}
         <SequentOutlet
           fallback={<span className="demo-fallback">Loading…</span>}
@@ -144,15 +144,21 @@ function WizardDemo() {
 
   // --- Consumer button that uses the singleton hook ---
   function StartOnboarding() {
-    const { openWizard } = useWizard();
-    async function start() {
-      setLog("");
-      try {
-        const result = await openWizard(() => StepProfile, { step: 1, total: 3, data: {} });
-        setLog(`Onboarding complete: ${JSON.stringify(result)}`);
-      } catch {
+    const { openWizard, status, result } = useWizard();
+
+    React.useEffect(() => {
+      if (status !== "idle" || result === null) return;
+
+      if (result.status === "resolved") {
+        setLog(`Onboarding complete: ${JSON.stringify(result.value)}`);
+      } else {
         setLog("Onboarding cancelled.");
       }
+    }, [status, result]);
+
+    function start() {
+      setLog("");
+      openWizard(() => StepProfile, { step: 1, total: 3, data: {} });
     }
 
     return (
