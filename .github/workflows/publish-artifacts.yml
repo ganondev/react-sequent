@@ -81,6 +81,7 @@ jobs:
           fi
 
       - name: Attach tarball to GitHub Release
+        if: always()
         uses: softprops/action-gh-release@v2
         with:
           files: '*.tgz'
