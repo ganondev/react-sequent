@@ -71,8 +71,8 @@ function SharedModalDemo() {
   }
 
   function StepDetails() {
-    const { retreat, advance, abort } = useSequentStep();
-    const [email, setEmail] = useState("");
+    const { retreat, advance, abort, context } = useSequentStep();
+    const [email, setEmail] = useState(context?.email ?? "");
     return (
       <div>
         <p className="demo-para">Fill in your details below.</p>
@@ -88,7 +88,7 @@ function SharedModalDemo() {
         </div>
         <div className="demo-actions">
           <button className="demo-btn-ghost" onClick={retreat}>← Back</button>
-          <button onClick={() => advance(() => <StepDone email={email} />, { title: "All done!" })}>
+          <button onClick={() => advance(() => <StepDone email={email} />, { title: "All done!", email })}>
             Continue →
           </button>
           <button className="demo-btn-ghost" onClick={() => abort("cancelled")}>Cancel</button>
@@ -128,7 +128,7 @@ function SharedModalDemo() {
         <div className="demo-actions">
           <button
             disabled={!description.trim()}
-            onClick={() => advance(() => <StepBugSubmitted description={description} />, { title: "Thanks!" })}
+            onClick={() => advance(() => <StepBugSubmitted description={description} />, { title: "Thanks!", description })}
           >
             Submit →
           </button>
@@ -139,12 +139,12 @@ function SharedModalDemo() {
   }
 
   function StepBugSubmitted({ description }) {
-    const { resolve } = useSequentStep();
+    const { resolve, context } = useSequentStep();
     return (
       <div>
         <p className="demo-para">Bug reported!</p>
         <p className="demo-para demo-muted">"{description}"</p>
-        <button onClick={() => resolve({ submitted: true })}>Close</button>
+        <button onClick={() => resolve({ submitted: true, description: context.description })}>Close</button>
       </div>
     );
   }

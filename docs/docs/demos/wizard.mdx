@@ -54,8 +54,8 @@ function WizardDemo() {
 
   // --- Steps ---
   function StepProfile() {
-    const { advance, abort } = useSequentStep();
-    const [name, setName] = React.useState("");
+    const { advance, abort, context } = useSequentStep();
+    const [name, setName] = React.useState(context?.data?.name ?? "");
     return (
       <div className="demo-wizard__step">
         <h2 className="demo-wizard__title">Tell us about yourself</h2>
@@ -80,9 +80,9 @@ function WizardDemo() {
   }
 
   function StepPreferences() {
-    const { retreat, advance, abort } = useSequentStep();
+    const { retreat, advance, abort, context } = useSequentStep();
     const { context: ctx } = useSequentContext();
-    const [notif, setNotif] = React.useState(true);
+    const [notif, setNotif] = React.useState(context?.data?.notifications ?? true);
     return (
       <div className="demo-wizard__step">
         <h2 className="demo-wizard__title">Set your preferences</h2>

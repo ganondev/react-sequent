@@ -21,8 +21,8 @@ function CheckoutSection() {
   }, [flowStatus, result]);
 
   function StepAddress() {
-    const { advance } = useSequentStep();
-    const [address, setAddress] = React.useState("");
+    const { advance, context } = useSequentStep();
+    const [address, setAddress] = React.useState(context?.address ?? "");
     return (
       <div className="demo-checkout__body">
         <strong>Step 1 — Shipping Address</strong>
@@ -42,9 +42,8 @@ function CheckoutSection() {
   }
 
   function StepPayment() {
-    const { retreat, advance } = useSequentStep();
-    const { context: ctx } = useSequentContext();
-    const [card, setCard] = React.useState("");
+    const { retreat, advance, context } = useSequentStep();
+    const [card, setCard] = React.useState(context?.card ?? "");
     return (
       <div className="demo-checkout__body">
         <strong>Step 2 — Payment</strong>
@@ -60,7 +59,7 @@ function CheckoutSection() {
         </div>
         <div className="demo-actions">
           <button onClick={() => retreat()}>← Back</button>
-          <button onClick={() => advance(() => StepReview, { ...ctx, card })}>Next →</button>
+          <button onClick={() => advance(() => StepReview, { card })}>Next →</button>
         </div>
       </div>
     );
