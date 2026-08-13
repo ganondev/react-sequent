@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from "react";
+import { motion } from "motion/react";
 import {
   useSequentContext,
   useSequentFlow,
@@ -17,6 +18,8 @@ const ReactLiveScope: Record<string, unknown> = {
   useRef,
   useState,
   useEffect,
+  // motion
+  motion,
   // react-sequent
   useSequentContext,
   useSequentFlow,

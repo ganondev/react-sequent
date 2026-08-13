@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { TransitionSlotProps } from "../../components/FlowOutlet";
 import { useSequentFlow } from "../../hooks/useSequentFlow";
 import { useSequentStep } from "../../hooks/useSequentStep";
+import type { StepContextValue } from "../context";
 
 // ── Test step components ──────────────────────────────────────────────
 
@@ -425,6 +426,347 @@ describe("FlowOutlet transition mode", () => {
 
       // Settled on Step C.
       expect(screen.getByText("Step C")).toBeInTheDocument();
+    });
+  });
+
+  describe("stale navigation callbacks from a previous flow (regression)", () => {
+    // queueAdvance/queueRetreat/transitionAdvance/transitionRetreat are shared
+    // across flows and currently guard only with epoch refs, which are reset to
+    // zero on every activation. A delayed navigation call from an unmounted
+    // step in an old flow must therefore be a no-op once a later flow's epochs
+    // happen to match again.
+
+    it("a queued advance from an old flow's exiting step cannot enqueue into a new flow", async () => {
+      const captured: TransitionSlotProps[] = [];
+      const transition = createControlledTransition((p) => captured.push(p));
+
+      let staleAdvance: StepContextValue["advance"] | null = null;
+
+      function StepExiting() {
+        const { advance } = useSequentStep();
+        staleAdvance = advance;
+        return (
+          <button type="button" onClick={() => advance(() => StepResolve)}>
+            Next
+          </button>
+        );
+      }
+
+      function StepResolve() {
+        const { resolve } = useSequentStep();
+        return (
+          <button type="button" onClick={() => resolve()}>
+            Resolve
+          </button>
+        );
+      }
+
+      function StepNewFlow() {
+        const { advance } = useSequentStep();
+        return (
+          <button type="button" onClick={() => advance(() => StepB)}>
+            Advance
+          </button>
+        );
+      }
+
+      function Host() {
+        const { init, SequentOutlet } = useSequentFlow();
+        return (
+          <>
+            <button type="button" onClick={() => init(() => StepExiting)}>
+              Init Old
+            </button>
+            <button type="button" onClick={() => init(() => StepNewFlow)}>
+              Init New
+            </button>
+            <SequentOutlet transition={transition} />
+          </>
+        );
+      }
+
+      render(<Host />);
+
+      // Old flow: advance so StepExiting becomes the exiting step, whose
+      // `advance` is queueAdvance.
+      await act(async () => {
+        screen.getByText("Init Old").click();
+      });
+      await act(async () => {
+        screen.getByText("Next").click();
+      });
+      expect(captured[captured.length - 1].phase).toBe("exiting");
+      expect(staleAdvance).not.toBeNull();
+
+      // End the old flow — steps unmount and every epoch ref resets to zero.
+      await act(async () => {
+        screen.getByText("Resolve").click();
+      });
+
+      // New flow with fresh (matching) epochs.
+      await act(async () => {
+        screen.getByText("Init New").click();
+      });
+
+      // A delayed call from the unmounted old step must be a no-op.
+      await act(async () => {
+        staleAdvance?.(() => StepC);
+      });
+
+      // Drive a real transition in the new flow.
+      await act(async () => {
+        screen.getByText("Advance").click();
+      });
+      await act(async () => {
+        screen.getByTestId("call-on-exited").click();
+      });
+
+      // The new flow settles on Step B. If the stale callback leaked into the
+      // queue, the drain would have navigated to Step C instead.
+      expect(screen.queryByText("Step C")).not.toBeInTheDocument();
+      expect(screen.getByText("Step B")).toBeInTheDocument();
+      expect(screen.queryByTestId("previous-step")).not.toBeInTheDocument();
+    });
+
+    it("a queued retreat from an old flow's exiting step cannot enqueue into a new flow", async () => {
+      const captured: TransitionSlotProps[] = [];
+      const transition = createControlledTransition((p) => captured.push(p));
+
+      let staleRetreat: StepContextValue["retreat"] | null = null;
+
+      function StepExiting() {
+        const { advance, retreat } = useSequentStep();
+        staleRetreat = retreat;
+        return (
+          <button type="button" onClick={() => advance(() => StepResolve)}>
+            Next
+          </button>
+        );
+      }
+
+      function StepResolve() {
+        const { resolve } = useSequentStep();
+        return (
+          <button type="button" onClick={() => resolve()}>
+            Resolve
+          </button>
+        );
+      }
+
+      function StepNewFlow() {
+        const { advance } = useSequentStep();
+        return (
+          <button type="button" onClick={() => advance(() => StepB)}>
+            Advance
+          </button>
+        );
+      }
+
+      function Host() {
+        const { init, SequentOutlet } = useSequentFlow();
+        return (
+          <>
+            <button type="button" onClick={() => init(() => StepExiting)}>
+              Init Old
+            </button>
+            <button type="button" onClick={() => init(() => StepNewFlow)}>
+              Init New
+            </button>
+            <SequentOutlet transition={transition} />
+          </>
+        );
+      }
+
+      render(<Host />);
+
+      await act(async () => {
+        screen.getByText("Init Old").click();
+      });
+      await act(async () => {
+        screen.getByText("Next").click();
+      });
+      expect(captured[captured.length - 1].phase).toBe("exiting");
+      expect(staleRetreat).not.toBeNull();
+
+      await act(async () => {
+        screen.getByText("Resolve").click();
+      });
+
+      await act(async () => {
+        screen.getByText("Init New").click();
+      });
+
+      // A delayed retreat from the unmounted old step must be a no-op.
+      await act(async () => {
+        staleRetreat?.();
+      });
+
+      // Drive a real transition so any leaked queue entry would drain.
+      await act(async () => {
+        screen.getByText("Advance").click();
+      });
+      await act(async () => {
+        screen.getByTestId("call-on-exited").click();
+      });
+
+      // Settled on Step B. A leaked retreat would have popped back to
+      // StepNewFlow (the "Advance" button) instead.
+      expect(screen.queryByText("Advance")).not.toBeInTheDocument();
+      expect(screen.getByText("Step B")).toBeInTheDocument();
+      expect(screen.queryByTestId("previous-step")).not.toBeInTheDocument();
+    });
+
+    it("a stale advance from an old flow's entering step cannot queue a transition in a new flow", async () => {
+      const captured: TransitionSlotProps[] = [];
+      const transition = createControlledTransition((p) => captured.push(p));
+
+      let staleAdvance: StepContextValue["advance"] | null = null;
+
+      function StepLaunch() {
+        const { advance } = useSequentStep();
+        return (
+          <button type="button" onClick={() => advance(() => StepCaptureEntering)}>
+            Next
+          </button>
+        );
+      }
+
+      function StepCaptureEntering() {
+        const { advance, resolve } = useSequentStep();
+        staleAdvance = advance;
+        return (
+          <button type="button" onClick={() => resolve()}>
+            Resolve
+          </button>
+        );
+      }
+
+      function Host() {
+        const { init, SequentOutlet } = useSequentFlow();
+        return (
+          <>
+            <button type="button" onClick={() => init(() => StepLaunch)}>
+              Init
+            </button>
+            <SequentOutlet transition={transition} />
+          </>
+        );
+      }
+
+      render(<Host />);
+
+      // Old flow: StepCaptureEntering is the entering step, so its `advance`
+      // is transitionAdvance.
+      await act(async () => {
+        screen.getByText("Init").click();
+      });
+      await act(async () => {
+        screen.getByText("Next").click();
+      });
+      expect(captured[captured.length - 1].phase).toBe("exiting");
+      expect(staleAdvance).not.toBeNull();
+
+      // End the old flow and start a new one.
+      await act(async () => {
+        screen.getByText("Resolve").click();
+      });
+      await act(async () => {
+        screen.getByText("Init").click();
+      });
+
+      // Drive the new flow into "exiting" toward Step B.
+      await act(async () => {
+        screen.getByText("Next").click();
+      });
+
+      // A delayed advance from the unmounted old step must be a no-op.
+      await act(async () => {
+        staleAdvance?.(() => StepC);
+      });
+
+      await act(async () => {
+        screen.getByTestId("call-on-exited").click();
+      });
+
+      // Settled on Step B. A leaked advance would have navigated to Step C.
+      expect(screen.queryByText("Step C")).not.toBeInTheDocument();
+      expect(screen.getByText("Step B")).toBeInTheDocument();
+      expect(screen.queryByTestId("previous-step")).not.toBeInTheDocument();
+    });
+
+    it("a stale retreat from an old flow's entering step cannot queue a retreat in a new flow", async () => {
+      const captured: TransitionSlotProps[] = [];
+      const transition = createControlledTransition((p) => captured.push(p));
+
+      let staleRetreat: StepContextValue["retreat"] | null = null;
+
+      function StepLaunch() {
+        const { advance } = useSequentStep();
+        return (
+          <button type="button" onClick={() => advance(() => StepCaptureEntering)}>
+            Next
+          </button>
+        );
+      }
+
+      function StepCaptureEntering() {
+        const { retreat, resolve } = useSequentStep();
+        staleRetreat = retreat;
+        return (
+          <button type="button" onClick={() => resolve()}>
+            Resolve
+          </button>
+        );
+      }
+
+      function Host() {
+        const { init, SequentOutlet } = useSequentFlow();
+        return (
+          <>
+            <button type="button" onClick={() => init(() => StepLaunch)}>
+              Init
+            </button>
+            <SequentOutlet transition={transition} />
+          </>
+        );
+      }
+
+      render(<Host />);
+
+      await act(async () => {
+        screen.getByText("Init").click();
+      });
+      await act(async () => {
+        screen.getByText("Next").click();
+      });
+      expect(captured[captured.length - 1].phase).toBe("exiting");
+      expect(staleRetreat).not.toBeNull();
+
+      await act(async () => {
+        screen.getByText("Resolve").click();
+      });
+      await act(async () => {
+        screen.getByText("Init").click();
+      });
+
+      // Drive the new flow into "exiting" toward Step B (history: [StepLaunch]).
+      await act(async () => {
+        screen.getByText("Next").click();
+      });
+
+      // A delayed retreat from the unmounted old step must be a no-op.
+      await act(async () => {
+        staleRetreat?.();
+      });
+
+      await act(async () => {
+        screen.getByTestId("call-on-exited").click();
+      });
+
+      // Settled on Step B. A leaked retreat would have popped back to StepLaunch.
+      expect(screen.queryByText("Next")).not.toBeInTheDocument();
+      expect(screen.getByText("Step B")).toBeInTheDocument();
+      expect(screen.queryByTestId("previous-step")).not.toBeInTheDocument();
     });
   });
 
