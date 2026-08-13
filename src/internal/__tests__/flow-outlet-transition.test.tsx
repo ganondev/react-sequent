@@ -641,12 +641,24 @@ describe("FlowOutlet transition mode", () => {
         );
       }
 
+      function StepNewFlow() {
+        const { advance } = useSequentStep();
+        return (
+          <button type="button" onClick={() => advance(() => StepB)}>
+            Advance
+          </button>
+        );
+      }
+
       function Host() {
         const { init, SequentOutlet } = useSequentFlow();
         return (
           <>
             <button type="button" onClick={() => init(() => StepLaunch)}>
-              Init
+              Init Old
+            </button>
+            <button type="button" onClick={() => init(() => StepNewFlow)}>
+              Init New
             </button>
             <SequentOutlet transition={transition} />
           </>
@@ -658,7 +670,7 @@ describe("FlowOutlet transition mode", () => {
       // Old flow: StepCaptureEntering is the entering step, so its `advance`
       // is transitionAdvance.
       await act(async () => {
-        screen.getByText("Init").click();
+        screen.getByText("Init Old").click();
       });
       await act(async () => {
         screen.getByText("Next").click();
@@ -671,12 +683,12 @@ describe("FlowOutlet transition mode", () => {
         screen.getByText("Resolve").click();
       });
       await act(async () => {
-        screen.getByText("Init").click();
+        screen.getByText("Init New").click();
       });
 
       // Drive the new flow into "exiting" toward Step B.
       await act(async () => {
-        screen.getByText("Next").click();
+        screen.getByText("Advance").click();
       });
 
       // A delayed advance from the unmounted old step must be a no-op.
@@ -719,12 +731,24 @@ describe("FlowOutlet transition mode", () => {
         );
       }
 
+      function StepNewFlow() {
+        const { advance } = useSequentStep();
+        return (
+          <button type="button" onClick={() => advance(() => StepB)}>
+            Advance
+          </button>
+        );
+      }
+
       function Host() {
         const { init, SequentOutlet } = useSequentFlow();
         return (
           <>
             <button type="button" onClick={() => init(() => StepLaunch)}>
-              Init
+              Init Old
+            </button>
+            <button type="button" onClick={() => init(() => StepNewFlow)}>
+              Init New
             </button>
             <SequentOutlet transition={transition} />
           </>
@@ -734,7 +758,7 @@ describe("FlowOutlet transition mode", () => {
       render(<Host />);
 
       await act(async () => {
-        screen.getByText("Init").click();
+        screen.getByText("Init Old").click();
       });
       await act(async () => {
         screen.getByText("Next").click();
@@ -746,12 +770,12 @@ describe("FlowOutlet transition mode", () => {
         screen.getByText("Resolve").click();
       });
       await act(async () => {
-        screen.getByText("Init").click();
+        screen.getByText("Init New").click();
       });
 
-      // Drive the new flow into "exiting" toward Step B (history: [StepLaunch]).
+      // Drive the new flow into "exiting" toward Step B (history: [StepNewFlow]).
       await act(async () => {
-        screen.getByText("Next").click();
+        screen.getByText("Advance").click();
       });
 
       // A delayed retreat from the unmounted old step must be a no-op.
@@ -763,8 +787,8 @@ describe("FlowOutlet transition mode", () => {
         screen.getByTestId("call-on-exited").click();
       });
 
-      // Settled on Step B. A leaked retreat would have popped back to StepLaunch.
-      expect(screen.queryByText("Next")).not.toBeInTheDocument();
+      // Settled on Step B. A leaked retreat would have popped back to StepNewFlow.
+      expect(screen.queryByText("Advance")).not.toBeInTheDocument();
       expect(screen.getByText("Step B")).toBeInTheDocument();
       expect(screen.queryByTestId("previous-step")).not.toBeInTheDocument();
     });

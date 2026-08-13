@@ -393,27 +393,33 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
     // #region doc:transition-navigate
     /** Replace any pending transition with the latest advance — used while phase is
      *  "exiting". Rapid successive navigations collapse into the most recent one. */
-    const queueAdvance = useCallback((nextStep: StepLoader, contextPatch?: unknown) => {
-      if (transitionEpochRef.current !== previousStepEpochRef.current) return;
-      transitionQueueRef.current = [
-        {
-          type: "advance",
-          stepLoader: nextStep,
-          contextPatch,
-        },
-      ];
-    }, []);
+    const queueAdvance = useCallback(
+      (nextStep: StepLoader, contextPatch?: unknown) => {
+        if (flowIdRef.current !== activeFlowId) return;
+        if (transitionEpochRef.current !== previousStepEpochRef.current) return;
+        transitionQueueRef.current = [
+          {
+            type: "advance",
+            stepLoader: nextStep,
+            contextPatch,
+          },
+        ];
+      },
+      [activeFlowId],
+    );
 
     /** Replace any pending transition with the latest retreat — used while phase is
      *  "exiting". Rapid successive navigations collapse into the most recent one. */
     const queueRetreat = useCallback(() => {
+      if (flowIdRef.current !== activeFlowId) return;
       if (transitionEpochRef.current !== previousStepEpochRef.current) return;
       transitionQueueRef.current = [{ type: "retreat" }];
-    }, []);
+    }, [activeFlowId]);
 
     /** Transition-aware advance: queues if exiting, else starts a transition. */
     const transitionAdvance = useCallback(
       (nextStep: StepLoader, contextPatch?: unknown) => {
+        if (flowIdRef.current !== activeFlowId) return;
         if (transitionEpochRef.current !== currentStepEpochRef.current) return;
         if (phaseRef.current === "exiting") {
           transitionQueueRef.current = [
@@ -460,6 +466,7 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
     /** Transition-aware retreat: queues if exiting, else starts a transition.
      *  A retreat from the first step (empty history) is a no-op. */
     const transitionRetreat = useCallback(() => {
+      if (flowIdRef.current !== activeFlowId) return;
       if (transitionEpochRef.current !== currentStepEpochRef.current) return;
       if (flowState === null || flowState.history.length === 0) return;
       if (phaseRef.current === "exiting") {
@@ -483,7 +490,7 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
       });
       transitionKeyRef.current += 1;
       setPhaseValue("exiting");
-    }, [createStepRecord, flowState, setPhaseValue]);
+    }, [activeFlowId, createStepRecord, flowState, setPhaseValue]);
     // #endregion doc:transition-navigate
 
     useImperativeHandle(
