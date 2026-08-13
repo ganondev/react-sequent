@@ -113,8 +113,8 @@ By default, step swaps are immediate — the old step unmounts as the new step m
 
 When `transition` is present, the outlet enters a three-phase transition lifecycle on every step change:
 
-1. **`exiting`** — Both the old (exiting) and new (entering) step are mounted simultaneously. The consumer plays an exit animation and calls `onExited()` when done.
-2. **`entering`** — The exiting step has unmounted. The entering step renders alone for one tick so consumers can trigger an enter animation.
+1. **`exiting`** — The outlet mounts both the old and new step. Play the exit animation, then call `onExited()`.
+2. **`entering`** — The exiting step unmounts. The entering step renders alone for one tick so consumers can trigger an enter animation.
 3. **`exited`** — The flow is settled. No animation is in progress.
 
 The render prop receives `previousStep`, `nextStep`, `phase`, `onExited`, and `transitionKey` — everything needed to construct an animated layout.

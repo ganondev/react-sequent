@@ -142,6 +142,35 @@ Wrap the step in modal chrome, progress bars, or headers that stay mounted acros
 
 Chrome reads flow state via `useSequentContext()`. Steps write chrome-relevant data into context via `advance`'s `contextPatch` parameter.
 
+### Animated transitions
+
+Step swaps are immediate by default. Add a `transition` render prop to `SequentOutlet` to animate between steps — the outlet mounts the outgoing and incoming step together and passes you both elements plus `phase`, `onExited`, and `transitionKey`:
+
+```tsx
+<SequentOutlet
+  transition={({ previousStep, nextStep, phase, onExited, transitionKey }) =>
+    phase === "exited" ? (
+      nextStep
+    ) : (
+      <div style={{ position: "relative" }}>
+        <div
+          key={`exit-${transitionKey}`}
+          style={{ position: "absolute", animation: "fadeOut 300ms" }}
+          onAnimationEnd={onExited}
+        >
+          {previousStep}
+        </div>
+        <div key={`enter-${transitionKey}`} style={{ animation: "fadeIn 300ms" }}>
+          {nextStep}
+        </div>
+      </div>
+    )
+  }
+/>
+```
+
+Wire the signals to CSS, framer-motion, GSAP, or any animation library. The outgoing step keeps its component instance (local state and effects) while it animates out. Without the `transition` prop, behavior is unchanged.
+
 ### Flow context
 
 Carry shared data across steps without prop-drilling:
@@ -193,7 +222,7 @@ const { init, status, result, SequentOutlet } = useSequentFlow<string>();
 - **`init(stepLoader, initialContext?)`** — starts the flow
 - **`status`** — `"idle"` | `"active"`
 - **`result`** — `{ status: "resolved", value } | { status: "aborted", reason } | null`
-- **`SequentOutlet`** — bound outlet component for rendering the active step
+- **`SequentOutlet`** — bound outlet component for rendering the active step; accepts `children`, `fallback`, `errorStep`, `chrome`, and `transition`
 
 ### `useSequentStep<TResult>()`
 

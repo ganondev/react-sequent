@@ -5,7 +5,7 @@
 - Docs: https://ganondev.github.io/react-sequent/
 - GitHub: https://github.com/ganondev/react-sequent
 - License: MIT
-- Current version: 0.1.0-alpha
+- Current version: 1.0.2
 - Peer dependencies: React ^16.14.0 || ^17 || ^18 || ^19, React DOM ^16.14.0 || ^17 || ^18 || ^19
 
 ## Philosophy
@@ -189,6 +189,51 @@ lightweight placeholders and the outgoing step retains its component instance
 transition render prop and is never unmounted during a transition.
 
 Chrome renders inside `FlowContext` but outside `StepContext`. This means chrome can call `useSequentContext()` but not `useSequentStep()` — enforced by an immediate throw.
+
+## Animated Transitions
+
+By default the outlet swaps steps immediately. Passing a `transition` render prop to `SequentOutlet` enables animated transitions: on each step change the outlet mounts the outgoing and incoming step together and calls the render prop with `TransitionSlotProps`.
+
+### Phases
+
+- `"exiting"` — both the previous and next step are mounted. Play the exit animation, then call `onExited`.
+- `"entering"` — the previous step has unmounted; the next step renders alone for one tick (enter-animation window). The phase advances to `"exited"` automatically.
+- `"exited"` — the flow is settled; render `nextStep` directly.
+
+### Key behaviors
+
+- **Step instances are retained** — the outgoing step keeps local state and effects during exit, and the incoming step is not remounted when the transition settles. `previousStep` and `nextStep` are lightweight slot placeholders backed by portals, so you can position them anywhere in your layout.
+- **`transitionKey`** — increments on every new exit transition, including back-to-back queued transitions where `previousStep` never becomes `null`. Attach it as a React `key` on animation wrapper elements so React remounts them and restarts their animations.
+- **One transition per step** — a step may only initiate one transition; later `advance()`/`retreat()` calls from the same step render are silently dropped.
+- **Enqueue while exiting** — while `phase === "exiting"`, the entering step may enqueue a navigation; it drains after `onExited`.
+- **`resolve()`/`abort()`** — tear down both steps immediately; `onExited` is not expected.
+- **Chrome** — wraps the transition output and is never unmounted during a transition.
+- **Omitted `transition`** — behavior matches the previous release (immediate swap).
+
+### Crossfade example
+
+```tsx
+<SequentOutlet
+  transition={({ previousStep, nextStep, phase, onExited, transitionKey }) => {
+    if (phase === "exited") return nextStep;
+    return (
+      <div style={{ position: "relative" }}>
+        <div
+          key={`exit-${transitionKey}`}build
+          // `forwards` prevents a flicker on unmount
+          style={{ position: "absolute", animation: "fadeOut 300ms forwards" }}
+          onAnimationEnd={onExited}
+        >
+          {previousStep}
+        </div>
+        <div key={`enter-${transitionKey}`} style={{ animation: "fadeIn 300ms" }}>
+          {nextStep}
+        </div>
+      </div>
+    );
+  }}
+/>
+```
 
 ## Async Step Loading
 
