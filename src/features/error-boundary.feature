@@ -42,3 +42,11 @@ Feature: Error boundary
     Given a host with SequentOutlet configured with an errorStep that captures context
     When  init is called with a step that throws during render
     Then  the captured component stack is present
+
+  Scenario: An advance queued from the error UI during an exit transition renders the destination step
+    Given a host with a transition render prop and an errorStep whose UI queues an advance
+    And   a flow has advanced to a step that throws during render
+    When  the user clicks "Queue Next" in the error UI
+    And   the consumer calls onExited
+    Then  the destination step is rendered
+    And   the error UI is no longer visible

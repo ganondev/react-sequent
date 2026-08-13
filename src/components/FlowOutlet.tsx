@@ -209,6 +209,7 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
             return;
           }
           if (flowIdRef.current !== currentFlowId) return;
+          errorBoundaryRef.current?.resetError();
           previousStepEpochRef.current = currentStepEpochRef.current;
           transitionEpochRef.current += 1;
           setFlowState((prev) => {
@@ -227,6 +228,12 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
           transitionKeyRef.current += 1;
           setPhaseValue("exiting");
         } else {
+          if (flowState === null || flowState.history.length === 0) {
+            // Retreat with no history to pop is a no-op. Settle instead of
+            // starting an exit transition that has no previous step to render.
+            setPhaseValue("exited");
+            return;
+          }
           previousStepEpochRef.current = currentStepEpochRef.current;
           transitionEpochRef.current += 1;
           setFlowState((prev) => {
@@ -244,7 +251,7 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
           setPhaseValue("exiting");
         }
       },
-      [],
+      [flowState],
     );
 
     /** Call when the exit animation has completed. Only meaningful in "exiting" phase. */
@@ -382,9 +389,11 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
       [activeFlowId],
     );
 
-    /** Transition-aware retreat: queues if exiting, else starts a transition. */
+    /** Transition-aware retreat: queues if exiting, else starts a transition.
+     *  A retreat from the first step (empty history) is a no-op. */
     const transitionRetreat = useCallback(() => {
       if (transitionEpochRef.current !== currentStepEpochRef.current) return;
+      if (flowState === null || flowState.history.length === 0) return;
       if (phaseRef.current === "exiting") {
         transitionQueueRef.current = [{ type: "retreat" }];
         return;
@@ -405,7 +414,7 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
       });
       transitionKeyRef.current += 1;
       setPhaseValue("exiting");
-    }, []);
+    }, [flowState]);
     // #endregion doc:transition-navigate
 
     useImperativeHandle(

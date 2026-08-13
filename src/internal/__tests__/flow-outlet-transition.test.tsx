@@ -20,15 +20,6 @@ function StepC() {
   return <div>Step C</div>;
 }
 
-function StepWithRetreat() {
-  const { retreat } = useSequentStep();
-  return (
-    <button type="button" onClick={() => retreat()}>
-      Retreat
-    </button>
-  );
-}
-
 function StepWithResolve() {
   const { resolve } = useSequentStep();
   return (
@@ -590,11 +581,28 @@ describe("FlowOutlet transition mode", () => {
       const captured: TransitionSlotProps[] = [];
       const transition = createControlledTransition((p) => captured.push(p));
 
+      function StepWithRetreatAndAdvance() {
+        const { advance, retreat } = useSequentStep();
+        return (
+          <>
+            <button type="button" onClick={() => retreat()}>
+              Retreat
+            </button>
+            <button type="button" onClick={() => advance(() => StepB)}>
+              Advance
+            </button>
+          </>
+        );
+      }
+
       function Host() {
         const { init, SequentOutlet } = useSequentFlow();
         return (
           <>
-            <button type="button" onClick={() => init(() => StepWithRetreat)}>
+            <button
+              type="button"
+              onClick={() => init(() => StepWithRetreatAndAdvance)}
+            >
               Init
             </button>
             <SequentOutlet transition={transition} />
@@ -617,6 +625,30 @@ describe("FlowOutlet transition mode", () => {
 
       // Step should still be rendered (retreat from first step is no-op).
       expect(screen.getByText("Retreat")).toBeInTheDocument();
+
+      // The outlet must NOT enter "exiting": this consumer renders nextStep
+      // directly when previousStep is null, so there would be no exit
+      // animation to call onExited and the flow would be stuck in "exiting".
+      const afterRetreat = captured[captured.length - 1];
+      expect(afterRetreat.phase).toBe("exited");
+      expect(afterRetreat.previousStep).toBeNull();
+      expect(screen.queryByTestId("call-on-exited")).not.toBeInTheDocument();
+
+      // A later navigation still starts a normal transition instead of
+      // being queued forever behind the stuck phase.
+      await act(async () => {
+        screen.getByText("Advance").click();
+      });
+
+      expect(screen.getByTestId("previous-step")).toBeInTheDocument();
+      expect(screen.getByText("Step B")).toBeInTheDocument();
+
+      await act(async () => {
+        screen.getByTestId("call-on-exited").click();
+      });
+
+      expect(screen.getByText("Step B")).toBeInTheDocument();
+      expect(screen.queryByTestId("previous-step")).not.toBeInTheDocument();
     });
   });
 
