@@ -127,15 +127,21 @@ function StepSlot({ host }: { host: HTMLElement }) {
 }
 // #endregion doc:step-record
 
-type TransitionQueueEntry =
+type PendingNavigation =
   | { type: "advance"; stepLoader: StepLoader; contextPatch?: unknown }
   | { type: "retreat" };
 
-function reportLoaderError(phase: "activate" | "advance", error: unknown) {
-  console.error(
-    `FlowOutlet.${phase}() failed while normalizing a step loader. The flow was left idle.`,
-    error,
-  );
+/** Normalize a step loader, logging before rethrowing on failure. */
+function normalizeOrReport(phase: "activate" | "advance", loader: StepLoader): ComponentType {
+  try {
+    return normalizeStepLoader(loader);
+  } catch (error) {
+    console.error(
+      `FlowOutlet.${phase}() failed while normalizing a step loader. The flow was left idle.`,
+      error,
+    );
+    throw error;
+  }
 }
 
 function mergeContext(current: unknown, patch: unknown): unknown {
@@ -151,6 +157,32 @@ function mergeContext(current: unknown, patch: unknown): unknown {
     };
   }
   return patch;
+}
+
+/** Push the active step onto history and make `nextActiveStep` current. */
+function advanceState(
+  prev: FlowState,
+  nextActiveStep: ComponentType,
+  contextPatch?: unknown,
+): FlowState {
+  return {
+    history: [...prev.history, prev.activeStep],
+    activeStep: nextActiveStep,
+    consumerContext:
+      contextPatch !== undefined
+        ? mergeContext(prev.consumerContext, contextPatch)
+        : prev.consumerContext,
+  };
+}
+
+/** Pop history into the active step. Returns `prev` unchanged when there is nothing to pop. */
+function retreatState(prev: FlowState): FlowState {
+  if (prev.history.length === 0) return prev;
+  return {
+    history: prev.history.slice(0, -1),
+    activeStep: prev.history[prev.history.length - 1],
+    consumerContext: prev.consumerContext,
+  };
 }
 
 // #region doc:props
@@ -176,8 +208,9 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
       phaseRef.current = value;
       setPhase(value);
     }, []);
-    /** Queue of pending navigations accumulated during an active exit transition. */
-    const transitionQueueRef = useRef<TransitionQueueEntry[]>([]);
+    /** Latest navigation deferred during an active exit transition —
+     *  rapid successive navigations replace one another. */
+    const pendingNavigationRef = useRef<PendingNavigation | null>(null);
     /** Monotonic transition identity — bumps on every new exit transition. */
     const transitionKeyRef = useRef(0);
     /** Persistent rendered instance of the current/entering step. */
@@ -204,133 +237,100 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
     const previousStepEpochRef = useRef(0);
     // #endregion doc:transition-state
 
-    const handleResolve = useCallback(
-      (value?: unknown) => {
-        const cb = resolveRef.current;
+    /** Clear all transition bookkeeping and settle the phase. */
+    const resetTransitionState = useCallback(() => {
+      currentRecordRef.current = null;
+      previousRecordRef.current = null;
+      pendingNavigationRef.current = null;
+      transitionEpochRef.current = 0;
+      currentStepEpochRef.current = 0;
+      previousStepEpochRef.current = 0;
+      setPhaseValue("exited");
+    }, [setPhaseValue]);
+
+    /** Terminate the flow, invoking the matching activation callback. */
+    const settleFlow = useCallback(
+      (kind: "resolve" | "abort", payload?: unknown) => {
+        const cb = kind === "resolve" ? resolveRef.current : abortRef.current;
         resolveRef.current = null;
         abortRef.current = null;
         flowIdRef.current += 1;
-        // Clear transition state when the flow terminates.
-        currentRecordRef.current = null;
-        previousRecordRef.current = null;
-        transitionQueueRef.current = [];
-        transitionEpochRef.current = 0;
-        currentStepEpochRef.current = 0;
-        previousStepEpochRef.current = 0;
-        setPhaseValue("exited");
+        resetTransitionState();
         setFlowState((prev) => {
-          if (prev !== null) {
+          if (kind === "resolve" && prev !== null) {
             lastConsumerContextRef.current = prev.consumerContext;
           }
           return null;
         });
-        cb?.(value);
+        cb?.(payload);
       },
-      [setPhaseValue],
-    );
-
-    const handleAbort = useCallback(
-      (reason?: unknown) => {
-        const cb = abortRef.current;
-        resolveRef.current = null;
-        abortRef.current = null;
-        flowIdRef.current += 1;
-        // Clear transition state when the flow terminates.
-        currentRecordRef.current = null;
-        previousRecordRef.current = null;
-        transitionQueueRef.current = [];
-        transitionEpochRef.current = 0;
-        currentStepEpochRef.current = 0;
-        previousStepEpochRef.current = 0;
-        setPhaseValue("exited");
-        setFlowState(null);
-        cb?.(reason);
-      },
-      [setPhaseValue],
+      [resetTransitionState],
     );
 
     const activeFlowId = flowIdRef.current;
 
     // #region doc:transition-drain
-    /** Process a single queued navigation entry and start its transition. */
-    const drainQueueEntry = useCallback(
-      (entry: TransitionQueueEntry) => {
-        const currentFlowId = flowIdRef.current;
+    /** Begin an exit transition into `nextActiveStep`, applying `update` to the flow state. */
+    const beginExitTransition = useCallback(
+      (nextActiveStep: ComponentType, update: (prev: FlowState) => FlowState) => {
+        errorBoundaryRef.current?.resetError();
+        previousStepEpochRef.current = currentStepEpochRef.current;
+        transitionEpochRef.current += 1;
+        previousRecordRef.current = currentRecordRef.current;
+        currentRecordRef.current = createStepRecord(nextActiveStep);
+        setFlowState((prev) => {
+          if (prev === null) return prev;
+          const next = update(prev);
+          if (next !== prev) {
+            previousStepContextRef.current = prev.consumerContext;
+          }
+          return next;
+        });
+        transitionKeyRef.current += 1;
+        setPhaseValue("exiting");
+      },
+      [createStepRecord, setPhaseValue],
+    );
+
+    /** Start the transition for a navigation deferred during the previous exit. */
+    const drainPendingNavigation = useCallback(
+      (entry: PendingNavigation) => {
         if (entry.type === "advance") {
+          const currentFlowId = flowIdRef.current;
           let nextActiveStep: ComponentType;
           try {
-            nextActiveStep = normalizeStepLoader(entry.stepLoader);
-          } catch (error) {
-            reportLoaderError("advance", error);
+            nextActiveStep = normalizeOrReport("advance", entry.stepLoader);
+          } catch {
             setPhaseValue("exited");
             return;
           }
           if (flowIdRef.current !== currentFlowId) return;
-          errorBoundaryRef.current?.resetError();
-          previousStepEpochRef.current = currentStepEpochRef.current;
-          transitionEpochRef.current += 1;
-          previousRecordRef.current = currentRecordRef.current;
-          currentRecordRef.current = createStepRecord(nextActiveStep);
-          setFlowState((prev) => {
-            if (prev === null) return prev;
-            previousStepContextRef.current = prev.consumerContext;
-            return {
-              history: [...prev.history, prev.activeStep],
-              activeStep: nextActiveStep,
-              consumerContext:
-                entry.contextPatch !== undefined
-                  ? mergeContext(prev.consumerContext, entry.contextPatch)
-                  : prev.consumerContext,
-            };
-          });
-          transitionKeyRef.current += 1;
-          setPhaseValue("exiting");
-        } else {
-          if (flowState === null || flowState.history.length === 0) {
-            // Retreat with no history to pop is a no-op. Settle instead of
-            // starting an exit transition that has no previous step to render.
-            setPhaseValue("exited");
-            return;
-          }
-          errorBoundaryRef.current?.resetError();
-          previousStepEpochRef.current = currentStepEpochRef.current;
-          transitionEpochRef.current += 1;
-          previousRecordRef.current = currentRecordRef.current;
-          currentRecordRef.current = createStepRecord(
-            flowState.history[flowState.history.length - 1],
+          beginExitTransition(nextActiveStep, (prev) =>
+            advanceState(prev, nextActiveStep, entry.contextPatch),
           );
-          setFlowState((prev) => {
-            if (prev === null || prev.history.length === 0) return prev;
-            previousStepContextRef.current = prev.consumerContext;
-            const historyPrev = prev.history[prev.history.length - 1];
-            return {
-              history: prev.history.slice(0, -1),
-              activeStep: historyPrev,
-              consumerContext: prev.consumerContext,
-            };
-          });
-          transitionKeyRef.current += 1;
-          setPhaseValue("exiting");
+        } else if (flowState === null || flowState.history.length === 0) {
+          // Retreat with no history to pop is a no-op. Settle instead of
+          // starting an exit transition that has no previous step to render.
+          setPhaseValue("exited");
+        } else {
+          beginExitTransition(flowState.history[flowState.history.length - 1], retreatState);
         }
       },
-      [createStepRecord, flowState, setPhaseValue],
+      [beginExitTransition, flowState, setPhaseValue],
     );
 
     /** Call when the exit animation has completed. Only meaningful in "exiting" phase. */
     const handleExited = useCallback(() => {
       if (phaseRef.current !== "exiting") return;
       previousRecordRef.current = null;
-      const queue = transitionQueueRef.current;
-      if (queue.length > 0) {
-        const entry = queue.shift();
-        if (!entry) {
-          throw new Error("Transition queue was unexpectedly empty when draining.");
-        }
-        drainQueueEntry(entry);
+      const pending = pendingNavigationRef.current;
+      if (pending) {
+        pendingNavigationRef.current = null;
+        drainPendingNavigation(pending);
       } else {
         setPhaseValue("entering");
       }
-    }, [drainQueueEntry, setPhaseValue]);
+    }, [drainPendingNavigation, setPhaseValue]);
 
     /** Auto-advance from "entering" to "exited" after one tick, so the consumer
      *  sees one render with phase "entering" (enter-animation window) before the
@@ -339,7 +339,7 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
       if (
         phase === "entering" &&
         phaseRef.current === "entering" &&
-        transitionQueueRef.current.length === 0
+        pendingNavigationRef.current === null
       ) {
         setPhaseValue("exited");
       }
@@ -351,26 +351,12 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
     const directAdvance = useCallback(
       (nextStep: StepLoader, contextPatch?: unknown) => {
         if (flowIdRef.current !== activeFlowId) return;
-        let nextActiveStep: ComponentType;
-        try {
-          nextActiveStep = normalizeStepLoader(nextStep);
-        } catch (error) {
-          reportLoaderError("advance", error);
-          throw error;
-        }
+        const nextActiveStep = normalizeOrReport("advance", nextStep);
         if (flowIdRef.current !== activeFlowId) return;
         errorBoundaryRef.current?.resetError();
-        setFlowState((prev) => {
-          if (prev === null) return prev;
-          return {
-            history: [...prev.history, prev.activeStep],
-            activeStep: nextActiveStep,
-            consumerContext:
-              contextPatch !== undefined
-                ? mergeContext(prev.consumerContext, contextPatch)
-                : prev.consumerContext,
-          };
-        });
+        setFlowState((prev) =>
+          prev === null ? prev : advanceState(prev, nextActiveStep, contextPatch),
+        );
       },
       [activeFlowId],
     );
@@ -378,42 +364,28 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
     /** Direct retreat — pops history and updates flowState immediately. */
     const directRetreat = useCallback(() => {
       errorBoundaryRef.current?.resetError();
-      setFlowState((prev) => {
-        if (prev === null || prev.history.length === 0) return prev;
-        const previousStep = prev.history[prev.history.length - 1];
-        return {
-          history: prev.history.slice(0, -1),
-          activeStep: previousStep,
-          consumerContext: prev.consumerContext,
-        };
-      });
+      setFlowState((prev) => (prev === null ? prev : retreatState(prev)));
     }, []);
     // #endregion doc:direct-navigate
 
     // #region doc:transition-navigate
-    /** Replace any pending transition with the latest advance — used while phase is
+    /** Replace any pending navigation with the latest advance — used while phase is
      *  "exiting". Rapid successive navigations collapse into the most recent one. */
     const queueAdvance = useCallback(
       (nextStep: StepLoader, contextPatch?: unknown) => {
         if (flowIdRef.current !== activeFlowId) return;
         if (transitionEpochRef.current !== previousStepEpochRef.current) return;
-        transitionQueueRef.current = [
-          {
-            type: "advance",
-            stepLoader: nextStep,
-            contextPatch,
-          },
-        ];
+        pendingNavigationRef.current = { type: "advance", stepLoader: nextStep, contextPatch };
       },
       [activeFlowId],
     );
 
-    /** Replace any pending transition with the latest retreat — used while phase is
+    /** Replace any pending navigation with the latest retreat — used while phase is
      *  "exiting". Rapid successive navigations collapse into the most recent one. */
     const queueRetreat = useCallback(() => {
       if (flowIdRef.current !== activeFlowId) return;
       if (transitionEpochRef.current !== previousStepEpochRef.current) return;
-      transitionQueueRef.current = [{ type: "retreat" }];
+      pendingNavigationRef.current = { type: "retreat" };
     }, [activeFlowId]);
 
     /** Transition-aware advance: queues if exiting, else starts a transition. */
@@ -422,45 +394,16 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
         if (flowIdRef.current !== activeFlowId) return;
         if (transitionEpochRef.current !== currentStepEpochRef.current) return;
         if (phaseRef.current === "exiting") {
-          transitionQueueRef.current = [
-            {
-              type: "advance",
-              stepLoader: nextStep,
-              contextPatch,
-            },
-          ];
+          pendingNavigationRef.current = { type: "advance", stepLoader: nextStep, contextPatch };
           return;
         }
+        const nextActiveStep = normalizeOrReport("advance", nextStep);
         if (flowIdRef.current !== activeFlowId) return;
-        let nextActiveStep: ComponentType;
-        try {
-          nextActiveStep = normalizeStepLoader(nextStep);
-        } catch (error) {
-          reportLoaderError("advance", error);
-          throw error;
-        }
-        if (flowIdRef.current !== activeFlowId) return;
-        errorBoundaryRef.current?.resetError();
-        previousStepEpochRef.current = currentStepEpochRef.current;
-        transitionEpochRef.current += 1;
-        previousRecordRef.current = currentRecordRef.current;
-        currentRecordRef.current = createStepRecord(nextActiveStep);
-        setFlowState((prev) => {
-          if (prev === null) return prev;
-          previousStepContextRef.current = prev.consumerContext;
-          return {
-            history: [...prev.history, prev.activeStep],
-            activeStep: nextActiveStep,
-            consumerContext:
-              contextPatch !== undefined
-                ? mergeContext(prev.consumerContext, contextPatch)
-                : prev.consumerContext,
-          };
-        });
-        transitionKeyRef.current += 1;
-        setPhaseValue("exiting");
+        beginExitTransition(nextActiveStep, (prev) =>
+          advanceState(prev, nextActiveStep, contextPatch),
+        );
       },
-      [activeFlowId, createStepRecord, setPhaseValue],
+      [activeFlowId, beginExitTransition],
     );
 
     /** Transition-aware retreat: queues if exiting, else starts a transition.
@@ -470,27 +413,11 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
       if (transitionEpochRef.current !== currentStepEpochRef.current) return;
       if (flowState === null || flowState.history.length === 0) return;
       if (phaseRef.current === "exiting") {
-        transitionQueueRef.current = [{ type: "retreat" }];
+        pendingNavigationRef.current = { type: "retreat" };
         return;
       }
-      errorBoundaryRef.current?.resetError();
-      previousStepEpochRef.current = currentStepEpochRef.current;
-      transitionEpochRef.current += 1;
-      previousRecordRef.current = currentRecordRef.current;
-      currentRecordRef.current = createStepRecord(flowState.history[flowState.history.length - 1]);
-      setFlowState((prev) => {
-        if (prev === null || prev.history.length === 0) return prev;
-        previousStepContextRef.current = prev.consumerContext;
-        const historyPrev = prev.history[prev.history.length - 1];
-        return {
-          history: prev.history.slice(0, -1),
-          activeStep: historyPrev,
-          consumerContext: prev.consumerContext,
-        };
-      });
-      transitionKeyRef.current += 1;
-      setPhaseValue("exiting");
-    }, [activeFlowId, createStepRecord, flowState, setPhaseValue]);
+      beginExitTransition(flowState.history[flowState.history.length - 1], retreatState);
+    }, [activeFlowId, beginExitTransition, flowState]);
     // #endregion doc:transition-navigate
 
     useImperativeHandle(
@@ -504,26 +431,13 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
           onActivated?: () => void,
         ) {
           const currentFlowId = flowIdRef.current;
-          let activeStep: ComponentType;
-          try {
-            activeStep = normalizeStepLoader(stepLoader);
-          } catch (error) {
-            reportLoaderError("activate", error);
-            throw error;
-          }
+          const activeStep = normalizeOrReport("activate", stepLoader);
           if (flowIdRef.current !== currentFlowId) return;
           errorBoundaryRef.current?.resetError();
           flowIdRef.current += 1;
           resolveRef.current = onResolve ?? null;
           abortRef.current = onAbort ?? null;
-          // Reset transition state for the new flow.
-          currentRecordRef.current = null;
-          previousRecordRef.current = null;
-          transitionQueueRef.current = [];
-          transitionEpochRef.current = 0;
-          currentStepEpochRef.current = 0;
-          previousStepEpochRef.current = 0;
-          setPhaseValue("exited");
+          resetTransitionState();
           setFlowState({
             history: [],
             activeStep,
@@ -532,7 +446,7 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
           onActivated?.();
         },
       }),
-      [setPhaseValue],
+      [resetTransitionState],
     );
 
     // biome-ignore lint/correctness/useExhaustiveDependencies: idle callbacks are stable
@@ -570,12 +484,12 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
 
     const guardedResolve = (value?: unknown) => {
       if (flowIdRef.current !== capturedFlowId) return;
-      handleResolve(value);
+      settleFlow("resolve", value);
     };
 
     const guardedAbort = (reason?: unknown) => {
       if (flowIdRef.current !== capturedFlowId) return;
-      handleAbort(reason);
+      settleFlow("abort", reason);
     };
 
     // Outer context — available to chrome and idle children.
@@ -584,6 +498,21 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
       resolve: guardedResolve,
       abort: guardedAbort,
     };
+
+    /** Shared step subtree: step context, error boundary, Suspense, step component. */
+    const renderStep = (
+      StepComponent: ComponentType,
+      contextValue: StepContextValue,
+      boundaryRef: typeof errorBoundaryRef | null,
+    ) => (
+      <StepContext.Provider value={contextValue}>
+        <FlowErrorBoundary ref={boundaryRef} failedStep={StepComponent} errorStep={props.errorStep}>
+          <Suspense fallback={props.fallback ?? null}>
+            <StepComponent />
+          </Suspense>
+        </FlowErrorBoundary>
+      </StepContext.Provider>
+    );
 
     // #region doc:transition-render
     if (props.transition) {
@@ -627,24 +556,12 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
         record: StepRecord,
         contextValue: StepContextValue,
         isCurrent: boolean,
-      ) => {
-        const StepComponent = record.Component;
-        return createPortal(
-          <StepContext.Provider value={contextValue}>
-            <FlowErrorBoundary
-              ref={isCurrent ? errorBoundaryRef : null}
-              failedStep={StepComponent}
-              errorStep={props.errorStep}
-            >
-              <Suspense fallback={props.fallback ?? null}>
-                <StepComponent />
-              </Suspense>
-            </FlowErrorBoundary>
-          </StepContext.Provider>,
+      ) =>
+        createPortal(
+          renderStep(record.Component, contextValue, isCurrent ? errorBoundaryRef : null),
           record.host,
           `step-${record.id}`,
         );
-      };
 
       const transitionOutput = props.transition({
         previousStep: previousRecord ? (
@@ -676,19 +593,7 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
       consumerContext: flowState.consumerContext,
     };
 
-    const stepSlot = (
-      <StepContext.Provider value={stepContextValue}>
-        <FlowErrorBoundary
-          ref={errorBoundaryRef}
-          failedStep={ActiveStep}
-          errorStep={props.errorStep}
-        >
-          <Suspense fallback={props.fallback ?? null}>
-            <ActiveStep />
-          </Suspense>
-        </FlowErrorBoundary>
-      </StepContext.Provider>
-    );
+    const stepSlot = renderStep(ActiveStep, stepContextValue, errorBoundaryRef);
 
     return (
       <FlowContext.Provider value={flowContextValue}>
