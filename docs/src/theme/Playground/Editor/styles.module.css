@@ -1,0 +1,37 @@
+.playgroundEditor {
+  font: var(--ifm-code-font-size) / var(--ifm-pre-line-height)
+    var(--ifm-font-family-monospace) !important;
+  /* rtl:ignore */
+  direction: ltr;
+}
+
+.playgroundEditor pre {
+  border-radius: 0;
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.toggleButton {
+  appearance: none;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: var(--ifm-global-radius);
+  color: inherit;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: var(--ifm-code-font-size);
+  font-weight: inherit;
+  letter-spacing: normal;
+  line-height: 1;
+  padding: 0.25rem 0.5rem;
+  text-transform: none;
+}
+
+.toggleButton:hover {
+  opacity: 0.8;
+}

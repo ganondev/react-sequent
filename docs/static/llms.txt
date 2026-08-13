@@ -123,6 +123,7 @@ type SequentOutletProps = {
   fallback?: ReactNode;     // Suspense fallback for async step loading
   errorStep?: (context: ErrorStepContext) => ReactNode; // Error boundary render factory for step render errors
   chrome?: (children: ReactNode) => ReactNode; // Stable wrapper around the step slot
+  transition?: (props: TransitionSlotProps) => ReactNode; // Enables animated step transitions
 };
 
 type ErrorStepContext = {
@@ -151,6 +152,14 @@ interface SequentContextReturn<TContext = unknown> {
   resolve: (value?: unknown) => void;
   abort: (reason?: unknown) => void;
 }
+
+interface TransitionSlotProps {
+  previousStep: ReactNode | null;
+  nextStep: ReactNode;
+  phase: "exiting" | "entering" | "exited";
+  onExited: () => void;
+  transitionKey: number;
+}
 ```
 
 ## Outlet Architecture
@@ -171,6 +180,10 @@ SequentOutlet
             └─ Suspense        ← handles async step loading
                └─ ActiveStep   ← swaps on each transition
 ```
+
+When the `transition` prop is provided, the outlet renders both the exiting and
+entering step simultaneously during the `"exiting"` phase. Chrome wraps the
+output of the transition render prop and is never unmounted during a transition.
 
 Chrome renders inside `FlowContext` but outside `StepContext`. This means chrome can call `useSequentContext()` but not `useSequentStep()` — enforced by an immediate throw.
 

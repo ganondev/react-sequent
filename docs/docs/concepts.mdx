@@ -104,3 +104,59 @@ Chrome is stable UI that wraps the step — modal headers, progress indicators, 
 ```
 
 Chrome reads flow state via `useSequentContext()`. Steps write chrome-relevant data into context via `advance`'s `contextPatch` parameter.
+
+## Animated Transitions
+
+By default, step swaps are immediate — the old step unmounts as the new step mounts. To animate transitions (crossfade, slide, or any enter/exit animation), provide a `transition` render prop to `<SequentOutlet />`.
+
+### How It Works
+
+When `transition` is present, the outlet enters a three-phase transition lifecycle on every step change:
+
+1. **`exiting`** — Both the old (exiting) and new (entering) step are mounted simultaneously. The consumer plays an exit animation and calls `onExited()` when done.
+2. **`entering`** — The exiting step has unmounted. The entering step renders alone for one tick so consumers can trigger an enter animation.
+3. **`exited`** — The flow is settled. No animation is in progress.
+
+The render prop receives `previousStep`, `nextStep`, `phase`, `onExited`, and `transitionKey` — everything needed to construct an animated layout.
+
+### Example: CSS Crossfade
+
+```tsx
+<SequentOutlet
+  transition={({ previousStep, nextStep, phase, onExited, transitionKey }) => {
+    if (phase === "exited") return nextStep;
+    return (
+      <div style={{ position: "relative" }}>
+        <div
+          key={`exit-${transitionKey}`}
+          style={{ position: "absolute", animation: "fadeOut 300ms" }}
+          onAnimationEnd={onExited}
+        >
+          {previousStep}
+        </div>
+        <div key={`enter-${transitionKey}`} style={{ animation: "fadeIn 300ms" }}>
+          {nextStep}
+        </div>
+      </div>
+    );
+  }}
+/>
+```
+
+See this exact crossfade live in the [Subsection Flow demo](/docs/demos/subsection-flow).
+
+### `transitionKey`
+
+`transitionKey` is a monotonically increasing integer that increments on every new exit transition. Attach it as a React `key` on animation wrapper elements to force React to remount them — otherwise back-to-back queued transitions reuse the same DOM node and CSS animations never restart.
+
+### Library Agnostic
+
+The outlet doesn't know about CSS, framer-motion, GSAP, or any animation library. It only provides the *wiring surface*: both steps mounted, a phase state, a completion callback, and an identity key. Wire `onExited` to `transitionend`, `onAnimationEnd`, framer-motion's `onExitComplete`, or any other completion signal.
+
+### Constraints
+
+- A step may only initiate one transition. Subsequent `advance()` or `retreat()` calls from the same step render are silently dropped.
+- While in the `exiting` phase, the **entering** step may enqueue a navigation for after the current exit completes.
+- `resolve()` and `abort()` tear down both steps immediately — `onExited` is not expected.
+- Chrome wraps the transition output and is never unmounted during a transition.
+- Without the `transition` prop, behavior is identical to the current release.

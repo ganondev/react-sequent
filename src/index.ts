@@ -19,3 +19,4 @@ export { useSequentFlow } from "./hooks/useSequentFlow";
 export { useSequentStep } from "./hooks/useSequentStep";
 export type { ErrorStepContext } from "./internal/FlowErrorBoundary";
 export type { StepLoader } from "./internal/normalizer";
+export type { TransitionSlotProps } from "./components/FlowOutlet";

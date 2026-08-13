@@ -23,11 +23,11 @@ function WizardDemo() {
     const pct = Math.round((ctx.step / ctx.total) * 100);
     return (
       <div className="demo-wizard">
-        <div className="demo-wizard__track">
-          <div className="demo-wizard__fill" style={{ width: `${pct}%` }} />
+        <div>
+          <div style={{ width: `${pct}%` }} />
         </div>
-        <div className="demo-wizard__label">Step {ctx.step} of {ctx.total}</div>
-        <div className="demo-wizard__content">{children}</div>
+        <div>Step {ctx.step} of {ctx.total}</div>
+        <div>{children}</div>
       </div>
     );
   }
@@ -57,23 +57,22 @@ function WizardDemo() {
     const { advance, abort, context } = useSequentStep();
     const [name, setName] = React.useState(context?.data?.name ?? "");
     return (
-      <div className="demo-wizard__step">
-        <h2 className="demo-wizard__title">Tell us about yourself</h2>
-        <p className="demo-wizard__subtitle">What should we call you?</p>
-        <div className="demo-input-group-wide">
+      <div>
+        <h2>Tell us about yourself</h2>
+        <p>What should we call you?</p>
+        <div>
           <input
             type="text"
-            className="demo-input"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Your name"
           />
         </div>
-        <div className="demo-actions-center">
+        <div>
           <button onClick={() => advance(() => StepPreferences, { step: 2, total: 3, data: { name: name || "User" } })}>
             Continue →
           </button>
-          <button className="demo-btn-ghost" onClick={() => abort("cancelled")}>Cancel</button>
+          <button onClick={() => abort("cancelled")}>Cancel</button>
         </div>
       </div>
     );
@@ -84,22 +83,21 @@ function WizardDemo() {
     const { context: ctx } = useSequentContext();
     const [notif, setNotif] = React.useState(context?.data?.notifications ?? true);
     return (
-      <div className="demo-wizard__step">
-        <h2 className="demo-wizard__title">Set your preferences</h2>
-        <p className="demo-wizard__subtitle">Communication preferences</p>
-        <div className="demo-input-group-wide">
-          <label className="demo-checkbox-label">
+      <div>
+        <h2>Set your preferences</h2>
+        <p>Communication preferences</p>
+        <div>
+          <label>
             <input
               type="checkbox"
-              className="demo-checkbox"
               checked={notif}
               onChange={(e) => setNotif(e.target.checked)}
             />
             <span>Send me email notifications</span>
           </label>
         </div>
-        <div className="demo-actions-center">
-          <button className="demo-btn-ghost" onClick={() => retreat()}>← Back</button>
+        <div>
+          <button onClick={() => retreat()}>← Back</button>
           <button
             onClick={() =>
               advance(async () => {
@@ -120,7 +118,7 @@ function WizardDemo() {
           >
             Continue →
           </button>
-          <button className="demo-btn-ghost" onClick={() => abort("cancelled")}>Cancel</button>
+          <button onClick={() => abort("cancelled")}>Cancel</button>
         </div>
       </div>
     );
@@ -129,14 +127,14 @@ function WizardDemo() {
   function StepConfirm({ summary }) {
     const { retreat, resolve, abort } = useSequentStep();
     return (
-      <div className="demo-wizard__step">
-        <h2 className="demo-wizard__title">All set! 🎉</h2>
-        <p className="demo-wizard__subtitle">Your profile is ready.</p>
-        <pre className="demo-summary">{JSON.stringify(summary, null, 2)}</pre>
-        <div className="demo-actions-center">
-          <button className="demo-btn-ghost" onClick={() => retreat()}>← Back</button>
+      <div>
+        <h2>All set! 🎉</h2>
+        <p>Your profile is ready.</p>
+        <pre>{JSON.stringify(summary, null, 2)}</pre>
+        <div>
+          <button onClick={() => retreat()}>← Back</button>
           <button onClick={() => resolve(summary.data)}>Finish</button>
-          <button className="demo-btn-ghost" onClick={() => abort("cancelled")}>Cancel</button>
+          <button onClick={() => abort("cancelled")}>Cancel</button>
         </div>
       </div>
     );

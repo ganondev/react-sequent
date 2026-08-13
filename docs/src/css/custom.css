@@ -79,38 +79,146 @@
 .demo-sandbox { padding: 8px; }
 .demo-log     { margin-top: 12px; color: var(--ifm-color-content-secondary); }
 
-/* Paragraph spacing variants */
-.demo-para      { margin: 0 0 16px; }
-.demo-step-para { margin: 8px 0; }
+/* Global demo buttons — targeted broadly via the element selector through
+   existing container relationships, so no per-button classes are needed.
+   Every <button> inside a demo container inherits a consistent, styled
+   look instead of the browser default. */
+.demo-sandbox button,
+.demo-checkout button,
+.demo-modal button,
+.demo-wizard button,
+.demo-toast button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  padding: 6px 14px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: var(--ifm-color-primary);
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.05s ease;
+  user-select: none;
+  white-space: nowrap;
+}
 
-/* Ghost / secondary button (back, cancel) */
-.demo-btn-ghost {
+.demo-sandbox button:hover,
+.demo-checkout button:hover,
+.demo-modal button:hover,
+.demo-wizard button:hover,
+.demo-toast button:hover {
+  background: var(--ifm-color-primary-dark);
+}
+
+.demo-sandbox button:active,
+.demo-checkout button:active,
+.demo-modal button:active,
+.demo-wizard button:active,
+.demo-toast button:active {
+  transform: translateY(1px);
+}
+
+.demo-sandbox button:disabled,
+.demo-checkout button:disabled,
+.demo-modal button:disabled,
+.demo-wizard button:disabled,
+.demo-toast button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.demo-sandbox button:focus-visible,
+.demo-checkout button:focus-visible,
+.demo-modal button:focus-visible,
+.demo-wizard button:focus-visible,
+.demo-toast button:focus-visible {
+  outline: 2px solid var(--ifm-color-primary);
+  outline-offset: 2px;
+}
+
+/* Secondary / ghost actions — the trailing "Cancel" button in the modal &
+   wizard action rows, plus the back arrow, sit at the row edges. Keeping the
+   primary fill for the forward CTA keeps the hierarchy without button classes. */
+.demo-modal > :last-child div:has(> button) button:last-child,
+.demo-wizard > :last-child > div > :last-child button:last-child {
   background: none;
   color: var(--ifm-color-content-secondary);
   border: 1px solid var(--ifm-color-emphasis-300);
-  border-radius: 4px;
-  padding: 4px 12px;
-  cursor: pointer;
 }
 
-/* Icon close button (modal header) */
-.demo-btn-close {
+.demo-modal > :last-child div:has(> button) button:last-child:hover,
+.demo-wizard > :last-child > div > :last-child button:last-child:hover {
+  background: var(--ifm-color-emphasis-100);
+  color: var(--ifm-color-content);
+}
+
+/* Icon close button in the modal header — the only button in that row */
+.demo-modal > :first-child button {
   background: none;
   border: none;
-  cursor: pointer;
+  padding: 4px 8px;
+  color: var(--ifm-color-content-secondary);
   font-size: 18px;
   line-height: 1;
 }
 
-/* Flex rows of action buttons */
-.demo-actions        { display: flex; gap: 8px; }
-.demo-actions-center { display: flex; justify-content: center; gap: 8px; }
+.demo-modal > :first-child button:hover {
+  background: var(--ifm-color-emphasis-100);
+  color: var(--ifm-color-content);
+}
+
+/* Wizard action row — the last child of the active step */
+.demo-wizard > :last-child > div > :last-child {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
 
 /* ── Subsection / checkout ──────────────────────────────────────────────── */
-.demo-checkout         { border: 1px solid var(--ifm-color-emphasis-300); border-radius: 8px; overflow: hidden; max-width: 400px; }
-.demo-checkout__header { padding: 12px 16px; border-bottom: 1px solid var(--ifm-color-emphasis-300); background: var(--ifm-background-surface-color); }
-.demo-checkout__body   { padding: 16px; }
-.demo-checkout__status { padding: 16px; color: var(--ifm-color-success); }
+.demo-checkout { border: 1px solid var(--ifm-color-emphasis-300); border-radius: 8px; overflow: hidden; max-width: 400px; }
+/* Chrome children styled by position: header = first child, outlet content
+   = 2nd, status = 3rd (only rendered when a flow resolves). */
+.demo-checkout > :first-child {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ifm-color-emphasis-300);
+  background: var(--ifm-background-surface-color);
+}
+.demo-checkout > :nth-child(2) { padding: 16px; }
+.demo-checkout > :nth-child(3) { padding: 16px; color: var(--ifm-color-success); }
+
+/* Step content — scoped to the outlet container so it also matches during
+   the transition, when steps are nested inside the crossfade wrapper. */
+.demo-checkout > :nth-child(2) p { margin: 8px 0; }
+.demo-checkout > :nth-child(2) div:has(> input) { margin-bottom: 12px; }
+.demo-checkout > :nth-child(2) input {
+  width: 100%;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  font-size: 14px;
+  box-sizing: border-box;
+  background: var(--ifm-background-color);
+  color: var(--ifm-color-content);
+}
+.demo-checkout > :nth-child(2) div:has(> button + button) {
+  display: flex;
+  gap: 8px;
+}
+
+/* Crossfade transition used by the Subsection Flow demo */
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
 
 /* ── Toast ──────────────────────────────────────────────────────────────── */
 .demo-toast {
@@ -149,14 +257,44 @@
   overflow: hidden;
   pointer-events: auto;
 }
-.demo-modal__header {
+/* Chrome children styled by position: header = first child, body = last */
+.demo-modal > :first-child {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 14px 20px;
   border-bottom: 1px solid var(--ifm-color-emphasis-200);
 }
-.demo-modal__body { padding: 24px; }
+.demo-modal > :last-child { padding: 24px; }
+
+/* Step content — scoped to the modal body so it also matches during the
+   sequential transition, when steps are nested inside the slide wrappers. */
+.demo-modal > :last-child p {
+  margin: 0 0 16px;
+}
+.demo-modal > :last-child div:has(> input, > textarea) {
+  margin-bottom: 12px;
+}
+.demo-modal > :last-child div > label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+.demo-modal > :last-child div > input,
+.demo-modal > :last-child div > textarea {
+  width: 100%;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  font-size: 14px;
+  box-sizing: border-box;
+  background: var(--ifm-background-color);
+  color: var(--ifm-color-content);
+}
+.demo-modal > :last-child div:has(> button) {
+  display: flex;
+  gap: 8px;
+}
 
 /* ── Wizard ─────────────────────────────────────────────────────────────── */
 .demo-wizard {
@@ -167,19 +305,51 @@
   flex-direction: column;
   z-index: 1000;
 }
-.demo-wizard__track   { height: 4px; background: var(--ifm-color-emphasis-200); }
-.demo-wizard__fill    { height: 100%; background: #4f46e5; transition: width 0.3s ease; }
-.demo-wizard__label   { padding: 8px 24px; color: var(--ifm-color-content-secondary); font-size: 13px; border-bottom: 1px solid var(--ifm-color-emphasis-200); }
-.demo-wizard__content { flex: 1; display: flex; align-items: center; justify-content: center; }
-.demo-wizard__step    { text-align: center; }
-.demo-wizard__title   { margin: 0 0 8px; }
-.demo-wizard__subtitle { margin: 0 0 16px; color: var(--ifm-color-content-secondary); }
+/* The chrome root's children are styled by their position in the tree
+   (track → label → content) instead of per-element classes. */
+.demo-wizard > :first-child {
+  height: 4px;
+  background: var(--ifm-color-emphasis-200);
+}
+.demo-wizard > :first-child > :first-child {
+  height: 100%;
+  background: #4f46e5;
+  transition: width 0.3s ease;
+}
+.demo-wizard > :nth-child(2) {
+  padding: 8px 24px;
+  color: var(--ifm-color-content-secondary);
+  font-size: 13px;
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+}
+.demo-wizard > :last-child {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* The active step is the only child of the chrome's content slot (last
+   child); its heading and subtitle are styled by position within it. */
+.demo-wizard > :last-child > div {
+  text-align: center;
+}
+.demo-wizard > :last-child > div > :first-child {
+  margin: 0 0 8px;
+}
+.demo-wizard > :last-child > div > :nth-child(2) {
+  margin: 0 0 16px;
+  color: var(--ifm-color-content-secondary);
+}
 
 /* Async loading fallback text */
 .demo-fallback { color: var(--ifm-color-content-secondary); }
 
-/* ── Form inputs ────────────────────────────────────────────────────────── */
-.demo-input {
+/* Wizard step form fields */
+.demo-wizard > :last-child > div > :nth-child(3) {
+  margin-bottom: 16px;
+}
+/* Wizard text input — the direct input of the step body */
+.demo-wizard > :last-child > div > :nth-child(3) > input {
   width: 100%;
   padding: 8px;
   border-radius: 4px;
@@ -189,29 +359,14 @@
   background: var(--ifm-background-color);
   color: var(--ifm-color-content);
 }
-
-.demo-input-label {
-  display: block;
-  margin-bottom: 6px;
-  font-size: 14px;
-}
-
-.demo-input-group {
-  margin-bottom: 12px;
-}
-
-.demo-input-group-wide {
-  margin-bottom: 16px;
-}
-
-.demo-checkbox {
-  width: 18px;
-  height: 18px;
-}
-
-.demo-checkbox-label {
+/* Wizard checkbox row — a label nested in the step body */
+.demo-wizard > :last-child > div > :nth-child(3) label {
   display: flex;
   align-items: center;
   gap: 8px;
   cursor: pointer;
+}
+.demo-wizard > :last-child > div > :nth-child(3) label input {
+  width: 18px;
+  height: 18px;
 }

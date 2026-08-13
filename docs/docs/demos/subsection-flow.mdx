@@ -12,25 +12,21 @@ Click **Begin Checkout** below to start the flow directly on this page.
 ```jsx live
 function CheckoutSection() {
   const { init, status: flowStatus, result, SequentOutlet } = useSequentFlow();
-  const message = React.useMemo(() => {
-    if (flowStatus === "idle" && result?.status === "resolved") {
-      return `Order placed! ${JSON.stringify(result.value)}`;
-    }
-
-    return null;
-  }, [flowStatus, result]);
+  const message =
+    flowStatus === "idle" && result?.status === "resolved"
+      ? `Order placed! ${JSON.stringify(result.value)}`
+      : null;
 
   function StepAddress() {
     const { advance, context } = useSequentStep();
     const [address, setAddress] = React.useState(context?.address ?? "");
     return (
-      <div className="demo-checkout__body">
+      <div>
         <strong>Step 1 — Shipping Address</strong>
-        <p className="demo-step-para">Enter your address details here.</p>
-        <div className="demo-input-group">
+        <p>Enter your address details here.</p>
+        <div>
           <input
             type="text"
-            className="demo-input"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             placeholder="123 Main St, City, State"
@@ -45,19 +41,18 @@ function CheckoutSection() {
     const { retreat, advance, context } = useSequentStep();
     const [card, setCard] = React.useState(context?.card ?? "");
     return (
-      <div className="demo-checkout__body">
+      <div>
         <strong>Step 2 — Payment</strong>
-        <p className="demo-step-para">Enter your payment details here.</p>
-        <div className="demo-input-group">
+        <p>Enter your payment details here.</p>
+        <div>
           <input
             type="text"
-            className="demo-input"
             value={card}
             onChange={(e) => setCard(e.target.value)}
             placeholder="Card number (e.g., 4111 1111 1111 1111)"
           />
         </div>
-        <div className="demo-actions">
+        <div>
           <button onClick={() => retreat()}>← Back</button>
           <button onClick={() => advance(() => StepReview, { card })}>Next →</button>
         </div>
@@ -69,10 +64,10 @@ function CheckoutSection() {
     const { retreat, resolve } = useSequentStep();
     const { context: ctx } = useSequentContext();
     return (
-      <div className="demo-checkout__body">
+      <div>
         <strong>Step 3 — Review & Confirm</strong>
-        <p className="demo-step-para">Everything looks good?</p>
-        <div className="demo-actions">
+        <p>Everything looks good?</p>
+        <div>
           <button onClick={() => retreat()}>← Back</button>
           <button onClick={() => resolve({ ...ctx, confirmed: true })}>Place Order ✓</button>
         </div>
@@ -83,7 +78,7 @@ function CheckoutSection() {
   function IdleContent() {
     const { context: ctx } = useSequentContext();
     return (
-      <div className="demo-checkout__body">
+      <div>
         <button onClick={start}>{ctx ? "Begin Checkout Again" : "Begin Checkout"}</button>
       </div>
     );
@@ -95,13 +90,31 @@ function CheckoutSection() {
 
   return (
     <div className="demo-checkout">
-      <div className="demo-checkout__header">
+      <div>
         <strong>Checkout</strong>
       </div>
-      <SequentOutlet>
+      <SequentOutlet
+        transition={({ previousStep, nextStep, phase, onExited, transitionKey }) => {
+          if (phase === "exited") return nextStep;
+          return (
+            <div style={{ position: "relative" }}>
+              <div
+                key={`exit-${transitionKey}`}
+                style={{ position: "absolute", animation: "fadeOut 300ms forwards" }}
+                onAnimationEnd={onExited}
+              >
+                {previousStep}
+              </div>
+              <div key={`enter-${transitionKey}`} style={{ animation: "fadeIn 300ms" }}>
+                {nextStep}
+              </div>
+            </div>
+          );
+        }}
+      >
         <IdleContent />
       </SequentOutlet>
-      {message && <div className="demo-checkout__status">{message}</div>}
+      {message && <div>{message}</div>}
     </div>
   );
 }
@@ -114,10 +127,12 @@ function CheckoutSection() {
 3. Clicking the button calls `init(() => StepAddress)`, which replaces the idle children with `StepAddress` inside the outlet.
 4. Each step calls `advance(NextStep)` to move forward or `retreat()` to go back.
 5. `StepReview` calls `resolve(value)` — `useSequentFlow().result` captures the resolved value, the outlet returns to idle, and the `IdleContent` reappears with the updated button label.
+6. The outlet's `transition` render prop crossfades between steps — the outgoing step animates out while the incoming step animates in.
 
 ## Key points
 
 - **Idle children** — the outlet renders its children when no flow is active. Idle children have access to `useSequentContext`, which returns the last consumer context from the previous flow (or `undefined` on first render).
 - **No central state** — each step decides what comes next via `advance(NextStep)`.
 - **History is automatic** — `retreat()` pops the history stack with no manual bookkeeping.
+- **Animated transitions** — the `transition` render prop mounts both steps during a step change and drives the crossfade via CSS keyframes, wired to `onAnimationEnd` for the exit completion signal.
 - **The outlet is reusable** — the same `useSequentFlow()` host can start a fresh flow with another `init()` call.
