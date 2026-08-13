@@ -234,6 +234,7 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
             setPhaseValue("exited");
             return;
           }
+          errorBoundaryRef.current?.resetError();
           previousStepEpochRef.current = currentStepEpochRef.current;
           transitionEpochRef.current += 1;
           setFlowState((prev) => {

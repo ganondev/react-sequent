@@ -433,4 +433,136 @@ describeFeature(feature, ({ Scenario }) => {
       });
     },
   );
+
+  Scenario(
+    "A retreat queued from the error UI during an exit transition renders the restored history step",
+    ({ Given, And, When, Then }) => {
+      let capturedInit: ReturnType<typeof useSequentFlow>["init"];
+      let consoleSpy: ReturnType<typeof vi.spyOn>;
+
+      /**
+       * Throws while `shouldFail` is set. React 19 retries a failed concurrent
+       * render synchronously, so a mount-counted fixture would skip the throw
+       * on the retry and never reach the error boundary. Keep the flag set
+       * until the error UI is confirmed visible, then clear it so the step
+       * renders normally when it remounts as the previous step of the drained
+       * retreat.
+       */
+      let shouldFail = true;
+      function FailingOnceStep(): React.ReactElement {
+        if (shouldFail) {
+          throw new Error("Failing step exploded!");
+        }
+        return <div>Recovered previous step</div>;
+      }
+
+      function StepWithAdvanceBtn(): React.ReactElement {
+        const { advance } = useSequentStep();
+        return (
+          <button type="button" onClick={() => advance(() => FailingOnceStep)}>
+            Advance
+          </button>
+        );
+      }
+
+      /**
+       * Rendered by the boundary inside the entering step's StepContext, so
+       * `useSequentStep` navigation queues during the "exiting" phase.
+       */
+      function QueueRetreatErrorUi(): React.ReactElement {
+        const { retreat } = useSequentStep();
+        return (
+          <button type="button" onClick={() => retreat()}>
+            Queue Retreat
+          </button>
+        );
+      }
+
+      interface ErrorTransitionHostProps {
+        errorStep: (context: ErrorStepContext) => ReactNode;
+        onCaptureInit: (init: ReturnType<typeof useSequentFlow>["init"]) => void;
+      }
+
+      function ErrorTransitionHost({ errorStep, onCaptureInit }: ErrorTransitionHostProps) {
+        const { init, SequentOutlet } = useSequentFlow();
+
+        if (onCaptureInit) {
+          onCaptureInit(init);
+        }
+
+        const transition = (p: TransitionSlotProps): ReactNode => {
+          if (p.phase === "exited" || !p.previousStep) {
+            return p.nextStep;
+          }
+          return (
+            <div>
+              <div data-testid="previous-step">{p.previousStep}</div>
+              <div data-testid="next-step">{p.nextStep}</div>
+              <button type="button" data-testid="call-on-exited" onClick={() => p.onExited()}>
+                Done
+              </button>
+            </div>
+          );
+        };
+
+        return <SequentOutlet transition={transition} errorStep={errorStep} />;
+      }
+
+      Given(
+        "a host with a transition render prop and an errorStep whose UI queues a retreat",
+        () => {
+          cleanup();
+          shouldFail = true;
+          consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+          render(
+            <ErrorTransitionHost
+              errorStep={() => <QueueRetreatErrorUi />}
+              onCaptureInit={(init) => {
+                capturedInit = init;
+              }}
+            />,
+          );
+
+          expect(capturedInit).toBeDefined();
+        },
+      );
+
+      And("a flow has advanced to a step that throws during render", async () => {
+        await act(async () => {
+          capturedInit(() => StepWithAdvanceBtn);
+        });
+        await act(async () => {
+          screen.getByText("Advance").click();
+        });
+        // Exiting phase: the error UI is mounted in the entering slot.
+        expect(screen.getByTestId("call-on-exited")).toBeInTheDocument();
+        expect(screen.getByText("Queue Retreat")).toBeInTheDocument();
+        // The failing step remounts as the previous step of the drained
+        // retreat — from here on it must render normally.
+        shouldFail = false;
+      });
+
+      When('the user clicks "Queue Retreat" in the error UI', async () => {
+        await act(async () => {
+          screen.getByText("Queue Retreat").click();
+        });
+      });
+
+      And("the consumer calls onExited", async () => {
+        await act(async () => {
+          screen.getByTestId("call-on-exited").click();
+        });
+      });
+
+      Then("the restored history step is rendered", () => {
+        expect(screen.getByText("Advance")).toBeInTheDocument();
+      });
+
+      And("the error UI is no longer visible", () => {
+        expect(screen.queryByText("Queue Retreat")).not.toBeInTheDocument();
+        consoleSpy.mockRestore();
+      });
+    },
+  );
 });

@@ -50,3 +50,11 @@ Feature: Error boundary
     And   the consumer calls onExited
     Then  the destination step is rendered
     And   the error UI is no longer visible
+
+  Scenario: A retreat queued from the error UI during an exit transition renders the restored history step
+    Given a host with a transition render prop and an errorStep whose UI queues a retreat
+    And   a flow has advanced to a step that throws during render
+    When  the user clicks "Queue Retreat" in the error UI
+    And   the consumer calls onExited
+    Then  the restored history step is rendered
+    And   the error UI is no longer visible
