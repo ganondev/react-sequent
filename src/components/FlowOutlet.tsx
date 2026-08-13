@@ -263,7 +263,11 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
      *  sees one render with phase "entering" (enter-animation window) before the
      *  flow settles. */
     useEffect(() => {
-      if (phase === "entering" && transitionQueueRef.current.length === 0) {
+      if (
+        phase === "entering" &&
+        phaseRef.current === "entering" &&
+        transitionQueueRef.current.length === 0
+      ) {
         setPhaseValue("exited");
       }
     }, [phase]);

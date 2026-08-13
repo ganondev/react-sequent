@@ -53,6 +53,15 @@ Feature: Animated step transitions
     Then  a new transition begins from step B to step C
     And   after calling onExited again, step C is the settled step
 
+  Scenario: Navigation from the entering step mount effect starts a new transition
+    Given a host with a transition render prop
+    And   a flow on a step with an "Advance" button to a step that auto-advances when entering
+    When  the user clicks "Advance"
+    And   the consumer calls onExited
+    Then  the transition slot is invoked with phase "exiting"
+    And   previousStep contains the entering step
+    And   the auto-advanced step is mounted as the nextStep
+
   Scenario: No transition prop behaves identically to legacy mode
     Given a host without a transition render prop
     And   a flow on a step with an "Advance" button to another step

@@ -1,11 +1,12 @@
 import { describeFeature, loadFeature } from "@amiceli/vitest-cucumber";
 import { act, cleanup, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { useEffect } from "react";
 import { expect } from "vitest";
 import "@testing-library/jest-dom/vitest";
+import type { TransitionSlotProps } from "../components/FlowOutlet";
 import { useSequentFlow } from "../hooks/useSequentFlow";
 import { useSequentStep } from "../hooks/useSequentStep";
-import type { TransitionSlotProps } from "../components/FlowOutlet";
 
 // ── Fixture step components ──────────────────────────────────────────
 
@@ -476,6 +477,85 @@ describeFeature(feature, ({ Scenario }) => {
       expect(screen.queryByText("Queue Next")).not.toBeInTheDocument();
     });
   });
+
+  // ── Scenario: Entering step navigates from its mount effect ───────
+
+  Scenario(
+    "Navigation from the entering step mount effect starts a new transition",
+    ({ Given, And, When, Then }) => {
+      let init: InitFn;
+      let capturedProps: TransitionSlotProps[];
+
+      function StepWithAdvanceBtn() {
+        const { advance } = useSequentStep();
+        return (
+          <button type="button" onClick={() => advance(() => StepAutoAdvance)}>
+            Advance
+          </button>
+        );
+      }
+
+      /**
+       * Mounts twice: first as the incoming step during the "exiting" phase,
+       * then again as the settled current step during the "entering" phase.
+       * The component instance is remounted between phases, so a component
+       * ref would reset — track mounts in the scenario closure instead.
+       * Auto-advances only on that second mount, mimicking a step that
+       * navigates from its mount effect (e.g. an auto-skipped step).
+       */
+      let mountCount = 0;
+      function StepAutoAdvance() {
+        const { advance } = useSequentStep();
+        useEffect(() => {
+          mountCount += 1;
+          if (mountCount > 1) {
+            advance(() => StepC);
+          }
+        }, [advance]);
+        return <div>Auto Step B</div>;
+      }
+
+      Given("a host with a transition render prop", () => {
+        const s = setupTransitionHost();
+        init = s.init;
+        capturedProps = s.capturedProps;
+      });
+
+      And(
+        'a flow on a step with an "Advance" button to a step that auto-advances when entering',
+        async () => {
+          await act(async () => {
+            init(() => StepWithAdvanceBtn);
+          });
+        },
+      );
+
+      When('the user clicks "Advance"', async () => {
+        await act(async () => {
+          screen.getByText("Advance").click();
+        });
+      });
+
+      And("the consumer calls onExited", async () => {
+        await act(async () => {
+          screen.getByTestId("call-on-exited").click();
+        });
+      });
+
+      Then('the transition slot is invoked with phase "exiting"', () => {
+        const last = capturedProps[capturedProps.length - 1];
+        expect(last.phase).toBe("exiting");
+      });
+
+      And("previousStep contains the entering step", () => {
+        expect(screen.getByTestId("previous-step").textContent).toContain("Auto Step B");
+      });
+
+      And("the auto-advanced step is mounted as the nextStep", () => {
+        expect(screen.getByTestId("next-step").textContent).toContain("Step C");
+      });
+    },
+  );
 
   // ── Scenario: No transition prop = legacy ─────────────────────────
 
