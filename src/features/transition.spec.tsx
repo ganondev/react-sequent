@@ -492,21 +492,17 @@ describeFeature(feature, ({ Scenario }) => {
       }
 
       /**
-       * Mounts twice: first as the incoming step during the "exiting" phase,
-       * then again as the settled current step during the "entering" phase.
-       * The component instance is remounted between phases, so a component
-       * ref would reset — track mounts in the scenario closure instead.
-       * Auto-advances only on that second mount, mimicking a step that
-       * navigates from its mount effect (e.g. an auto-skipped step).
+       * Mounts once — as the incoming step during the "exiting" phase — and
+       * stays mounted through settle (the instance is retained across
+       * phases). Its mount effect navigates immediately; since the phase is
+       * "exiting", the advance enqueues and drains when onExited fires,
+       * mimicking a step that navigates from its mount effect (e.g. an
+       * auto-skipped step).
        */
-      let mountCount = 0;
       function StepAutoAdvance() {
         const { advance } = useSequentStep();
         useEffect(() => {
-          mountCount += 1;
-          if (mountCount > 1) {
-            advance(() => StepC);
-          }
+          advance(() => StepC);
         }, [advance]);
         return <div>Auto Step B</div>;
       }

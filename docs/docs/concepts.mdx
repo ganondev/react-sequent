@@ -119,6 +119,8 @@ When `transition` is present, the outlet enters a three-phase transition lifecyc
 
 The render prop receives `previousStep`, `nextStep`, `phase`, `onExited`, and `transitionKey` — everything needed to construct an animated layout.
 
+Step instances are **retained across the transition**: the outgoing step keeps its local state and effects while it animates out, and the incoming step is not remounted when the transition settles. The slots are lightweight placeholders backed by portals, so this holds no matter how your wrapper structure changes between phases.
+
 ### Example: CSS Crossfade
 
 ```tsx

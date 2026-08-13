@@ -6,23 +6,24 @@
  * Suspense boundary for async step loading, and accepts `fallback`
  * and `errorStep` props.
  *
- * When the `transition` prop is provided, step changes enter a two-phase
- * transition: "exiting" (both steps mounted, exit animation plays) then
- * "exited" (previous step unmounted, next step is current).
+ * When the `transition` prop is provided, step changes enter a three-phase
+ * transition: "exiting" (both steps available), "entering" (the previous
+ * step is unmounted), then "exited" (the next step is current).
  */
 import {
   type ComponentType,
-  createElement,
   forwardRef,
   type ReactNode,
   Suspense,
   useCallback,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import {
   FlowContext,
   type FlowContextValue,
@@ -87,6 +88,45 @@ interface FlowState {
   consumerContext: unknown;
 }
 
+// #region doc:step-record
+/**
+ * A persistent rendered step instance in transition mode. The step subtree
+ * (context provider, error boundary, Suspense, step component) is rendered
+ * through a portal into `host`, which never changes for the life of the
+ * record — so the React instance survives no matter where the consumer's
+ * transition render prop places the slot, and local state/effects are
+ * retained when a step moves from the `nextStep` slot to `previousStep`.
+ */
+interface StepRecord {
+  /** Unique per mounted step instance; used as the portal key. */
+  id: number;
+  Component: ComponentType;
+  /** Stable portal container. Layout-transparent via `display: contents`. */
+  host: HTMLElement;
+}
+
+/**
+ * Placeholder rendered where the consumer places a step slot. A real layout
+ * box so consumer container styling (padding, background, borders) applies
+ * to the slot position. Adopts the record's host DOM on mount so the
+ * portal-rendered subtree appears in place.
+ */
+function StepSlot({ host }: { host: HTMLElement }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const parent = ref.current;
+    if (parent === null) return;
+    parent.appendChild(host);
+    return () => {
+      if (host.parentNode === parent) {
+        host.remove();
+      }
+    };
+  }, [host]);
+  return <div ref={ref} />;
+}
+// #endregion doc:step-record
+
 type TransitionQueueEntry =
   | { type: "advance"; stepLoader: StepLoader; contextPatch?: unknown }
   | { type: "retreat" };
@@ -140,10 +180,22 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
     const transitionQueueRef = useRef<TransitionQueueEntry[]>([]);
     /** Monotonic transition identity — bumps on every new exit transition. */
     const transitionKeyRef = useRef(0);
-    /** The exiting step component, retained so it can be rendered during the "exiting" phase. */
-    const previousStepRef = useRef<ComponentType | null>(null);
+    /** Persistent rendered instance of the current/entering step. */
+    const currentRecordRef = useRef<StepRecord | null>(null);
+    /** Persistent rendered instance of the exiting step, retained (not recreated)
+     *  so its local state and effects survive the exit animation. */
+    const previousRecordRef = useRef<StepRecord | null>(null);
+    /** Mints unique step-record ids. */
+    const stepRecordIdRef = useRef(0);
     /** The consumer context at the moment the previous step began exiting. */
     const previousStepContextRef = useRef<unknown>(undefined);
+
+    const createStepRecord = useCallback((Component: ComponentType): StepRecord => {
+      stepRecordIdRef.current += 1;
+      const host = document.createElement("div");
+      host.style.display = "contents";
+      return { id: stepRecordIdRef.current, Component, host };
+    }, []);
     /** Monotonic counter — increments each time a transition is accepted. */
     const transitionEpochRef = useRef(0);
     /** Epoch of the entering/active step. Checked by transitionAdvance/transitionRetreat. */
@@ -159,7 +211,8 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
         abortRef.current = null;
         flowIdRef.current += 1;
         // Clear transition state when the flow terminates.
-        previousStepRef.current = null;
+        currentRecordRef.current = null;
+        previousRecordRef.current = null;
         transitionQueueRef.current = [];
         transitionEpochRef.current = 0;
         currentStepEpochRef.current = 0;
@@ -183,7 +236,8 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
         abortRef.current = null;
         flowIdRef.current += 1;
         // Clear transition state when the flow terminates.
-        previousStepRef.current = null;
+        currentRecordRef.current = null;
+        previousRecordRef.current = null;
         transitionQueueRef.current = [];
         transitionEpochRef.current = 0;
         currentStepEpochRef.current = 0;
@@ -215,9 +269,10 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
           errorBoundaryRef.current?.resetError();
           previousStepEpochRef.current = currentStepEpochRef.current;
           transitionEpochRef.current += 1;
+          previousRecordRef.current = currentRecordRef.current;
+          currentRecordRef.current = createStepRecord(nextActiveStep);
           setFlowState((prev) => {
             if (prev === null) return prev;
-            previousStepRef.current = prev.activeStep;
             previousStepContextRef.current = prev.consumerContext;
             return {
               history: [...prev.history, prev.activeStep],
@@ -240,9 +295,12 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
           errorBoundaryRef.current?.resetError();
           previousStepEpochRef.current = currentStepEpochRef.current;
           transitionEpochRef.current += 1;
+          previousRecordRef.current = currentRecordRef.current;
+          currentRecordRef.current = createStepRecord(
+            flowState.history[flowState.history.length - 1],
+          );
           setFlowState((prev) => {
             if (prev === null || prev.history.length === 0) return prev;
-            previousStepRef.current = prev.activeStep;
             previousStepContextRef.current = prev.consumerContext;
             const historyPrev = prev.history[prev.history.length - 1];
             return {
@@ -255,13 +313,13 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
           setPhaseValue("exiting");
         }
       },
-      [flowState, setPhaseValue],
+      [createStepRecord, flowState, setPhaseValue],
     );
 
     /** Call when the exit animation has completed. Only meaningful in "exiting" phase. */
     const handleExited = useCallback(() => {
       if (phaseRef.current !== "exiting") return;
-      previousStepRef.current = null;
+      previousRecordRef.current = null;
       const queue = transitionQueueRef.current;
       if (queue.length > 0) {
         const entry = queue.shift();
@@ -379,9 +437,10 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
         errorBoundaryRef.current?.resetError();
         previousStepEpochRef.current = currentStepEpochRef.current;
         transitionEpochRef.current += 1;
+        previousRecordRef.current = currentRecordRef.current;
+        currentRecordRef.current = createStepRecord(nextActiveStep);
         setFlowState((prev) => {
           if (prev === null) return prev;
-          previousStepRef.current = prev.activeStep;
           previousStepContextRef.current = prev.consumerContext;
           return {
             history: [...prev.history, prev.activeStep],
@@ -395,7 +454,7 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
         transitionKeyRef.current += 1;
         setPhaseValue("exiting");
       },
-      [activeFlowId, setPhaseValue],
+      [activeFlowId, createStepRecord, setPhaseValue],
     );
 
     /** Transition-aware retreat: queues if exiting, else starts a transition.
@@ -410,9 +469,10 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
       errorBoundaryRef.current?.resetError();
       previousStepEpochRef.current = currentStepEpochRef.current;
       transitionEpochRef.current += 1;
+      previousRecordRef.current = currentRecordRef.current;
+      currentRecordRef.current = createStepRecord(flowState.history[flowState.history.length - 1]);
       setFlowState((prev) => {
         if (prev === null || prev.history.length === 0) return prev;
-        previousStepRef.current = prev.activeStep;
         previousStepContextRef.current = prev.consumerContext;
         const historyPrev = prev.history[prev.history.length - 1];
         return {
@@ -423,7 +483,7 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
       });
       transitionKeyRef.current += 1;
       setPhaseValue("exiting");
-    }, [flowState, setPhaseValue]);
+    }, [createStepRecord, flowState, setPhaseValue]);
     // #endregion doc:transition-navigate
 
     useImperativeHandle(
@@ -450,7 +510,8 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
           resolveRef.current = onResolve ?? null;
           abortRef.current = onAbort ?? null;
           // Reset transition state for the new flow.
-          previousStepRef.current = null;
+          currentRecordRef.current = null;
+          previousRecordRef.current = null;
           transitionQueueRef.current = [];
           transitionEpochRef.current = 0;
           currentStepEpochRef.current = 0;
@@ -525,6 +586,14 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
       // This ensures the newly-mounted step can dispatch its own transition.
       currentStepEpochRef.current = transitionEpochRef.current;
 
+      // Adopt the active step into a record when none exists yet (flow was
+      // activated before the transition prop was present).
+      if (currentRecordRef.current === null) {
+        currentRecordRef.current = createStepRecord(ActiveStep);
+      }
+      const currentRecord = currentRecordRef.current;
+      const previousRecord = previousRecordRef.current;
+
       // Exiting step context: navigation calls always enqueue.
       const exitingStepContextValue: StepContextValue = {
         advance: queueAdvance,
@@ -543,29 +612,38 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
         consumerContext: flowState.consumerContext,
       };
 
-      const previousStepNode = previousStepRef.current ? (
-        <StepContext.Provider value={exitingStepContextValue}>
-          {createElement(previousStepRef.current)}
-        </StepContext.Provider>
-      ) : null;
-
-      const nextStepNode = (
-        <StepContext.Provider value={enteringStepContextValue}>
-          <FlowErrorBoundary
-            ref={errorBoundaryRef}
-            failedStep={ActiveStep}
-            errorStep={props.errorStep}
-          >
-            <Suspense fallback={props.fallback ?? null}>
-              <ActiveStep />
-            </Suspense>
-          </FlowErrorBoundary>
-        </StepContext.Provider>
-      );
+      // Each record's subtree renders through a keyed portal into its stable
+      // host, so when the current record becomes the previous record its
+      // instance (with boundary/context wrappers) is retained — only the
+      // context value and slot placement change.
+      const renderStepPortal = (
+        record: StepRecord,
+        contextValue: StepContextValue,
+        isCurrent: boolean,
+      ) => {
+        const StepComponent = record.Component;
+        return createPortal(
+          <StepContext.Provider value={contextValue}>
+            <FlowErrorBoundary
+              ref={isCurrent ? errorBoundaryRef : null}
+              failedStep={StepComponent}
+              errorStep={props.errorStep}
+            >
+              <Suspense fallback={props.fallback ?? null}>
+                <StepComponent />
+              </Suspense>
+            </FlowErrorBoundary>
+          </StepContext.Provider>,
+          record.host,
+          `step-${record.id}`,
+        );
+      };
 
       const transitionOutput = props.transition({
-        previousStep: previousStepNode,
-        nextStep: nextStepNode,
+        previousStep: previousRecord ? (
+          <StepSlot key={previousRecord.id} host={previousRecord.host} />
+        ) : null,
+        nextStep: <StepSlot key={currentRecord.id} host={currentRecord.host} />,
         phase,
         onExited: handleExited,
         transitionKey: transitionKeyRef.current,
@@ -573,6 +651,8 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
 
       return (
         <FlowContext.Provider value={flowContextValue}>
+          {previousRecord ? renderStepPortal(previousRecord, exitingStepContextValue, false) : null}
+          {renderStepPortal(currentRecord, enteringStepContextValue, true)}
           {props.chrome ? props.chrome(transitionOutput) : transitionOutput}
         </FlowContext.Provider>
       );

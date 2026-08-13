@@ -1,6 +1,6 @@
 import { act, cleanup, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import type { TransitionSlotProps } from "../../components/FlowOutlet";
 import { useSequentFlow } from "../../hooks/useSequentFlow";
@@ -536,34 +536,6 @@ describe("FlowOutlet transition mode", () => {
   });
 
   describe("retreat during transition", () => {
-    it("queues retreat behind current exit transition", async () => {
-      const captured: TransitionSlotProps[] = [];
-      const transition = createControlledTransition((p) => captured.push(p));
-
-      function Host() {
-        const { init, SequentOutlet } = useSequentFlow();
-        return (
-          <>
-            <button type="button" onClick={() => init(() => StepA)}>
-              Init
-            </button>
-            <SequentOutlet transition={transition} />
-          </>
-        );
-      }
-
-      render(<Host />);
-
-      await act(async () => {
-        screen.getByText("Init").click();
-      });
-
-      // Manually trigger advance to StepWithBoth via changing the init...
-      // Actually, let's use a simpler setup: init with a step that can advance.
-      // We already did init with StepA. Let's use a different approach.
-      // For retreat testing, we need history. Let me use a different harness.
-    });
-
     it("retreat from first step (empty history) is a no-op", async () => {
       const captured: TransitionSlotProps[] = [];
       const transition = createControlledTransition((p) => captured.push(p));
@@ -674,6 +646,100 @@ describe("FlowOutlet transition mode", () => {
       // Should immediately show Step B (no transition wrapper).
       expect(screen.getByText("Step B")).toBeInTheDocument();
       expect(screen.queryByText("Advance")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("outgoing step instance retention", () => {
+    it("keeps the outgoing step's instance (local state + no remount) during exit", async () => {
+      const lifecycleLog: string[] = [];
+      const transition = createControlledTransition(() => {});
+
+      function StatefulStepA() {
+        const { advance } = useSequentStep();
+        const [count, setCount] = useState(0);
+        useEffect(() => {
+          lifecycleLog.push("mount");
+          return () => {
+            lifecycleLog.push("unmount");
+          };
+        }, []);
+        return (
+          <div>
+            <div>Count: {count}</div>
+            <button type="button" onClick={() => setCount((c) => c + 1)}>
+              Increment
+            </button>
+            <button type="button" onClick={() => advance(() => StepB)}>
+              Next
+            </button>
+          </div>
+        );
+      }
+
+      function Host() {
+        const { init, SequentOutlet } = useSequentFlow();
+        return (
+          <>
+            <button type="button" onClick={() => init(() => StatefulStepA)}>
+              Init
+            </button>
+            <SequentOutlet transition={transition} />
+          </>
+        );
+      }
+
+      render(<Host />);
+
+      await act(async () => {
+        screen.getByText("Init").click();
+      });
+
+      // Build up local state in the step that is about to exit.
+      await act(async () => {
+        screen.getByText("Increment").click();
+      });
+      expect(screen.getByText("Count: 1")).toBeInTheDocument();
+
+      await act(async () => {
+        screen.getByText("Next").click();
+      });
+
+      // Now in "exiting" phase — the outgoing step must be the SAME instance:
+      // its local state is intact and it was never unmounted/remounted.
+      const previousStep = screen.getByTestId("previous-step");
+      expect(previousStep).toHaveTextContent("Count: 1");
+      expect(lifecycleLog).toEqual(["mount"]);
+    });
+
+    it("renders step slots as real boxes so consumer container styling applies", async () => {
+      // Wraps the slot in a wrapper to assert the slot itself is a box
+      // (not `display: contents`), so consumer CSS targeting the outlet
+      // container (padding, borders, background) isn't silently dropped.
+      const transition = (props: TransitionSlotProps): ReactNode => (
+        <div data-testid="slot-wrapper">{props.nextStep}</div>
+      );
+
+      function Host() {
+        const { init, SequentOutlet } = useSequentFlow();
+        return (
+          <>
+            <button type="button" onClick={() => init(() => StepA)}>
+              Init
+            </button>
+            <SequentOutlet transition={transition} />
+          </>
+        );
+      }
+
+      render(<Host />);
+
+      await act(async () => {
+        screen.getByText("Init").click();
+      });
+
+      const slot = screen.getByTestId("slot-wrapper").firstElementChild;
+      expect(slot).not.toBeNull();
+      expect(getComputedStyle(slot as Element).display).not.toBe("contents");
     });
   });
 

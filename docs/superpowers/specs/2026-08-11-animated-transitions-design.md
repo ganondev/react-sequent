@@ -273,13 +273,37 @@ The `chrome` prop wraps the output of the `transition` slot. Chrome does not rec
 ## Internal Changes
 
 `FlowOutlet.tsx` gains:
-
 - Three epoch refs — `transitionEpochRef` (monotonic counter), `currentStepEpochRef` (entering/active step), `previousStepEpochRef` (exiting step) — that enforce **one transition per step**: navigation callbacks check their step's epoch against the counter, and stale calls (from a step that already transitioned) are silently dropped
 - A `transitionQueue` ref holding at most one `{ type: "advance", stepLoader: StepLoader, contextPatch?: unknown } | { type: "retreat" }` entry — each new enqueue replaces the previous
 - A `phase` state (`"exiting" | "entering" | "exited"`) matching the public `TransitionSlotProps.phase`
 - Branching: when `transition` prop is present, navigate through the phase machine; when absent, immediate swap (existing codepath)
 - Queue drain logic on `onExited`: if a queued entry exists, start next transition with `phase: "exiting"`; if empty, advance through `"entering"` to `"exited"`
 - The `transition` render prop is invoked on every render when defined and a flow is active, passing the current phase and step elements
+
+### Amendment (2026-08-13): Step Instance Retention
+
+Review found that the original implementation stored only the previous step's
+*component type* and reconstructed it with `createElement` in the
+`previousStep` slot — unmounting the original subtree and mounting a fresh
+instance, so local state reset and effects re-ran before the exit animation.
+
+Because the render prop lets consumers place `previousStep`/`nextStep` in
+arbitrary, phase-dependent tree positions, retention cannot rely on React
+reconciliation of the slot elements. Instead, each mounted step gets a
+persistent `StepRecord { id, Component, host }`: the full step subtree
+(`StepContext.Provider` → `FlowErrorBoundary` → `Suspense` → step) renders
+through a keyed `createPortal` into a stable `display: contents` host element,
+and the slot props are lightweight `StepSlot` placeholders that adopt the host
+DOM via `appendChild` in a layout effect. Consequences:
+
+- The outgoing step keeps its instance (state + effects) for the whole exit.
+- The entering step no longer remounts between the `"exiting"` and
+  `"entering"` phases.
+- Each record has its own error boundary; new steps always start clean.
+- History (`retreat`) still stores component types — a restored step is a
+  fresh instance, as before.
+
+Covered by the "outgoing step instance retention" test.
 
 ## Testing
 
