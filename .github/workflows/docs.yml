@@ -3,7 +3,7 @@ name: Deploy Docs
 on:
   push:
     branches: [main]
-    tags: ["v[0-9]*.[0-9]*.[0-9]*", "v[0-9]*.[0-9]*.[0-9]*-*"]
+    tags: ["v*"]
   workflow_dispatch:
 
 permissions:
