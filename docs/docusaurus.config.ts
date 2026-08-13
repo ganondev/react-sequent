@@ -2,6 +2,16 @@ import { themes as prismThemes } from "prism-react-renderer";
 import type { Config } from "@docusaurus/types";
 import type * as Preset from "@docusaurus/preset-classic";
 
+// Satisfies TS when @types/node is unavailable; shadows the global in module
+// scope, which is harmless when it is present.
+declare const process: { env: Record<string, string | undefined> };
+
+// Subpath under /react-sequent/ this build will live at (e.g. "dev", "v1.2.3").
+// Left unset when the build targets the site root (latest release).
+const docSubpath = process.env.DOCS_SUBPATH?.trim();
+// Git ref the docs were built from; used for "Edit this page" links.
+const docRef = process.env.DOCS_REF?.trim() || "main";
+
 const config: Config = {
   title: "react-sequent",
   tagline:
@@ -13,7 +23,7 @@ const config: Config = {
   },
 
   url: "https://ganondev.github.io",
-  baseUrl: "/react-sequent/",
+  baseUrl: docSubpath ? `/react-sequent/${docSubpath}/` : "/react-sequent/",
 
   organizationName: "ganondev",
   projectName: "react-sequent",
@@ -36,7 +46,7 @@ const config: Config = {
         docs: {
           sidebarPath: "./sidebars.ts",
           editUrl:
-            "https://github.com/ganondev/react-sequent/tree/main/docs/",
+            `https://github.com/ganondev/react-sequent/tree/${docRef}/docs/`,
         },
         blog: false,
         theme: {

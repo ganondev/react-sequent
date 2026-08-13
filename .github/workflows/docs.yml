@@ -3,22 +3,28 @@ name: Deploy Docs
 on:
   push:
     branches: [main]
+    tags: ["v[0-9]*"]
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
+# Every publish mutates the shared site state and the live Pages deployment,
+# so runs must be strictly serialized (no cancellation, no parallel deploys).
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout source (full history for tag discovery)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Enable Corepack
         run: corepack enable
@@ -31,6 +37,21 @@ jobs:
             yarn.lock
             docs/yarn.lock
 
+      - name: Restore site state
+        run: |
+          mkdir -p site
+          git fetch --quiet origin gh-pages || true
+          if git rev-parse --verify --quiet origin/gh-pages; then
+            git archive origin/gh-pages | tar -x -C site
+          fi
+
+      - name: Compute deployment targets
+        id: target
+        env:
+          GITHUB_REF: ${{ github.ref }}
+          SITE_STATE_DIR: site
+        run: node .github/scripts/docs-target.mjs
+
       - name: Install root dependencies
         run: yarn install --immutable
 
@@ -41,19 +62,87 @@ jobs:
         working-directory: docs
         run: yarn install --immutable
 
-      - name: Build docs
+      # DOCS_SUBPATH / DOCS_REF come from the "Compute deployment targets" step.
+      - name: Build docs for target subpath
         working-directory: docs
+        env:
+          DOCS_SUBPATH: ${{ steps.target.outputs.subpath }}
+          DOCS_REF: ${{ steps.target.outputs.doc_ref }}
         run: yarn build
+
+      - name: Stage subpath build
+        env:
+          DOCS_SUBPATH: ${{ steps.target.outputs.subpath }}
+        run: |
+          mkdir -p site-staging
+          cp -a docs/build "site-staging/$DOCS_SUBPATH"
+
+      # A release tag that beats the current root also becomes the root site.
+      - name: Build docs for site root
+        if: steps.target.outputs.root_action == 'promote'
+        working-directory: docs
+        env:
+          DOCS_REF: ${{ steps.target.outputs.root_tag }}
+        run: DOCS_SUBPATH="" yarn build
+
+      - name: Stage root build
+        if: steps.target.outputs.root_action == 'promote'
+        run: cp -a docs/build site-staging/root
+
+      # First-ever publish: seed the root from the newest release tag.
+      - name: Build docs for bootstrap root
+        if: steps.target.outputs.root_action == 'bootstrap' && steps.target.outputs.root_tag != ''
+        env:
+          BOOTSTRAP_TAG: ${{ steps.target.outputs.root_tag }}
+        run: |
+          git worktree add --detach root-src "$BOOTSTRAP_TAG"
+          yarn --cwd root-src install --immutable
+          yarn --cwd root-src build
+          yarn --cwd root-src/docs install --immutable
+          DOCS_SUBPATH="" DOCS_REF="$BOOTSTRAP_TAG" yarn --cwd root-src/docs build
+          mkdir -p site-staging
+          cp -a root-src/docs/build site-staging/root
+          git worktree remove --force root-src
+
+      # No release tags exist yet: fall back to serving dev at the root.
+      - name: Stage dev build as bootstrap root
+        if: steps.target.outputs.root_action == 'bootstrap' && steps.target.outputs.root_tag == ''
+        run: cp -a site-staging/dev site-staging/root
+
+      - name: Overlay site state
+        env:
+          DOCS_SUBPATH: ${{ steps.target.outputs.subpath }}
+          ROOT_ACTION: ${{ steps.target.outputs.root_action }}
+          ROOT_TAG: ${{ steps.target.outputs.root_tag }}
+        run: |
+          rm -rf "site/$DOCS_SUBPATH"
+          cp -a "site-staging/$DOCS_SUBPATH" "site/$DOCS_SUBPATH"
+          if [ "$ROOT_ACTION" != "none" ]; then
+            find site -mindepth 1 -maxdepth 1 \
+              ! -name 'dev' ! -name 'v*' ! -name 'root-tag.txt' ! -name 'CNAME' \
+              -exec rm -rf -- {} +
+            cp -a site-staging/root/. site/
+            if [ -n "$ROOT_TAG" ]; then
+              printf '%s\n' "$ROOT_TAG" > site/root-tag.txt
+            fi
+          fi
+
+      - name: Commit and push site state
+        run: |
+          cd site
+          git init --quiet
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit --quiet -m "docs: publish ${GITHUB_REF}"
+          git push --force "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:gh-pages
+          rm -rf .git
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: docs/build
+          path: site
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
       - name: Deploy to GitHub Pages
         id: deploy
         uses: actions/deploy-pages@v4
