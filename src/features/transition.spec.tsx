@@ -81,11 +81,7 @@ function TransitionHost({
       <div>
         <div data-testid="previous-step">{p.previousStep}</div>
         <div data-testid="next-step">{p.nextStep}</div>
-        <button
-          type="button"
-          data-testid="call-on-exited"
-          onClick={() => p.onExited()}
-        >
+        <button type="button" data-testid="call-on-exited" onClick={() => p.onExited()}>
           Done
         </button>
       </div>
@@ -101,11 +97,7 @@ function TransitionHost({
 
 // ── Host without transition (legacy) ─────────────────────────────────
 
-function LegacyHost({
-  onCaptureInit,
-}: {
-  onCaptureInit?: (init: InitFn) => void;
-}) {
+function LegacyHost({ onCaptureInit }: { onCaptureInit?: (init: InitFn) => void }) {
   const { init, SequentOutlet } = useSequentFlow();
 
   if (onCaptureInit) {
@@ -121,9 +113,7 @@ describeFeature(feature, ({ Scenario }) => {
   // ── Helpers ──────────────────────────────────────────────────────
 
   /** Render TransitionHost and capture init + transition props. */
-  function setupTransitionHost(
-    opts?: Omit<TransitionHostProps, "children">,
-  ): {
+  function setupTransitionHost(opts?: Omit<TransitionHostProps, "children">): {
     init: InitFn;
     capturedProps: TransitionSlotProps[];
   } {
@@ -330,16 +320,19 @@ describeFeature(feature, ({ Scenario }) => {
       init = i;
     });
 
-    And('a flow is in the "exiting" phase where the entering step has a "Resolve" button', async () => {
-      await act(async () => {
-        init(() => StepAdvanceToResolve);
-      });
-      await act(async () => {
-        screen.getByText("Advance").click();
-      });
-      // In exiting phase, entering step (StepWithResolve) is mounted.
-      expect(screen.getByText("Resolve")).toBeInTheDocument();
-    });
+    And(
+      'a flow is in the "exiting" phase where the entering step has a "Resolve" button',
+      async () => {
+        await act(async () => {
+          init(() => StepAdvanceToResolve);
+        });
+        await act(async () => {
+          screen.getByText("Advance").click();
+        });
+        // In exiting phase, entering step (StepWithResolve) is mounted.
+        expect(screen.getByText("Resolve")).toBeInTheDocument();
+      },
+    );
 
     When('the user clicks "Resolve"', async () => {
       await act(async () => {
@@ -382,15 +375,18 @@ describeFeature(feature, ({ Scenario }) => {
       init = i;
     });
 
-    And('a flow is in the "exiting" phase where the entering step has an "Abort" button', async () => {
-      await act(async () => {
-        init(() => StepAdvanceToAbort);
-      });
-      await act(async () => {
-        screen.getByText("Advance").click();
-      });
-      expect(screen.getByText("Abort")).toBeInTheDocument();
-    });
+    And(
+      'a flow is in the "exiting" phase where the entering step has an "Abort" button',
+      async () => {
+        await act(async () => {
+          init(() => StepAdvanceToAbort);
+        });
+        await act(async () => {
+          screen.getByText("Advance").click();
+        });
+        expect(screen.getByText("Abort")).toBeInTheDocument();
+      },
+    );
 
     When('the user clicks "Abort"', async () => {
       await act(async () => {
@@ -559,44 +555,47 @@ describeFeature(feature, ({ Scenario }) => {
 
   // ── Scenario: No transition prop = legacy ─────────────────────────
 
-  Scenario("No transition prop behaves identically to legacy mode", ({ Given, And, When, Then }) => {
-    let init: InitFn;
+  Scenario(
+    "No transition prop behaves identically to legacy mode",
+    ({ Given, And, When, Then }) => {
+      let init: InitFn;
 
-    function StepWithAdvanceBtn() {
-      const { advance } = useSequentStep();
-      return (
-        <button type="button" onClick={() => advance(() => StepB)}>
-          Advance
-        </button>
-      );
-    }
+      function StepWithAdvanceBtn() {
+        const { advance } = useSequentStep();
+        return (
+          <button type="button" onClick={() => advance(() => StepB)}>
+            Advance
+          </button>
+        );
+      }
 
-    Given("a host without a transition render prop", () => {
-      const s = setupLegacyHost();
-      init = s.init;
-    });
-
-    And('a flow on a step with an "Advance" button to another step', async () => {
-      await act(async () => {
-        init(() => StepWithAdvanceBtn);
+      Given("a host without a transition render prop", () => {
+        const s = setupLegacyHost();
+        init = s.init;
       });
-      expect(screen.getByText("Advance")).toBeInTheDocument();
-    });
 
-    When('the user clicks "Advance"', async () => {
-      await act(async () => {
-        screen.getByText("Advance").click();
+      And('a flow on a step with an "Advance" button to another step', async () => {
+        await act(async () => {
+          init(() => StepWithAdvanceBtn);
+        });
+        expect(screen.getByText("Advance")).toBeInTheDocument();
       });
-    });
 
-    Then("the new step appears immediately", () => {
-      expect(screen.getByText("Step B")).toBeInTheDocument();
-    });
+      When('the user clicks "Advance"', async () => {
+        await act(async () => {
+          screen.getByText("Advance").click();
+        });
+      });
 
-    And("the old step is no longer in the DOM", () => {
-      expect(screen.queryByText("Advance")).not.toBeInTheDocument();
-    });
-  });
+      Then("the new step appears immediately", () => {
+        expect(screen.getByText("Step B")).toBeInTheDocument();
+      });
+
+      And("the old step is no longer in the DOM", () => {
+        expect(screen.queryByText("Advance")).not.toBeInTheDocument();
+      });
+    },
+  );
 
   // ── Scenario: Chrome survives across transitions ──────────────────
 

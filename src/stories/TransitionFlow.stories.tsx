@@ -1,8 +1,8 @@
 import { Button, Group, Paper, Stack, Text, Title } from "@mantine/core";
-import { type ReactNode } from "react";
+import type { ReactNode } from "react";
+import type { TransitionSlotProps } from "../components/FlowOutlet";
 import { useSequentFlow } from "../hooks/useSequentFlow";
 import { useSequentStep } from "../hooks/useSequentStep";
-import type { TransitionSlotProps } from "../components/FlowOutlet";
 
 export default {
   title: "Flow/TransitionFlow",

@@ -2,9 +2,9 @@ import { act, cleanup, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it } from "vitest";
+import type { TransitionSlotProps } from "../../components/FlowOutlet";
 import { useSequentFlow } from "../../hooks/useSequentFlow";
 import { useSequentStep } from "../../hooks/useSequentStep";
-import type { TransitionSlotProps } from "../../components/FlowOutlet";
 
 // ── Test step components ──────────────────────────────────────────────
 
@@ -44,9 +44,7 @@ function StepWithAbort() {
  * A transition wrapper that lets tests control onExited.
  * Renders both steps when "exiting", passes through when "exited".
  */
-function createControlledTransition(
-  onRender: (props: TransitionSlotProps) => void,
-) {
+function createControlledTransition(onRender: (props: TransitionSlotProps) => void) {
   return (props: TransitionSlotProps): ReactNode => {
     onRender(props);
     if (props.phase === "exited" || !props.previousStep) {
@@ -56,11 +54,7 @@ function createControlledTransition(
       <div>
         <div data-testid="previous-step">{props.previousStep}</div>
         <div data-testid="next-step">{props.nextStep}</div>
-        <button
-          type="button"
-          data-testid="call-on-exited"
-          onClick={() => props.onExited()}
-        >
+        <button type="button" data-testid="call-on-exited" onClick={() => props.onExited()}>
           Done
         </button>
       </div>
@@ -342,11 +336,13 @@ describe("FlowOutlet transition mode", () => {
       // In "exiting" phase. StepWithTwoTargets is the exiting step.
       // Click "To C" — this calls queueAdvance, which should be dropped.
       const previousStepRoot = screen.getByTestId("previous-step");
-      const toCButton = previousStepRoot.querySelector("button:nth-child(2)") as HTMLButtonElement | null;
+      const toCButton = previousStepRoot.querySelector(
+        "button:nth-child(2)",
+      ) as HTMLButtonElement | null;
       expect(toCButton).not.toBeNull();
 
       await act(async () => {
-        toCButton!.click();
+        toCButton?.click();
       });
 
       // Complete exit.
@@ -411,7 +407,7 @@ describe("FlowOutlet transition mode", () => {
       expect(queueButton).not.toBeNull();
 
       await act(async () => {
-        queueButton!.click();
+        queueButton?.click();
       });
 
       // Complete the exit animation.
@@ -453,10 +449,7 @@ describe("FlowOutlet transition mode", () => {
         const { init, SequentOutlet } = useSequentFlow();
         return (
           <>
-            <button
-              type="button"
-              onClick={() => init(() => StepAdvanceAndResolve)}
-            >
+            <button type="button" onClick={() => init(() => StepAdvanceAndResolve)}>
               Init
             </button>
             <SequentOutlet transition={transition} />
@@ -510,10 +503,7 @@ describe("FlowOutlet transition mode", () => {
         const { init, SequentOutlet } = useSequentFlow();
         return (
           <>
-            <button
-              type="button"
-              onClick={() => init(() => StepAdvanceAndAbort)}
-            >
+            <button type="button" onClick={() => init(() => StepAdvanceAndAbort)}>
               Init
             </button>
             <SequentOutlet transition={transition} />
@@ -554,10 +544,7 @@ describe("FlowOutlet transition mode", () => {
         const { init, SequentOutlet } = useSequentFlow();
         return (
           <>
-            <button
-              type="button"
-              onClick={() => init(() => StepA)}
-            >
+            <button type="button" onClick={() => init(() => StepA)}>
               Init
             </button>
             <SequentOutlet transition={transition} />
@@ -599,10 +586,7 @@ describe("FlowOutlet transition mode", () => {
         const { init, SequentOutlet } = useSequentFlow();
         return (
           <>
-            <button
-              type="button"
-              onClick={() => init(() => StepWithRetreatAndAdvance)}
-            >
+            <button type="button" onClick={() => init(() => StepWithRetreatAndAdvance)}>
               Init
             </button>
             <SequentOutlet transition={transition} />

@@ -98,10 +98,7 @@ function reportLoaderError(phase: "activate" | "advance", error: unknown) {
   );
 }
 
-function mergeContext(
-  current: unknown,
-  patch: unknown,
-): unknown {
+function mergeContext(current: unknown, patch: unknown): unknown {
   if (
     typeof current === "object" &&
     current !== null &&
@@ -155,42 +152,48 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
     const previousStepEpochRef = useRef(0);
     // #endregion doc:transition-state
 
-    const handleResolve = useCallback((value?: unknown) => {
-      const cb = resolveRef.current;
-      resolveRef.current = null;
-      abortRef.current = null;
-      flowIdRef.current += 1;
-      // Clear transition state when the flow terminates.
-      previousStepRef.current = null;
-      transitionQueueRef.current = [];
-      transitionEpochRef.current = 0;
-      currentStepEpochRef.current = 0;
-      previousStepEpochRef.current = 0;
-      setPhaseValue("exited");
-      setFlowState((prev) => {
-        if (prev !== null) {
-          lastConsumerContextRef.current = prev.consumerContext;
-        }
-        return null;
-      });
-      cb?.(value);
-    }, []);
+    const handleResolve = useCallback(
+      (value?: unknown) => {
+        const cb = resolveRef.current;
+        resolveRef.current = null;
+        abortRef.current = null;
+        flowIdRef.current += 1;
+        // Clear transition state when the flow terminates.
+        previousStepRef.current = null;
+        transitionQueueRef.current = [];
+        transitionEpochRef.current = 0;
+        currentStepEpochRef.current = 0;
+        previousStepEpochRef.current = 0;
+        setPhaseValue("exited");
+        setFlowState((prev) => {
+          if (prev !== null) {
+            lastConsumerContextRef.current = prev.consumerContext;
+          }
+          return null;
+        });
+        cb?.(value);
+      },
+      [setPhaseValue],
+    );
 
-    const handleAbort = useCallback((reason?: unknown) => {
-      const cb = abortRef.current;
-      resolveRef.current = null;
-      abortRef.current = null;
-      flowIdRef.current += 1;
-      // Clear transition state when the flow terminates.
-      previousStepRef.current = null;
-      transitionQueueRef.current = [];
-      transitionEpochRef.current = 0;
-      currentStepEpochRef.current = 0;
-      previousStepEpochRef.current = 0;
-      setPhaseValue("exited");
-      setFlowState(null);
-      cb?.(reason);
-    }, []);
+    const handleAbort = useCallback(
+      (reason?: unknown) => {
+        const cb = abortRef.current;
+        resolveRef.current = null;
+        abortRef.current = null;
+        flowIdRef.current += 1;
+        // Clear transition state when the flow terminates.
+        previousStepRef.current = null;
+        transitionQueueRef.current = [];
+        transitionEpochRef.current = 0;
+        currentStepEpochRef.current = 0;
+        previousStepEpochRef.current = 0;
+        setPhaseValue("exited");
+        setFlowState(null);
+        cb?.(reason);
+      },
+      [setPhaseValue],
+    );
 
     const activeFlowId = flowIdRef.current;
 
@@ -252,7 +255,7 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
           setPhaseValue("exiting");
         }
       },
-      [flowState],
+      [flowState, setPhaseValue],
     );
 
     /** Call when the exit animation has completed. Only meaningful in "exiting" phase. */
@@ -261,11 +264,15 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
       previousStepRef.current = null;
       const queue = transitionQueueRef.current;
       if (queue.length > 0) {
-        drainQueueEntry(queue.shift()!);
+        const entry = queue.shift();
+        if (!entry) {
+          throw new Error("Transition queue was unexpectedly empty when draining.");
+        }
+        drainQueueEntry(entry);
       } else {
         setPhaseValue("entering");
       }
-    }, [drainQueueEntry]);
+    }, [drainQueueEntry, setPhaseValue]);
 
     /** Auto-advance from "entering" to "exited" after one tick, so the consumer
      *  sees one render with phase "entering" (enter-animation window) before the
@@ -278,7 +285,7 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
       ) {
         setPhaseValue("exited");
       }
-    }, [phase]);
+    }, [phase, setPhaseValue]);
     // #endregion doc:transition-drain
 
     // #region doc:direct-navigate
@@ -328,17 +335,16 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
     // #region doc:transition-navigate
     /** Replace any pending transition with the latest advance — used while phase is
      *  "exiting". Rapid successive navigations collapse into the most recent one. */
-    const queueAdvance = useCallback(
-      (nextStep: StepLoader, contextPatch?: unknown) => {
-        if (transitionEpochRef.current !== previousStepEpochRef.current) return;
-        transitionQueueRef.current = [{
+    const queueAdvance = useCallback((nextStep: StepLoader, contextPatch?: unknown) => {
+      if (transitionEpochRef.current !== previousStepEpochRef.current) return;
+      transitionQueueRef.current = [
+        {
           type: "advance",
           stepLoader: nextStep,
           contextPatch,
-        }];
-      },
-      [],
-    );
+        },
+      ];
+    }, []);
 
     /** Replace any pending transition with the latest retreat — used while phase is
      *  "exiting". Rapid successive navigations collapse into the most recent one. */
@@ -352,11 +358,13 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
       (nextStep: StepLoader, contextPatch?: unknown) => {
         if (transitionEpochRef.current !== currentStepEpochRef.current) return;
         if (phaseRef.current === "exiting") {
-          transitionQueueRef.current = [{
-            type: "advance",
-            stepLoader: nextStep,
-            contextPatch,
-          }];
+          transitionQueueRef.current = [
+            {
+              type: "advance",
+              stepLoader: nextStep,
+              contextPatch,
+            },
+          ];
           return;
         }
         if (flowIdRef.current !== activeFlowId) return;
@@ -387,7 +395,7 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
         transitionKeyRef.current += 1;
         setPhaseValue("exiting");
       },
-      [activeFlowId],
+      [activeFlowId, setPhaseValue],
     );
 
     /** Transition-aware retreat: queues if exiting, else starts a transition.
@@ -415,7 +423,7 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
       });
       transitionKeyRef.current += 1;
       setPhaseValue("exiting");
-    }, [flowState]);
+    }, [flowState, setPhaseValue]);
     // #endregion doc:transition-navigate
 
     useImperativeHandle(
@@ -456,7 +464,7 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
           onActivated?.();
         },
       }),
-      [],
+      [setPhaseValue],
     );
 
     // biome-ignore lint/correctness/useExhaustiveDependencies: idle callbacks are stable
@@ -602,4 +610,3 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
     );
   },
 );
-
