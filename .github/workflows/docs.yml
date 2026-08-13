@@ -128,6 +128,8 @@ jobs:
           fi
 
       - name: Commit and push site state
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd site
           git init --quiet
