@@ -11,6 +11,20 @@ Click **Begin Checkout** below to start the flow directly on this page.
 
 ```jsx live
 function CheckoutSection() {
+  // Keyframes live in a runtime <style> tag: keyframes defined in the site's
+  // CSS but referenced only from JS inline styles get stripped/renamed by the
+  // production CSS minifier.
+  const fadeStyles = `
+@keyframes demo-checkout-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+@keyframes demo-checkout-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+`;
+
   const { init, status: flowStatus, result, SequentOutlet } = useSequentFlow();
   const message =
     flowStatus === "idle" && result?.status === "resolved"
@@ -98,14 +112,15 @@ function CheckoutSection() {
           if (phase === "exited") return nextStep;
           return (
             <div style={{ position: "relative" }}>
+              <style>{fadeStyles}</style>
               <div
                 key={`exit-${transitionKey}`}
-                style={{ position: "absolute", animation: "fadeOut 300ms forwards" }}
+                style={{ position: "absolute", animation: "demo-checkout-fade-out 300ms forwards" }}
                 onAnimationEnd={onExited}
               >
                 {previousStep}
               </div>
-              <div key={`enter-${transitionKey}`} style={{ animation: "fadeIn 300ms" }}>
+              <div key={`enter-${transitionKey}`} style={{ animation: "demo-checkout-fade-in 300ms" }}>
                 {nextStep}
               </div>
             </div>

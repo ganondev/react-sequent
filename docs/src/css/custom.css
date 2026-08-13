@@ -210,16 +210,6 @@
   gap: 8px;
 }
 
-/* Crossfade transition used by the Subsection Flow demo */
-@keyframes fadeOut {
-  from { opacity: 1; }
-  to   { opacity: 0; }
-}
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
 /* ── Toast ──────────────────────────────────────────────────────────────── */
 .demo-toast {
   background: #1f2937;
