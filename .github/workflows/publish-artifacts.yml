@@ -21,6 +21,19 @@ jobs:
         with:
           node-version: '24'
 
+      - name: Check package version matches release tag
+        if: github.event_name == 'release'
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          pkg_version=$(node -p "require('./package.json').version")
+          tag="${RELEASE_TAG#v}"
+          if [ "$pkg_version" != "$tag" ]; then
+            echo "::error::package.json version '$pkg_version' does not match release tag '$RELEASE_TAG'"
+            exit 1
+          fi
+          echo "Package version '$pkg_version' matches release tag '$RELEASE_TAG'"
+
       - name: Enable corepack
         run: corepack enable && corepack prepare yarn@stable --activate
 
