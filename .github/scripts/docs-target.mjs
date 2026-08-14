@@ -95,12 +95,12 @@ if (REF.startsWith("refs/tags/")) {
   }
   subpath = tagName;
   docRef = tagName;
+  // Any non-prerelease tag push always replaces the root build (not just when
+  // it is a brand-new latest), so re-published and backport tags take over the
+  // root site deterministically.
   if (parsed.prerelease === null) {
-    const current = currentRoot ? parseTag(currentRoot) : null;
-    if (!current || compareVersions(parsed, current) > 0) {
-      rootAction = "promote";
-      rootTag = tagName;
-    }
+    rootAction = "promote";
+    rootTag = tagName;
   }
 } else if (!currentRoot && !existsSync(join(STATE_DIR, "index.html"))) {
   // main push / manual dispatch with no published root yet: seed it.
