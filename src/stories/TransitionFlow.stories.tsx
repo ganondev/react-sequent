@@ -1,33 +1,18 @@
 import { Button, Group, Paper, Stack, Text, Title } from "@mantine/core";
 import type { ReactNode } from "react";
-import type { TransitionSlotProps } from "../components/FlowOutlet";
 import { useSequentFlow } from "../hooks/useSequentFlow";
 import { useSequentStep } from "../hooks/useSequentStep";
+import {
+  type CrossfadeOptions,
+  crossfade,
+  type SlideOptions,
+  slide,
+  type TransitionSlotProps,
+} from "../transitions";
 
 export default {
   title: "Flow/TransitionFlow",
 };
-
-/* ─── CSS keyframes (library-agnostic) ─────────────────────────────── */
-
-const fadeStyles = `
-@keyframes sequent-fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-@keyframes sequent-fade-out {
-  from { opacity: 1; }
-  to   { opacity: 0; }
-}
-@keyframes sequent-slide-in-right {
-  from { opacity: 0; transform: translateX(24px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-@keyframes sequent-slide-out-left {
-  from { opacity: 1; transform: translateX(0); }
-  to   { opacity: 0; transform: translateX(-24px); }
-}
-`;
 
 /* ─── Step components ──────────────────────────────────────────────── */
 
@@ -78,90 +63,15 @@ function Step3() {
   );
 }
 
-/* ─── Transition wrappers ──────────────────────────────────────────── */
-
-const DURATION_MS = 300;
-
-/** Crossfade: both steps visible simultaneously, old fades out, new fades in.
- *
- *  `transitionKey` is attached as a React `key` on each animation wrapper so
- *  back-to-back queued transitions remount the wrappers — otherwise React
- *  reuses the DOM nodes, the CSS animations never restart, and `onExited`
- *  never fires again. */
-function crossfadeTransition({
-  previousStep,
-  nextStep,
-  phase,
-  onExited,
-  transitionKey,
-}: TransitionSlotProps): ReactNode {
-  if (phase === "exited") return nextStep;
-
-  return (
-    <div style={{ position: "relative" }}>
-      <style>{fadeStyles}</style>
-      <div
-        key={`exit-${transitionKey}`}
-        style={{
-          position: "absolute",
-          inset: 0,
-          animation: `sequent-fade-out ${DURATION_MS}ms ease forwards`,
-        }}
-        onAnimationEnd={onExited}
-      >
-        {previousStep}
-      </div>
-      <div
-        key={`enter-${transitionKey}`}
-        style={{ animation: `sequent-fade-in ${DURATION_MS}ms ease` }}
-      >
-        {nextStep}
-      </div>
-    </div>
-  );
-}
-
-/** Sequential: old slides out left, then new slides in from right. */
-function sequentialTransition({
-  previousStep,
-  nextStep,
-  onExited,
-  transitionKey,
-}: TransitionSlotProps): ReactNode {
-  return (
-    <div style={{ position: "relative", overflow: "hidden" }}>
-      <style>{fadeStyles}</style>
-      {previousStep && (
-        <div
-          key={`exit-${transitionKey}`}
-          style={{
-            animation: `sequent-slide-out-left ${DURATION_MS}ms ease forwards`,
-          }}
-          onAnimationEnd={onExited}
-        >
-          {previousStep}
-        </div>
-      )}
-      {!previousStep && (
-        <div
-          key={`enter-${transitionKey}`}
-          style={{ animation: `sequent-slide-in-right ${DURATION_MS}ms ease` }}
-        >
-          {nextStep}
-        </div>
-      )}
-    </div>
-  );
-}
-
 /* ─── Hosts ────────────────────────────────────────────────────────── */
 
-function CrossfadeHost() {
+function CrossfadeHost({ transition }: { transition: (props: TransitionSlotProps) => ReactNode }) {
   const { init, SequentOutlet } = useSequentFlow();
 
   return (
     <Paper withBorder p="xl" maw={420} mx="auto" mt="xl" radius="md">
-      <SequentOutlet transition={crossfadeTransition}>
+      {/* Ready-made crossfade from react-sequent/transitions. */}
+      <SequentOutlet transition={transition}>
         <Stack>
           <Text c="dimmed">Crossfade transition between steps.</Text>
           <Button fullWidth onClick={() => init(() => Step1)}>
@@ -173,12 +83,13 @@ function CrossfadeHost() {
   );
 }
 
-function SequentialHost() {
+function SequentialHost({ transition }: { transition: (props: TransitionSlotProps) => ReactNode }) {
   const { init, SequentOutlet } = useSequentFlow();
 
   return (
     <Paper withBorder p="xl" maw={420} mx="auto" mt="xl" radius="md">
-      <SequentOutlet transition={sequentialTransition}>
+      {/* Plain slide by default — fade: true is shown in the modal docs demo. */}
+      <SequentOutlet transition={transition}>
         <Stack>
           <Text c="dimmed">Sequential exit-then-enter transition.</Text>
           <Button fullWidth onClick={() => init(() => Step1)}>
@@ -193,9 +104,29 @@ function SequentialHost() {
 /* ─── Exports ──────────────────────────────────────────────────────── */
 
 export const Crossfade = {
-  render: () => <CrossfadeHost />,
+  render: (args: CrossfadeOptions) => <CrossfadeHost transition={crossfade(args)} />,
+  args: {
+    duration: 300,
+    easing: "ease",
+  },
+  argTypes: {
+    duration: { control: "number" },
+    easing: { control: "text" },
+  },
 };
 
 export const Sequential = {
-  render: () => <SequentialHost />,
+  render: (args: SlideOptions) => <SequentialHost transition={slide(args)} />,
+  args: {
+    duration: 300,
+    easing: "ease",
+    fade: false,
+    distance: 24,
+  },
+  argTypes: {
+    duration: { control: "number" },
+    easing: { control: "text" },
+    fade: { control: "boolean" },
+    distance: { control: "number" },
+  },
 };

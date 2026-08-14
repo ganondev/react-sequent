@@ -19,6 +19,7 @@ const sidebars: SidebarsConfig = {
           ],
         },
         "api/flow-outlet",
+        "api/transitions",
       ],
     },
   ],

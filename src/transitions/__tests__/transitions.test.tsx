@@ -94,6 +94,7 @@ describe("crossfade", () => {
     expect(children).toHaveLength(3); // <style>, exit wrapper, enter wrapper
     expect(children[1].key).toBe("exit-42");
     expect(styleOf(children[1]).position).toBe("absolute");
+    expect(styleOf(children[1]).padding).toBe("inherit");
     expect(styleOf(children[1]).animation).toBe("rs-crossfade-out 300ms ease forwards");
     expect(children[2].key).toBe("enter-42");
     expect(styleOf(children[2]).animation).toBe("rs-crossfade-in 300ms ease");

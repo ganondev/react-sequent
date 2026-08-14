@@ -171,6 +171,8 @@ Step swaps are immediate by default. Add a `transition` render prop to `SequentO
 
 Wire the signals to CSS, framer-motion, GSAP, or any animation library. The outgoing step keeps its component instance (local state and effects) while it animates out. Without the `transition` prop, behavior is unchanged.
 
+Or import ready-made transitions: `import { crossfade, slide } from "react-sequent/transitions"`.
+
 ### Flow context
 
 Carry shared data across steps without prop-drilling:

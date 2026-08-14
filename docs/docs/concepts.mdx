@@ -109,6 +109,8 @@ Chrome reads flow state via `useSequentContext()`. Steps write chrome-relevant d
 
 By default, step swaps are immediate — the old step unmounts as the new step mounts. To animate transitions (crossfade, slide, or any enter/exit animation), provide a `transition` render prop to `<SequentOutlet />`.
 
+The `react-sequent/transitions` subpath ships ready-made factories — `crossfade()` and `slide()` — that turn this into a one-liner. See the [Transitions API](/docs/api/transitions) page.
+
 ### How It Works
 
 When `transition` is present, the outlet enters a three-phase transition lifecycle on every step change:
@@ -121,7 +123,21 @@ The render prop receives `previousStep`, `nextStep`, `phase`, `onExited`, and `t
 
 Step instances are **retained across the transition**: the outgoing step keeps its local state and effects while it animates out, and the incoming step is not remounted when the transition settles. The slots are lightweight placeholders backed by portals, so this holds no matter how your wrapper structure changes between phases.
 
-### Example: CSS Crossfade
+### Example: Crossfade
+
+```tsx
+import { crossfade } from "react-sequent/transitions";
+
+const transition = crossfade(); // 300ms, ease
+
+<SequentOutlet transition={transition} />
+```
+
+See this exact crossfade live in the [Subsection Flow demo](/docs/demos/subsection-flow), and `slide({ fade: true })` in the [Modal demo](/docs/demos/modal).
+
+### Writing a custom transition
+
+The factories cover the common cases, but the `transition` prop stays a plain render prop — any hand-rolled harness works. A minimal CSS crossfade looks like this:
 
 ```tsx
 <SequentOutlet
@@ -145,7 +161,7 @@ Step instances are **retained across the transition**: the outgoing step keeps i
 />
 ```
 
-See this exact crossfade live in the [Subsection Flow demo](/docs/demos/subsection-flow).
+For a fully custom harness built on an animation library, see the [Full-Screen Wizard demo](/docs/demos/wizard) (Motion).
 
 ### `transitionKey`
 

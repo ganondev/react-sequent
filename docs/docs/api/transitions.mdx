@@ -1,0 +1,80 @@
+---
+sidebar_position: 5
+title: Transitions
+---
+
+# Transitions
+
+Ready-made transition factories for `<SequentOutlet />`'s `transition` prop, importable from the `react-sequent/transitions` subpath.
+
+```tsx
+import { crossfade, slide } from "react-sequent/transitions";
+
+function App() {
+  const { init, SequentOutlet } = useSequentFlow();
+  return <SequentOutlet transition={crossfade()} />;
+}
+```
+
+Both factories return a render-prop function that receives `TransitionSlotProps` (`previousStep`, `nextStep`, `phase`, `onExited`, `transitionKey`) and return the animated layout. Assign the result to a module-level constant — the keyframe names are static, so inline calls are safe too.
+
+## crossfade()
+
+Concurrent fade-out over fade-in: both steps are visible simultaneously, the old fades out while the new fades in.
+
+### Signature
+
+```typescript
+function crossfade(options?: CrossfadeOptions): (props: TransitionSlotProps) => ReactNode;
+
+interface CrossfadeOptions {
+  /** Animation duration in milliseconds. Default: 300. */
+  duration?: number;
+  /** CSS timing function. Default: "ease". */
+  easing?: string;
+}
+```
+
+### Example
+
+```tsx
+const transition = crossfade(); // or crossfade({ duration: 500, easing: "ease-in-out" })
+
+<SequentOutlet transition={transition} />
+```
+
+See it live in the [Subsection Flow demo](/docs/demos/subsection-flow).
+
+## slide()
+
+Sequential exit-left-then-enter-right: the outgoing step slides out, then the incoming step slides in. A plain full-opacity slide by default; enable a fade with `fade: true`.
+
+### Signature
+
+```typescript
+function slide(options?: SlideOptions): (props: TransitionSlotProps) => ReactNode;
+
+interface SlideOptions extends CrossfadeOptions {
+  /** Fade the outgoing/incoming step while it slides. Default: false. */
+  fade?: boolean;
+  /** Horizontal slide distance in px. Default: 24. */
+  distance?: number;
+}
+```
+
+### Example
+
+```tsx
+const transition = slide({ fade: true });
+
+<SequentOutlet transition={transition} />
+```
+
+See it live in the [Modal demo](/docs/demos/modal). For a fully custom harness built on an animation library, see the [Full-Screen Wizard demo](/docs/demos/wizard) (Motion).
+
+## Notes
+
+- Options ride inline CSS custom properties and the `animation` shorthand; the `rs-*` keyframe names are an internal detail.
+- The `<style>` element is rendered in-tree per outlet — SSR-exact, no global styles.
+- Outlets are isolated: static keyframes can never leak options between flows.
+- No runtime dependencies.

@@ -50,6 +50,9 @@ export function crossfade(
           style={{
             position: "absolute",
             inset: 0,
+            // Match the container's padding so the outgoing step keeps the
+            // exact geometry of the in-flow incoming step while fading out.
+            padding: "inherit",
             animation: `rs-crossfade-out ${duration}ms ${easing} forwards`,
           }}
           onAnimationEnd={(event) => {

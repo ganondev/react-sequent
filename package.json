@@ -5,19 +5,16 @@
   "description": "Lightweight React utility for building UX flows where each step owns its own transition logic",
   "license": "MIT",
   "sideEffects": false,
-  "main": "./dist/react-sequent.cjs",
   "module": "./dist/react-sequent.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/react-sequent.js"
-      },
-      "require": {
-        "types": "./dist/index.d.cts",
-        "default": "./dist/react-sequent.cjs"
-      }
+      "types": "./dist/index.d.ts",
+      "default": "./dist/react-sequent.js"
+    },
+    "./transitions": {
+      "types": "./dist/transitions.d.ts",
+      "default": "./dist/transitions.js"
     }
   },
   "files": [
@@ -36,6 +33,7 @@
     "test:watch": "vitest",
     "lint": "biome check src/",
     "format": "biome check --write src/",
+    "lint:pkg": "publint && attw --pack --profile esm-only",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "docs:dev": "yarn --cwd docs start",
@@ -48,6 +46,7 @@
   },
   "devDependencies": {
     "@amiceli/vitest-cucumber": "^6.3.0",
+    "@arethetypeswrong/cli": "^0.18.5",
     "@biomejs/biome": "^2.4.7",
     "@chromatic-com/storybook": "^5.0.1",
     "@mantine/core": "^8.3.18",
@@ -67,6 +66,7 @@
     "postcss": "^8.5.8",
     "postcss-preset-mantine": "^1.18.0",
     "postcss-simple-vars": "^7.0.1",
+    "publint": "^0.3.23",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "storybook": "^10.2.19",

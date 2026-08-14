@@ -13,10 +13,13 @@ export default defineConfig({
   ],
   build: {
     lib: {
-      entry: resolve(__dirname, "src/index.ts"),
-      formats: ["es", "cjs"],
-      fileName: (format) =>
-        `react-sequent.${format === "es" ? "js" : "cjs"}`,
+      entry: {
+        index: resolve(__dirname, "src/index.ts"),
+        transitions: resolve(__dirname, "src/transitions/index.tsx"),
+      },
+      formats: ["es"],
+      fileName: (_format, entryName) =>
+        entryName === "index" ? "react-sequent.js" : `${entryName}.js`,
     },
     rollupOptions: {
       external: ["react", "react-dom", "react/jsx-runtime"],

@@ -106,6 +106,9 @@ jobs:
       - name: Build
         run: yarn build
 
+      - name: Check packaging
+        run: yarn lint:pkg
+
   docs:
     name: Docs build
     runs-on: ubuntu-latest

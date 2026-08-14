@@ -182,7 +182,7 @@ yarn install
 | Command | Description |
 |---|---|
 | `yarn dev` | Start Vite dev server |
-| `yarn build` | Production build → `dist/` (ES + CJS + types) |
+| `yarn build` | Production build → `dist/` (ES + types) |
 | `yarn typecheck` | Type-check all source files (no emit) |
 | `yarn test` | Run full test suite (unit + BDD) |
 | `yarn test:unit` | Run unit tests only |
