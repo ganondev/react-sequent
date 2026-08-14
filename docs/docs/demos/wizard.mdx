@@ -5,7 +5,7 @@ title: Full-Screen Wizard
 
 # Full-Screen Wizard
 
-A **full-screen onboarding wizard** with a persistent progress bar in the chrome, a mix of component and element-returning loaders, and a final `resolve` that returns the collected data.
+A **full-screen onboarding wizard** with a persistent progress bar in the chrome, a mix of component and element-returning loaders, and a final `resolve` that returns the collected data. Step changes play a **Motion crossfade-slide** — `motion.div` wrappers driven by the outlet's `transition` prop.
 
 The first transition uses a normal component loader. The final transition simulates async work before returning JSX with hydrated props. The progress bar updates **immediately** on `advance` — before the async step resolves — because chrome renders outside Suspense.
 
@@ -23,11 +23,11 @@ function WizardDemo() {
     const pct = Math.round((ctx.step / ctx.total) * 100);
     return (
       <div className="demo-wizard">
-        <div className="demo-wizard__track">
-          <div className="demo-wizard__fill" style={{ width: `${pct}%` }} />
+        <div>
+          <div style={{ width: `${pct}%` }} />
         </div>
-        <div className="demo-wizard__label">Step {ctx.step} of {ctx.total}</div>
-        <div className="demo-wizard__content">{children}</div>
+        <div>Step {ctx.step} of {ctx.total}</div>
+        <div>{children}</div>
       </div>
     );
   }
@@ -45,6 +45,7 @@ function WizardDemo() {
         <SequentOutlet
           fallback={<span className="demo-fallback">Loading…</span>}
           chrome={(slot) => <WizardChrome>{slot}</WizardChrome>}
+          transition={wizardTransition}
         />
       </WizardContext.Provider>
     );
@@ -52,28 +53,61 @@ function WizardDemo() {
 
   function useWizard() { return React.useContext(WizardContext); }
 
+  // --- Transition (Motion crossfade-slide) ---
+  function wizardTransition({ previousStep, nextStep, phase, onExited, transitionKey }) {
+    return (
+      <div style={{ position: "relative" }}>
+        {phase === "exiting" && previousStep && (
+          <motion.div
+            key={`exit-${transitionKey}`}
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+            initial={{ opacity: 1, x: 0 }}
+            animate={{ opacity: 0, x: -32 }}
+            transition={{ duration: 0.25, ease: "easeIn" }}
+            onAnimationComplete={onExited}
+          >
+            {previousStep}
+          </motion.div>
+        )}
+        <motion.div
+          key={`enter-${transitionKey}`}
+          initial={{ opacity: 0, x: 32 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
+        >
+          {nextStep}
+        </motion.div>
+      </div>
+    );
+  }
+
   // --- Steps ---
   function StepProfile() {
     const { advance, abort, context } = useSequentStep();
     const [name, setName] = React.useState(context?.data?.name ?? "");
     return (
-      <div className="demo-wizard__step">
-        <h2 className="demo-wizard__title">Tell us about yourself</h2>
-        <p className="demo-wizard__subtitle">What should we call you?</p>
-        <div className="demo-input-group-wide">
+      <div>
+        <h2>Tell us about yourself</h2>
+        <p>What should we call you?</p>
+        <div>
           <input
             type="text"
-            className="demo-input"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Your name"
           />
         </div>
-        <div className="demo-actions-center">
+        <div>
           <button onClick={() => advance(() => StepPreferences, { step: 2, total: 3, data: { name: name || "User" } })}>
             Continue →
           </button>
-          <button className="demo-btn-ghost" onClick={() => abort("cancelled")}>Cancel</button>
+          <button onClick={() => abort("cancelled")}>Cancel</button>
         </div>
       </div>
     );
@@ -84,22 +118,21 @@ function WizardDemo() {
     const { context: ctx } = useSequentContext();
     const [notif, setNotif] = React.useState(context?.data?.notifications ?? true);
     return (
-      <div className="demo-wizard__step">
-        <h2 className="demo-wizard__title">Set your preferences</h2>
-        <p className="demo-wizard__subtitle">Communication preferences</p>
-        <div className="demo-input-group-wide">
-          <label className="demo-checkbox-label">
+      <div>
+        <h2>Set your preferences</h2>
+        <p>Communication preferences</p>
+        <div>
+          <label>
             <input
               type="checkbox"
-              className="demo-checkbox"
               checked={notif}
               onChange={(e) => setNotif(e.target.checked)}
             />
             <span>Send me email notifications</span>
           </label>
         </div>
-        <div className="demo-actions-center">
-          <button className="demo-btn-ghost" onClick={() => retreat()}>← Back</button>
+        <div>
+          <button onClick={() => retreat()}>← Back</button>
           <button
             onClick={() =>
               advance(async () => {
@@ -120,7 +153,7 @@ function WizardDemo() {
           >
             Continue →
           </button>
-          <button className="demo-btn-ghost" onClick={() => abort("cancelled")}>Cancel</button>
+          <button onClick={() => abort("cancelled")}>Cancel</button>
         </div>
       </div>
     );
@@ -129,14 +162,14 @@ function WizardDemo() {
   function StepConfirm({ summary }) {
     const { retreat, resolve, abort } = useSequentStep();
     return (
-      <div className="demo-wizard__step">
-        <h2 className="demo-wizard__title">All set! 🎉</h2>
-        <p className="demo-wizard__subtitle">Your profile is ready.</p>
-        <pre className="demo-summary">{JSON.stringify(summary, null, 2)}</pre>
-        <div className="demo-actions-center">
-          <button className="demo-btn-ghost" onClick={() => retreat()}>← Back</button>
+      <div>
+        <h2>All set! 🎉</h2>
+        <p>Your profile is ready.</p>
+        <pre>{JSON.stringify(summary, null, 2)}</pre>
+        <div>
+          <button onClick={() => retreat()}>← Back</button>
           <button onClick={() => resolve(summary.data)}>Finish</button>
-          <button className="demo-btn-ghost" onClick={() => abort("cancelled")}>Cancel</button>
+          <button onClick={() => abort("cancelled")}>Cancel</button>
         </div>
       </div>
     );
@@ -178,6 +211,12 @@ function WizardDemo() {
 }
 ```
 
+## Transition with Motion
+
+The outlet's `transition` prop receives `{ previousStep, nextStep, phase, onExited, transitionKey }` and returns whatever should render in place of the step slot. The wizard returns two `motion.div` wrappers — the outgoing step fades out to the left while the incoming step fades in from the right:
+
+The exit wrapper reports completion through `onAnimationComplete={onExited}`. That single call advances the outlet's phase machine from `exiting` → `entering` → `exited`, unmounting the outgoing step when its Motion animation finishes. 
+
 ## Async step loading
 
 The final step waits on a simulated async lookup and then returns JSX with hydrated props:
@@ -205,6 +244,7 @@ Because chrome renders **outside** the Suspense boundary, the progress bar jumps
 
 ## Key points
 
+- **Any animation library works** — Motion is used here as an example; since the slot just owns rendering, you could drive step transitions with Motion, Framer Motion, CSS transitions, or any other animation library you prefer.
 - **Chrome outlives async loads** — the progress bar and step counter stay mounted while the next step resolves.
 - **Context still carries shared flow state** — progress metadata stays in context while the final step also receives a hydrated `summary` prop.
 - **No centralized step list** — the total step count is just data passed through context; you can change it without touching any config.

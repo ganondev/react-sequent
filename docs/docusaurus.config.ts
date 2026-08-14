@@ -133,7 +133,7 @@ const config: Config = {
       darkTheme: prismThemes.dracula,
     },
     liveCodeBlock: {
-      playgroundPosition: "bottom",
+      playgroundPosition: "top",
     },
   } satisfies Preset.ThemeConfig,
 };

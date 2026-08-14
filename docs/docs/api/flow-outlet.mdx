@@ -21,12 +21,21 @@ type SequentOutletProps = {
     fallback?: ReactNode;
     errorStep?: (context: ErrorStepContext) => ReactNode;
     chrome?: (children: ReactNode) => ReactNode;
+    transition?: (props: TransitionSlotProps) => ReactNode;
 };
 
 type ErrorStepContext = {
     error: unknown;
     componentStack: string | null;
     failedStep: ComponentType;
+};
+
+type TransitionSlotProps = {
+    previousStep: ReactNode | null;
+    nextStep: ReactNode;
+    phase: "exiting" | "entering" | "exited";
+    onExited: () => void;
+    transitionKey: number;
 };
 ```
 
@@ -85,6 +94,46 @@ Behavior:
 - is not used while the outlet is idle
 - if omitted, the outlet renders the step area directly
 
+### `transition`
+
+An optional render prop that enables animated step transitions.
+
+When provided, the outlet enters transition mode: instead of immediately swapping
+steps, it renders both the exiting and entering step simultaneously and passes
+them to this render prop along with phase information and lifecycle callbacks.
+
+The consumer wires their animation library (CSS, framer-motion, GSAP, etc.) to
+the provided signals.
+
+Step subtrees are rendered through portals into stable hosts, so `previousStep`
+and `nextStep` are lightweight placeholders you can position anywhere in your
+layout — the outgoing step keeps its component instance (local state and
+effects intact) while it animates out, even though your wrapper structure
+changes between phases.
+
+**`TransitionSlotProps`:**
+
+- `previousStep` — the exiting step element. `null` when no transition is in flight.
+- `nextStep` — the entering/current step element. Always present when a flow is active.
+- `phase` — current transition phase:
+  - `"exiting"` — previous step is animating out; call `onExited` when done.
+  - `"entering"` — previous step has unmounted; enter-animation window for one tick.
+  - `"exited"` — the flow is settled; no animation in progress.
+- `onExited` — call to signal the exit animation has completed. Only meaningful
+during the `"exiting"` phase.
+- `transitionKey` — monotonically increasing identity for the current transition.
+Attach as a React `key` on animation wrapper elements to force remounting
+across back-to-back transitions.
+
+**Constraints:**
+- A step may only initiate one transition — subsequent `advance()`/`retreat()`
+calls from the same step render are silently dropped.
+- While in `"exiting"` phase, the entering step may enqueue a navigation.
+- `resolve()`/`abort()` during any phase tears down both steps immediately;
+`onExited` is not expected.
+- Chrome wraps the transition output and is never unmounted during a transition.
+- When omitted, step swaps are immediate (current behavior).
+
 ## Public states
 
 The outlet has a small set of user-facing states that matter when you build against it.
@@ -116,6 +165,23 @@ What this means:
 
 - the step uses the flow and step hooks to continue, resolve, or abort the flow
 - the outlet no longer renders the idle `children`
+
+### Transitioning
+
+When the `transition` prop is provided, step changes pass through animated phases
+instead of swapping instantly.
+
+What you see depends on `phase`:
+
+- **`exiting`** — both the previous and next step are mounted. The consumer plays
+  an exit animation.
+- **`entering`** — the previous step has unmounted. The next step renders alone
+  (enter-animation window, one tick).
+- **`exited`** — the flow is settled; same as the normal Active state.
+
+The transition render prop receives all step elements, the current `phase`,
+`onExited` (call to complete the exit), and `transitionKey` (for animation
+wrapper remounting).
 
 ### Loading
 

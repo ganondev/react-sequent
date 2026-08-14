@@ -5,11 +5,13 @@ title: Singleton Modal with Hook
 
 # Singleton Modal with Hook
 
-A flow rendered inside a **shared singleton modal** — a single `SequentOutlet` lives at the top of the tree inside a context provider. This enables an application to enter modal flows with a single shared `useModal` hook: any component in the subtree calls `useModal()` to open a flow without ever touching a ref or rendering an outlet itself.
+A flow rendered in a **shared singleton modal** — one `SequentOutlet` at the top of the tree inside a provider. Any component below it opens a flow through a single `useModal()` hook, with no refs or outlet rendering of its own.
 
-Click **Open Setup Flow** or **Report a Bug** below to try it — they are unrelated flows sharing the same outlet.
+Click **Open Setup Flow** or **Report a Bug** below — they're unrelated flows sharing the same outlet.
 
-This example mixes both step-loader styles: the first transition uses a component loader, while the last transition returns JSX directly and merges the final title into context to signal chrome updates.
+The example also mixes both step-loader styles: a component loader for the first transition, and direct JSX for the last, which merges the final title into context to update the chrome.
+
+Step changes play a **sequential fade-slide transition** — the outgoing step slides out to the left, then the incoming step slides in from the right — driven by the `transition` prop on `SequentOutlet`.
 
 ```jsx live
 function SharedModalDemo() {
@@ -21,11 +23,11 @@ function SharedModalDemo() {
     const { context: ctx, abort } = useSequentContext();
     return (
       <div className="demo-modal">
-        <div className="demo-modal__header">
+        <div>
           <strong>{ctx.title}</strong>
-          <button className="demo-btn-close" onClick={() => abort("cancelled")}>✕</button>
+          <button onClick={() => abort("cancelled")}>✕</button>
         </div>
-        <div className="demo-modal__body">{children}</div>
+        <div>{children}</div>
       </div>
     );
   }
@@ -33,15 +35,12 @@ function SharedModalDemo() {
   function ModalProvider({ children }) {
     const { init, status, result, SequentOutlet } = useSequentFlow();
 
-    function openModal(firstStep, ctx) {
-      init(firstStep, ctx);
-    }
-
     return (
-      <ModalContext.Provider value={{ openModal, status, result }}>
+      <ModalContext.Provider value={{ openModal: init, status, result }}>
         {children}
         <div style={{ pointerEvents: "auto" }}>
           <SequentOutlet
+            transition={sequentialTransition}
             chrome={(slot) => (
               <div className="demo-modal-overlay">
                 <ModalChrome>{slot}</ModalChrome>
@@ -55,16 +54,65 @@ function SharedModalDemo() {
 
   function useModal() { return React.useContext(ModalContext); }
 
+  // ── Transition (sequential fade-slide) ────────────────────────────────────
+
+  const fadeStyles = `
+@keyframes sequent-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes sequent-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+@keyframes sequent-slide-in-right {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes sequent-slide-out-left {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(-24px); }
+}
+`;
+
+  const DURATION_MS = 300;
+
+  /** Sequential: old slides out left, then new slides in from right. */
+  function sequentialTransition({ previousStep, nextStep, onExited, transitionKey }) {
+    return (
+      <div style={{ position: "relative", overflow: "hidden" }}>
+        <style>{fadeStyles}</style>
+        {previousStep && (
+          <div
+            key={`exit-${transitionKey}`}
+            style={{ animation: `sequent-slide-out-left ${DURATION_MS}ms ease forwards` }}
+            onAnimationEnd={onExited}
+          >
+            {previousStep}
+          </div>
+        )}
+        {!previousStep && (
+          <div
+            key={`enter-${transitionKey}`}
+            style={{ animation: `sequent-slide-in-right ${DURATION_MS}ms ease` }}
+          >
+            {nextStep}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   // ── Steps ─────────────────────────────────────────────────────────────────
 
   function StepWelcome() {
     const { advance, abort } = useSequentStep();
     return (
       <div>
-        <p className="demo-para">Welcome to the setup flow. This will only take a minute.</p>
-        <div className="demo-actions">
+        <p>Welcome to the setup flow. This will only take a minute.</p>
+        <div>
           <button onClick={() => advance(() => StepDetails, { title: "Details" })}>Get Started →</button>
-          <button className="demo-btn-ghost" onClick={() => abort("cancelled")}>Cancel</button>
+          <button onClick={() => abort("cancelled")}>Cancel</button>
         </div>
       </div>
     );
@@ -75,23 +123,22 @@ function SharedModalDemo() {
     const [email, setEmail] = useState(context?.email ?? "");
     return (
       <div>
-        <p className="demo-para">Fill in your details below.</p>
-        <div className="demo-input-group">
-          <label className="demo-input-label">Email:</label>
+        <p>Fill in your details below.</p>
+        <div>
+          <label>Email:</label>
           <input
             type="email"
-            className="demo-input"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
           />
         </div>
-        <div className="demo-actions">
-          <button className="demo-btn-ghost" onClick={retreat}>← Back</button>
+        <div>
+          <button onClick={retreat}>← Back</button>
           <button onClick={() => advance(() => <StepDone email={email} />, { title: "All done!", email })}>
             Continue →
           </button>
-          <button className="demo-btn-ghost" onClick={() => abort("cancelled")}>Cancel</button>
+          <button onClick={() => abort("cancelled")}>Cancel</button>
         </div>
       </div>
     );
@@ -101,8 +148,8 @@ function SharedModalDemo() {
     const { resolve } = useSequentStep();
     return (
       <div>
-        <p className="demo-para">You're all set! 🎉</p>
-        <p className="demo-para">Thanks {email}</p>
+        <p>You're all set! 🎉</p>
+        <p>Thanks {email}</p>
         <button onClick={() => resolve({ email })}>Close</button>
       </div>
     );
@@ -115,60 +162,46 @@ function SharedModalDemo() {
     const [description, setDescription] = useState("");
     return (
       <div>
-        <p className="demo-para">Describe the issue you encountered.</p>
-        <div className="demo-input-group">
+        <p>Describe the issue you encountered.</p>
+        <div>
           <textarea
-            className="demo-input demo-textarea"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="What went wrong?"
             rows={3}
           />
         </div>
-        <div className="demo-actions">
+        <div>
           <button
             disabled={!description.trim()}
             onClick={() => advance(() => <StepBugSubmitted description={description} />, { title: "Thanks!", description })}
           >
             Submit →
           </button>
-          <button className="demo-btn-ghost" onClick={() => abort("cancelled")}>Cancel</button>
+          <button onClick={() => abort("cancelled")}>Cancel</button>
         </div>
       </div>
     );
   }
 
   function StepBugSubmitted({ description }) {
-    const { resolve, context } = useSequentStep();
+    const { resolve } = useSequentStep();
     return (
       <div>
-        <p className="demo-para">Bug reported!</p>
-        <p className="demo-para demo-muted">"{description}"</p>
-        <button onClick={() => resolve({ submitted: true, description: context.description })}>Close</button>
+        <p>Bug reported!</p>
+        <p>"{description}"</p>
+        <button onClick={() => resolve({ submitted: true, description })}>Close</button>
       </div>
     );
   }
 
   // ── Consumers (pure triggers — no lifecycle awareness) ───────────────────
 
-  function SetupButton() {
+  function ModalButton({ label, firstStep, ctx }) {
     const { openModal } = useModal();
     return (
       <div className="demo-sandbox">
-        <button onClick={() => openModal(() => StepWelcome, { title: "Welcome" })}>
-          Open Setup Flow
-        </button>
-      </div>
-    );
-  }
-
-  function ReportBugButton() {
-    const { openModal } = useModal();
-    return (
-      <div className="demo-sandbox">
-        <button onClick={() => openModal(() => StepBugReport, { title: "Report a Bug" })}>
-          Report a Bug
-        </button>
+        <button onClick={() => openModal(firstStep, ctx)}>{label}</button>
       </div>
     );
   }
@@ -177,26 +210,16 @@ function SharedModalDemo() {
 
   function FlowLogger() {
     const { status, result } = useModal();
-
-    if (status !== "idle") {
-      return <p className="demo-log">Flow active — waiting for result…</p>;
-    }
-
-    if (result?.status === "resolved") {
-      return <p className="demo-log">Flow resolved: {JSON.stringify(result.value)}</p>;
-    }
-
-    if (result?.status === "aborted") { 
-      return <p className="demo-log">Flow aborted.</p>;
-    }
-
+    if (status !== "idle") return <p className="demo-log">Flow active — waiting for result…</p>;
+    if (result?.status === "resolved") return <p className="demo-log">Flow resolved: {JSON.stringify(result.value)}</p>;
+    if (result?.status === "aborted") return <p className="demo-log">Flow aborted.</p>;
   }
 
   return (
     <ModalProvider>
       <div style={{ display: "flex", gap: "0.5rem" }}>
-        <SetupButton />
-        <ReportBugButton />
+        <ModalButton label="Open Setup Flow" firstStep={() => StepWelcome} ctx={{ title: "Welcome" }} />
+        <ModalButton label="Report a Bug" firstStep={() => StepBugReport} ctx={{ title: "Report a Bug" }} />
       </div>
       <FlowLogger />
     </ModalProvider>
@@ -204,5 +227,8 @@ function SharedModalDemo() {
 }
 ```
 
+## Sequential Transition
+The outlet's `transition` prop receives `{ previousStep, nextStep, phase, onExited, transitionKey }`. In sequential mode only one step is visible at a time: while `previousStep` is mounted the exit animation plays and its `onAnimationEnd` fires `onExited`; once the outgoing step unmounts, `nextStep` slides in. `transitionKey` is attached as a React `key` on each animation wrapper so back-to-back queued transitions remount them — otherwise the CSS animations never restart and `onExited` never fires again.
+
 ## Outlet Reuse
-Both **Setup** and **Report a Bug** are completely unrelated flows, yet they share the same `ModalProvider` and the same single `SequentOutlet`. The flow state is not tethered to either button's lifecycle — each call to `openModal()` independently activates the outlet, runs to completion (or cancellation), and returns it to idle, ready for the next flow. The provider never manages active or inactive flags per flow; the library handles that internally.
+Both **Setup** and **Report a Bug** are unrelated flows, yet share the same `ModalProvider` and single `SequentOutlet`. Flow state isn't tethered to either button's lifecycle — each `openModal()` call independently activates the outlet, runs to completion (or cancellation), and returns it to idle, ready for the next flow. No per-flow flags are managed by the provider; the library handles that internally.

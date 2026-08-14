@@ -24,6 +24,11 @@ const features = [
     description:
       "Modal headers, progress bars, and other stable UI stay mounted across step transitions and async loading.",
   },
+  {
+    title: "Animated Transitions",
+    description:
+      "Crossfade, slide, or choreograph step changes with a transition render prop — wire it to CSS, framer-motion, or GSAP.",
+  },
 ];
 
 function HomepageHeader() {
@@ -64,7 +69,7 @@ function FeatureCard({
   description: string;
 }) {
   return (
-    <div className={clsx("col col--4")}>
+    <div className={clsx("col col--3")}>
       <div className="feature-card" style={{ height: "100%" }}>
         <Heading as="h3">{title}</Heading>
         <p>{description}</p>
