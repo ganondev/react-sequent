@@ -5,6 +5,7 @@ import {
   useSequentFlow,
   useSequentStep,
 } from "react-sequent";
+import { crossfade, slide } from "react-sequent/transitions";
 
 /**
  * ReactLiveScope — injects react-sequent exports and common React APIs
@@ -24,6 +25,9 @@ const ReactLiveScope: Record<string, unknown> = {
   useSequentContext,
   useSequentFlow,
   useSequentStep,
+  // react-sequent/transitions
+  crossfade,
+  slide,
 };
 
 export default ReactLiveScope;

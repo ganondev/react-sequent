@@ -11,7 +11,7 @@ Click **Open Setup Flow** or **Report a Bug** below — they're unrelated flows 
 
 The example also mixes both step-loader styles: a component loader for the first transition, and direct JSX for the last, which merges the final title into context to update the chrome.
 
-Step changes play a **sequential fade-slide transition** — the outgoing step slides out to the left, then the incoming step slides in from the right — driven by the `transition` prop on `SequentOutlet`.
+Step changes play a **sequential fade-slide transition** via the ready-made `slide({ fade: true })` factory from `react-sequent/transitions` — the outgoing step slides out to the left, then the incoming step slides in from the right.
 
 ```jsx live
 function SharedModalDemo() {
@@ -40,7 +40,7 @@ function SharedModalDemo() {
         {children}
         <div style={{ pointerEvents: "auto" }}>
           <SequentOutlet
-            transition={sequentialTransition}
+            transition={slide({ fade: true })}
             chrome={(slot) => (
               <div className="demo-modal-overlay">
                 <ModalChrome>{slot}</ModalChrome>
@@ -53,55 +53,6 @@ function SharedModalDemo() {
   }
 
   function useModal() { return React.useContext(ModalContext); }
-
-  // ── Transition (sequential fade-slide) ────────────────────────────────────
-
-  const fadeStyles = `
-@keyframes sequent-fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-@keyframes sequent-fade-out {
-  from { opacity: 1; }
-  to   { opacity: 0; }
-}
-@keyframes sequent-slide-in-right {
-  from { opacity: 0; transform: translateX(24px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-@keyframes sequent-slide-out-left {
-  from { opacity: 1; transform: translateX(0); }
-  to   { opacity: 0; transform: translateX(-24px); }
-}
-`;
-
-  const DURATION_MS = 300;
-
-  /** Sequential: old slides out left, then new slides in from right. */
-  function sequentialTransition({ previousStep, nextStep, onExited, transitionKey }) {
-    return (
-      <div style={{ position: "relative", overflow: "hidden" }}>
-        <style>{fadeStyles}</style>
-        {previousStep && (
-          <div
-            key={`exit-${transitionKey}`}
-            style={{ animation: `sequent-slide-out-left ${DURATION_MS}ms ease forwards` }}
-            onAnimationEnd={onExited}
-          >
-            {previousStep}
-          </div>
-        )}
-        {!previousStep && (
-          <div
-            key={`enter-${transitionKey}`}
-            style={{ animation: `sequent-slide-in-right ${DURATION_MS}ms ease` }}
-          >
-            {nextStep}
-          </div>
-        )}
-      </div>
-    );
-  }
 
   // ── Steps ─────────────────────────────────────────────────────────────────
 
@@ -228,7 +179,7 @@ function SharedModalDemo() {
 ```
 
 ## Sequential Transition
-The outlet's `transition` prop receives `{ previousStep, nextStep, phase, onExited, transitionKey }`. In sequential mode only one step is visible at a time: while `previousStep` is mounted the exit animation plays and its `onAnimationEnd` fires `onExited`; once the outgoing step unmounts, `nextStep` slides in. `transitionKey` is attached as a React `key` on each animation wrapper so back-to-back queued transitions remount them — otherwise the CSS animations never restart and `onExited` never fires again.
+The demo uses `slide({ fade: true })` from `react-sequent/transitions` — its 24px distance and 300ms duration match the hand-rolled harness this demo used to carry. In sequential mode only one step is visible at a time: while `previousStep` is mounted the exit animation plays and its `onAnimationEnd` fires `onExited`; once the outgoing step unmounts, `nextStep` slides in. `transitionKey` is attached as a React `key` on each animation wrapper so back-to-back queued transitions remount them — otherwise the CSS animations never restart and `onExited` never fires again.
 
 ## Outlet Reuse
 Both **Setup** and **Report a Bug** are unrelated flows, yet share the same `ModalProvider` and single `SequentOutlet`. Flow state isn't tethered to either button's lifecycle — each `openModal()` call independently activates the outlet, runs to completion (or cancellation), and returns it to idle, ready for the next flow. No per-flow flags are managed by the provider; the library handles that internally.

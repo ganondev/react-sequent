@@ -45,7 +45,7 @@ Important notes:
 
 ## Public API Surface
 
-The library exports three hooks and associated types. There is no JSX the consumer imports directly — the outlet component is returned from `useSequentFlow()`.
+The library exports three hooks, associated types, and a `react-sequent/transitions` subpath with ready-made transition factories. There is no JSX the consumer imports directly — the outlet component is returned from `useSequentFlow()`.
 
 ### `useSequentFlow<TResult>()`
 
@@ -162,6 +162,32 @@ interface TransitionSlotProps {
 }
 ```
 
+### `react-sequent/transitions`
+
+Ready-made transition factories for `SequentOutlet`'s `transition` prop.
+
+```typescript
+import { crossfade, slide } from "react-sequent/transitions";
+
+function crossfade(options?: CrossfadeOptions): (props: TransitionSlotProps) => ReactNode;
+function slide(options?: SlideOptions): (props: TransitionSlotProps) => ReactNode;
+
+interface CrossfadeOptions {
+  duration?: number; // ms — default 300
+  easing?: string;   // CSS timing function — default "ease"
+}
+
+interface SlideOptions extends CrossfadeOptions {
+  fade?: boolean;    // fade while sliding — default false (plain full-opacity slide)
+  distance?: number; // horizontal slide distance in px — default 24
+}
+```
+
+- `crossfade()` — concurrent fade-out over fade-in.
+- `slide()` — sequential exit-left-then-enter-right.
+- Assign the result to a module-level constant and pass it to `SequentOutlet`'s `transition` prop.
+- Each render carries a static in-tree `<style>` (namespaced `rs-*` keyframes); options ride inline CSS custom properties and the `animation` shorthand, so multiple outlets can never leak styles into each other.
+
 ## Outlet Architecture
 
 The outlet has two states: **idle** and **active**.
@@ -192,7 +218,7 @@ Chrome renders inside `FlowContext` but outside `StepContext`. This means chrome
 
 ## Animated Transitions
 
-By default the outlet swaps steps immediately. Passing a `transition` render prop to `SequentOutlet` enables animated transitions: on each step change the outlet mounts the outgoing and incoming step together and calls the render prop with `TransitionSlotProps`.
+By default the outlet swaps steps immediately. Passing a `transition` render prop to `SequentOutlet` enables animated transitions: on each step change the outlet mounts the outgoing and incoming step together and calls the render prop with `TransitionSlotProps`. Ready-made factories live in `react-sequent/transitions` (`crossfade()`, `slide()`).
 
 ### Phases
 
@@ -212,28 +238,7 @@ By default the outlet swaps steps immediately. Passing a `transition` render pro
 
 ### Crossfade example
 
-```tsx
-<SequentOutlet
-  transition={({ previousStep, nextStep, phase, onExited, transitionKey }) => {
-    if (phase === "exited") return nextStep;
-    return (
-      <div style={{ position: "relative" }}>
-        <div
-          key={`exit-${transitionKey}`}build
-          // `forwards` prevents a flicker on unmount
-          style={{ position: "absolute", animation: "fadeOut 300ms forwards" }}
-          onAnimationEnd={onExited}
-        >
-          {previousStep}
-        </div>
-        <div key={`enter-${transitionKey}`} style={{ animation: "fadeIn 300ms" }}>
-          {nextStep}
-        </div>
-      </div>
-    );
-  }}
-/>
-```
+Refer to the implementations of the `crossfade()` and `slide()` factories in `react-sequent/transitions` for a complete example.
 
 ## Async Step Loading
 

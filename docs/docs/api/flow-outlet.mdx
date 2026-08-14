@@ -103,7 +103,8 @@ steps, it renders both the exiting and entering step simultaneously and passes
 them to this render prop along with phase information and lifecycle callbacks.
 
 The consumer wires their animation library (CSS, framer-motion, GSAP, etc.) to
-the provided signals.
+the provided signals. Ready-made CSS transitions are available from
+`react-sequent/transitions` — see [Transitions](/docs/api/transitions).
 
 Step subtrees are rendered through portals into stable hosts, so `previousStep`
 and `nextStep` are lightweight placeholders you can position anywhere in your
