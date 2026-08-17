@@ -86,7 +86,8 @@ Documented to consumers in `docs/docs/api/flow-outlet.mdx`:
    interception — no active flow means the handler is inert.
 6. **Mid-transition Back:** a Back press arriving while a transition is exiting is queued
    via the existing `pendingNavigationRef` queue and applied when the current transition
-   completes. A Back press arriving while a step is loading is an ordinary retreat.
+   completes. A Back press arriving while a step is loading is treated like any other
+   Back press — abort + fall through at the first step, retreat otherwise.
 7. **At most one armed outlet:** the feature supports one armed outlet at a time (module-level
    lock). If a second outlet activates with the prop set while another holds the lock, the
    second does not arm (no listener, no history writes) and emits a one-time dev-only
@@ -107,6 +108,15 @@ No DOM access, fully unit-testable:
 - `createSentinelState(token)` — `{ [SENTINEL_KEY]: token }`.
 - `isSentinelState(state, token)` — predicate for "this history entry is ours";
   `isAnySentinelState(state)` — predicate for "a sentinel from this library, any token".
+
+  **Consumer note (review 2026-08-17, second pass):** `isAnySentinelState` currently has
+  **no runtime consumer** — the handler only ever classifies with the token-specific
+  `isSentinelState(state, token)` (its own token in steps 3/5, a foreign token in
+  step 4's `"adoptStaleSentinel"`). It exists only as a unit-test target. Keep it in
+  `browserBack.ts` **only if** the adopt/decision path ends up using it during
+  implementation; if not, drop it from the module and inline the "any sentinel, any
+  token" assertion into the unit tests, so the exported surface stays exactly as large
+  as the runtime needs (KISS/YAGNI).
 - Armed-outlet lock: `claimBrowserBackLock(token)` / `releaseBrowserBackLock(token)` over a
   module-scoped owner variable. First activation claims; a second claim fails and triggers a
   one-time dev-only `console.warn`. Release on cleanup/consume. (Known limit: the lock does
@@ -142,6 +152,10 @@ browser can dispatch any event, so a `popstate` can never observe stale refs.
 - `retreatHandlerRef` — refreshed each render to point at `transitionRetreat` (transition
   mode) or `directRetreat` (direct mode), so the handler never calls a stale closure.
 - `settleAbortRef` — refreshed handle to `settleFlow("abort")`.
+- `flowStateRef` — current `FlowState` (null when idle), mirrored every render. The
+  handler's inactivity check (decision step 2) and first-step check
+  (`flowState.history.length`) read it, so they never depend on a stale render closure.
+  Note: no such ref exists in `FlowOutlet.tsx` today — it is added by this change.
 
 Activation effect — dependencies are **exactly** `[retreatOnBrowserBack, flowState !== null]`
 (the boolean, so it does not re-run per navigation):
@@ -160,6 +174,13 @@ Activation effect — dependencies are **exactly** `[retreatOnBrowserBack, flowS
   arriving as a popstate at the first activation's sentinel (foreign token). This is exactly
   the `"adoptStaleSentinel"` case — the handler adopts the entry via `replaceState` and no
   spurious retreat/abort occurs.
+
+The handler **delegates the decision to `decideBrowserBackAction`** — the pure module is
+ the single source of truth for the classification logic, so its decision-table unit
+ tests exercise the real runtime path. The only handler-side pre-check is `no token →
+ return`; `flowActive` is an input to the pure function, so the settled-flow case is
+ classified as `"consume"` by the function and the handler executes the disarm side
+ effect. The order below shows the full sequence:
 
 `popstate` handler decision order:
 
@@ -218,7 +239,8 @@ Decision-table tests for `decideBrowserBackAction` covering every action (includ
 `"adoptStaleSentinel"`: foreign-token sentinel while armed), the token/armed transitions,
 the lock (claim / denied second claim / release / re-claim), and `isSentinelState` /
 `isAnySentinelState` edge cases (null state, foreign state, same token, different token).
-No DOM.
+If `isAnySentinelState` is dropped per the consumer note above, its null-state / foreign-
+state cases fold into the `isSentinelState` tests directly. No DOM.
 
 ### BDD — `src/features/browser-back.feature` + `browser-back.spec.tsx`
 
@@ -270,6 +292,13 @@ jsdom notes: do not rely on real `history.back()` traversal (unreliable in jsdom
   does not span duplicate copies of the library in `node_modules`.
 - iOS Safari throttles `pushState` (~100 calls/30 s). Each intercepted Back re-pushes once;
   unreachable at human Back-press rates. No mitigation needed.
+- `history.pushState` / `history.replaceState` can **throw** in throttling contexts
+  (iOS Safari's limit throws a SecurityError) and in some webviews. Only cleanup's
+  `history.back()` is guarded today. A throw on the activation push surfaces through the
+  activation effect (caught by the app's error boundary); a throw on the intercept re-push
+  loses that one retreat and leaves `lastKnownStateRef` stale with the sentinel gone.
+  Decision (review 2026-08-17): document and defer hardening — graceful disarm on throw
+  is future work, not 1.2.0 scope.
 
 ## Files Touched
 
@@ -302,6 +331,10 @@ Modify:
 | StrictMode race | `adoptStaleSentinel` decision action | Cleanup's async `back()` lands post re-arm; foreign-token sentinel arrival is unambiguous → adopt via `replaceState`, no flag needed (review 2026-08-17) |
 | Multiple armed outlets | Documented contract + module-level lock, dev warn | Two listeners double-retreat per press; lock keeps behavior defined (review 2026-08-17) |
 | Ref mirroring | Every-render `useLayoutEffect`, owned as a new pattern | Existing atomic-callback style needs a single write path; these are derived values/closures. Layout timing closes the staleness window before events can dispatch (review 2026-08-17) |
+| Handler decision source | `decideBrowserBackAction` called by the handler | Pure module stays the single source of truth; decision-table unit tests exercise real runtime logic, not a parallel copy (review 2026-08-17, second pass) |
+| `flowState` mirror | `flowStateRef` added to the mirrored-ref list | Handler's inactivity and first-step checks read it; no such ref exists in the codebase today (review 2026-08-17, second pass) |
+| `pushState`/`replaceState` throws | Documented caveat; no guards in 1.2.0 | KISS: platform-edge failure; graceful disarm deferred (review 2026-08-17, second pass) |
+| `isAnySentinelState` | Test-only; keep only if a runtime path uses it, else inline into unit tests | No dead API surface; KISS/YAGNI (review 2026-08-17, second pass) |
 
 ## Review Notes (2026-08-17)
 
@@ -314,3 +347,30 @@ Assumptions 3/5. Three gaps found and resolved (see Decisions Log rows marked "r
 2026-08-17"): StrictMode activation race, unstated single-armed-outlet assumption, ref
 mirroring mischaracterization. Noted, no action: lock does not span duplicate library
 copies; iOS Safari pushState throttling unreachable in practice.
+
+## Review Notes (2026-08-17, second pass)
+
+Fresh adversarial pass after the first review. All load-bearing structural claims
+re-verified against source: `SequentOutletProps = ComponentPropsWithoutRef<typeof FlowOutlet>`
+and prop spread (`src/hooks/useSequentFlow.tsx`), `defineSequentFlow` passthrough,
+"first global-side-effect code" (no `window.`/`history.` access in `src/`),
+version alignment across `package.json` / `docs/static/llms.txt` / SKILL.md (no other
+human-maintained `1.1.0` references exist), BDD pattern, and the absence of any existing
+`browserBack` files.
+
+Triage (second pass): Completeness 4/5, Feasibility 4/5, Scope 4/5, Testability 5/5,
+Risk 3/5, Assumptions 3/5.
+
+Findings resolved in this pass (see Decisions Log rows marked "second pass"):
+
+1. **Decision wiring ambiguity** — the handler delegates to `decideBrowserBackAction`;
+   stated explicitly in the wiring section.
+2. **`flowStateRef` missing** — verified absent from the codebase; added to the
+   mirrored-ref list.
+3. **`pushState`/`replaceState` throws** — unguarded outside cleanup's `back()`;
+   decision made to document the failure mode and defer hardening.
+4. **Contract point 6 wording** — "step is loading" Back press now reads "treated like
+   any other Back press".
+
+Noted, no action: `isAnySentinelState` currently has no named runtime consumer — keep it
+only if the adopt/decision path actually uses it, otherwise inline into the unit tests.
