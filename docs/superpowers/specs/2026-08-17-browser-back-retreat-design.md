@@ -80,11 +80,17 @@ Documented to consumers in `docs/docs/api/flow-outlet.mdx`:
 4. **Idle, or prop `false`:** no listener, no history writes, no interference.
 5. **History menu:** the sentinel entry appears in the browser's long-press history menu
    while active. Clicking it is either a no-op (it is the current entry) or, once stale
-   (flow ended after an unmount that could not consume it), an ordinary history navigation
-   to the flow page's URL with no interception — no active flow means the handler is inert.
+   (flow ended after an unmount that could not consume it), one of: adopted by a currently
+   armed outlet (`adoptStaleSentinel` — see decision module; no retreat, no residue) or, when
+   no outlet is armed, an ordinary history navigation to the flow page's URL with no
+   interception — no active flow means the handler is inert.
 6. **Mid-transition Back:** a Back press arriving while a transition is exiting is queued
    via the existing `pendingNavigationRef` queue and applied when the current transition
    completes. A Back press arriving while a step is loading is an ordinary retreat.
+7. **At most one armed outlet:** the feature supports one armed outlet at a time (module-level
+   lock). If a second outlet activates with the prop set while another holds the lock, the
+   second does not arm (no listener, no history writes) and emits a one-time dev-only
+   `console.warn`. Documented as a contract, not just a limitation.
 
 ## Design
 
@@ -99,18 +105,33 @@ No DOM access, fully unit-testable:
 - `SENTINEL_KEY` — the property name used on pushed history state objects.
 - `createSentinelToken()` — unique per activation (monotonic counter).
 - `createSentinelState(token)` — `{ [SENTINEL_KEY]: token }`.
-- `isSentinelState(state, token)` — predicate for "this history entry is ours".
+- `isSentinelState(state, token)` — predicate for "this history entry is ours";
+  `isAnySentinelState(state)` — predicate for "a sentinel from this library, any token".
+- Armed-outlet lock: `claimBrowserBackLock(token)` / `releaseBrowserBackLock(token)` over a
+  module-scoped owner variable. First activation claims; a second claim fails and triggers a
+  one-time dev-only `console.warn`. Release on cleanup/consume. (Known limit: the lock does
+  not span duplicate copies of the library in `node_modules`.)
 - `decideBrowserBackAction(input)` — pure function mapping
   `{ token, flowActive, arrivingState, lastKnownState, isFirstStep }` to one of:
   - `"none"` — ordinary traversal between unrelated entries; do nothing.
   - `"consume"` — flow ended or sentinel already gone; disarm, do nothing.
   - `"stayArmed"` — arrived at our own entry (Forward traversal); no retreat.
+  - `"adoptStaleSentinel"` — arrived at a sentinel entry with a **different** token while
+    armed. Unambiguous evidence of a stale activation's entry (a user Back never lands there
+    in normal operation — this is the StrictMode double-effect race or a stale history-menu
+    entry). Response: `history.replaceState(createSentinelState(currentToken), "")`, update
+    `lastKnownStateRef`, stay armed, **no retreat**. Self-heals with no residue.
   - `"retreat"` — Back away from our sentinel at a non-first step; re-push + retreat.
   - `"abortAndFallThrough"` — Back away from our sentinel at the first step; abort + fall through.
 
 ### FlowOutlet wiring — `src/components/FlowOutlet.tsx`
 
-New refs, all mirrored each render via a no-deps effect (matching the existing ref style):
+New refs, all mirrored via a single every-render `useLayoutEffect` (no dependency array).
+This is a **new, deliberate pattern** for this codebase — the existing style (atomic
+callback sync, e.g. `setPhaseValue`) only works for values with a single imperative write
+path, whereas these are derived values and closures with many write sites. `useLayoutEffect`
+(not `useEffect`) is required: it flushes synchronously in the commit task, before the
+browser can dispatch any event, so a `popstate` can never observe stale refs.
 
 - `sentinelTokenRef` — current activation token; non-null means "we pushed a sentinel and
   are armed." Doubles as the consumed flag.
@@ -125,12 +146,20 @@ New refs, all mirrored each render via a no-deps effect (matching the existing r
 Activation effect — dependencies are **exactly** `[retreatOnBrowserBack, flowState !== null]`
 (the boolean, so it does not re-run per navigation):
 
-- On activation with the prop set: generate a token, `history.pushState(createSentinelState(token), "")`,
-  set `sentinelTokenRef` and `lastKnownStateRef`.
+- On activation with the prop set: attempt `claimBrowserBackLock(token)`. If another outlet
+  holds the lock, do **not** arm (no listener, no history writes); warn once in dev. Otherwise
+  generate a token, `history.pushState(createSentinelState(token), "")`, set
+  `sentinelTokenRef` and `lastKnownStateRef`.
 - On cleanup: remove the listener **first**, then — only if a token is still armed **and**
   the current history entry is still our sentinel — call `history.back()` once, wrapped in
-  try/catch, and disarm. The "current entry is still ours" guard prevents a double-pop
-  after a first-step fall-through and after a post-resolve Back that raced the cleanup.
+  try/catch, and disarm. Release the lock. The "current entry is still ours" guard prevents
+  a double-pop after a first-step fall-through and after a post-resolve Back that raced the
+  cleanup.
+- StrictMode note: dev double-invocation (setup → cleanup → setup) queues an async
+  `history.back()` from the first cleanup that lands **after** the second setup has armed,
+  arriving as a popstate at the first activation's sentinel (foreign token). This is exactly
+  the `"adoptStaleSentinel"` case — the handler adopts the entry via `replaceState` and no
+  spurious retreat/abort occurs.
 
 `popstate` handler decision order:
 
@@ -138,20 +167,22 @@ Activation effect — dependencies are **exactly** `[retreatOnBrowserBack, flowS
 2. Flow inactive (settled between the press and the event) → consume (disarm), return.
    The browser falls through; no trap, no later double-pop.
 3. Arriving entry is ours (Forward traversal back onto a re-pushed sentinel) → stay armed, return.
-4. `lastKnownState` is ours (genuine Back away from the sentinel):
+4. Arriving entry is a sentinel with a **different** token → adopt: `replaceState` with our
+   token, update `lastKnownStateRef`, return (no retreat).
+5. `lastKnownState` is ours (genuine Back away from the sentinel):
    - First step (`flowState.history.length === 0`) → disarm, `settleFlow("abort")`, return
      **without re-pushing** — the browser completes the navigation away.
    - Otherwise → re-push the sentinel with the same token, update `lastKnownStateRef`, then
      `retreatHandlerRef.current()`.
-5. Otherwise (neither entry is ours) → update `lastKnownStateRef`, return.
+6. Otherwise (neither entry is ours) → update `lastKnownStateRef`, return.
 
 The existing guards inside `transitionRetreat`/`directRetreat` (stale-flow check via
 `flowIdRef`, epoch guards, exit queueing via `pendingNavigationRef`, the first-step no-op
 invariant) keep working unchanged. The handler performs its own first-step check because it
 must distinguish "abort and leave" from "no-op and stay".
 
-The first-step check reads `flowState.history.length` through a render-mirrored ref, since
-the handler must never depend on a stale render closure.
+The first-step check reads `flowState.history.length` through the layout-effect-mirrored
+ref, since the handler must never depend on a stale render closure.
 
 ### Edge-case matrix
 
@@ -164,7 +195,10 @@ the handler must never depend on a stale render closure.
 | Back racing the post-resolve cleanup | Handler sees flow inactive → disarm + fall through; cleanup sees entry not ours → skips |
 | Forward onto a re-pushed sentinel | No retreat; stays armed |
 | Forward then Back | One retreat (sentinel window is armed) |
-| Stale sentinel clicked in history menu | Ordinary navigation, no interception |
+| Stale sentinel clicked in history menu (no armed outlet) | Ordinary navigation, no interception |
+| Popstate arrives at a foreign-token sentinel while armed | Adopt via `replaceState`; stay armed; no retreat (StrictMode race, stale menu entry) |
+| StrictMode dev double-effect at activation | First cleanup's async `back()` lands post re-arm → adopted; no spurious retreat/abort, no residue |
+| Second outlet activates with the prop while one is armed | Lock denied; second outlet never arms; one-time dev warning |
 | App pushes its own history entries while active | Unsupported; may desync `lastKnownStateRef` (documented limitation) |
 | Outlet unmounts while active after app navigated elsewhere | Cleanup guard skips `back()` (entry no longer current); stale entry may remain in history |
 | Prop toggled off mid-flow | Cleanup runs; sentinel consumed; interception stops |
@@ -180,9 +214,11 @@ This is the library's first global-side-effect code and is deliberately effect-s
 
 ### Unit — `src/internal/__tests__/browserBack.test.ts`
 
-Decision-table tests for `decideBrowserBackAction` covering every action, the token/armed
-transitions, and `isSentinelState` edge cases (null state, foreign state, same token,
-different token). No DOM.
+Decision-table tests for `decideBrowserBackAction` covering every action (including
+`"adoptStaleSentinel"`: foreign-token sentinel while armed), the token/armed transitions,
+the lock (claim / denied second claim / release / re-claim), and `isSentinelState` /
+`isAnySentinelState` edge cases (null state, foreign state, same token, different token).
+No DOM.
 
 ### BDD — `src/features/browser-back.feature` + `browser-back.spec.tsx`
 
@@ -200,6 +236,10 @@ fixtures. Scenarios:
    knowledge: `webkitAnimationEnd` dispatch helper).
 7. Forward traversal onto a re-pushed sentinel does not retreat.
 8. Race: resolve then an immediate Back before effect cleanup — no interception, no double-pop.
+9. StrictMode: fixture rendered in `<StrictMode>`; activation causes no spurious retreat or
+   abort at mount (foreign-token popstate is adopted, not classified as Back).
+10. Two armed outlets: second outlet does not arm (no `pushState`, no listener), dev warning
+    emitted once; first outlet's interception is unaffected.
 
 jsdom notes: do not rely on real `history.back()` traversal (unreliable in jsdom) — spy on
 `history.back` and assert calls; dispatch `new PopStateEvent("popstate", { state })` inside
@@ -226,6 +266,10 @@ jsdom notes: do not rely on real `history.back()` traversal (unreliable in jsdom
   SPA routers that navigate during a flow can desync `lastKnownStateRef`, stopping
   interception early (the sentinel may then remain as a stale entry; clicking it is an
   ordinary navigation — see Behavior Contract point 5).
+- At most one armed outlet at a time (see Behavior Contract point 7). The module-level lock
+  does not span duplicate copies of the library in `node_modules`.
+- iOS Safari throttles `pushState` (~100 calls/30 s). Each intercepted Back re-pushes once;
+  unreachable at human Back-press rates. No mitigation needed.
 
 ## Files Touched
 
@@ -255,3 +299,18 @@ Modify:
 | Interception timing | Re-push on every intercept | One entry total regardless of step count |
 | Mode support | Both direct and transition | Reuse existing retreat paths and queue semantics |
 | Default | `false` | Interception must be opt-in |
+| StrictMode race | `adoptStaleSentinel` decision action | Cleanup's async `back()` lands post re-arm; foreign-token sentinel arrival is unambiguous → adopt via `replaceState`, no flag needed (review 2026-08-17) |
+| Multiple armed outlets | Documented contract + module-level lock, dev warn | Two listeners double-retreat per press; lock keeps behavior defined (review 2026-08-17) |
+| Ref mirroring | Every-render `useLayoutEffect`, owned as a new pattern | Existing atomic-callback style needs a single write path; these are derived values/closures. Layout timing closes the staleness window before events can dispatch (review 2026-08-17) |
+
+## Review Notes (2026-08-17)
+
+Adversarial plan review; 11/12 checkable codebase claims verified against source (all named
+identifiers, first-step guard, prop passthrough, version pins, "first global side effect").
+The one failed claim (ref style "matching existing") is corrected above.
+
+Triage: Completeness 4/5, Feasibility 4/5, Scope 4/5, Testability 5/5, Risk 3/5,
+Assumptions 3/5. Three gaps found and resolved (see Decisions Log rows marked "review
+2026-08-17"): StrictMode activation race, unstated single-armed-outlet assumption, ref
+mirroring mischaracterization. Noted, no action: lock does not span duplicate library
+copies; iOS Safari pushState throttling unreachable in practice.
