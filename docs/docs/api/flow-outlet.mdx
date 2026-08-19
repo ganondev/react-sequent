@@ -22,6 +22,7 @@ type SequentOutletProps = {
     errorStep?: (context: ErrorStepContext) => ReactNode;
     chrome?: (children: ReactNode) => ReactNode;
     transition?: (props: TransitionSlotProps) => ReactNode;
+    onFlowStarted?: (controls: FlowStartedControls) => void | (() => void);
 };
 
 type ErrorStepContext = {
@@ -197,6 +198,47 @@ What this means:
 - this state is temporary
 - it exists only for async step loaders
 - the current flow remains in progress while the fallback is shown
+
+## FlowStartedControls
+
+The `onFlowStarted` prop receives a callback with a `FlowStartedControls` object:
+
+```typescript
+type FlowStartedControls = {
+  /**
+   * Retreat to the previous step in the flow.
+   * 
+   * Behavior:
+   * - Does not restore step-local component state
+   * - Throws if called when already at the first step
+   * - Queues during exit transitions (see `controls.retreat`)
+   */
+  retreat: () => void;
+
+  /**
+   * Abort the flow and return to idle state.
+   * 
+   * Behavior:
+   * - Immediately terminates the flow
+   * - Runs the cleanup function returned by the onFlowStarted callback
+   * - Does not call the resolve callback
+   */
+  abort: () => void;
+
+  /**
+   * Get the current depth of the flow history.
+   * 
+   * Returns the number of steps advanced from the initial step.
+   * 
+   * Behavior:
+   * - Returns 0 at the first step
+   * - Increases with each advance
+   * - Decreases with each retreat
+   * - Returns 0 after settle (after resolve/abort)
+   */
+  getHistoryDepth: () => number;
+};
+```
 
 ### Error
 

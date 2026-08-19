@@ -41,6 +41,7 @@ argument-hint: 'Describe the flow you want to build or the react-sequent API que
 - Use `useSequentContext()` in chrome, idle children, or any flow-level consumer component that needs context or termination controls but not navigation.
 - Explain `SequentOutlet` as the render target for the active flow, with optional idle children, async fallback, stable chrome, and error handling. It also accepts a `transition` render prop to enable animated step transitions.
 - For animated transitions, mention `react-sequent/transitions` (subpath export) with `crossfade()` and `slide()` factories. Assign the factory result to a module-level constant and pass it to `SequentOutlet`'s `transition` prop.
+- The `SequentOutlet` component accepts an `onFlowStarted` prop that receives a callback with controls (retreat, abort, getHistoryDepth) when the flow begins. This callback fires once per flow activation and returns a cleanup function that runs when the flow settles.
 
 ## Procedure
 

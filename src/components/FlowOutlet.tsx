@@ -57,6 +57,18 @@ export interface TransitionSlotProps {
 }
 // #endregion doc:transition-slot-props
 
+export interface FlowStartedControls {
+  /** Pop history to the previous step. Routes through the existing
+   *  transition/direct retreat machinery, including queueing during an
+   *  exit transition. First-step no-op invariant preserved. */
+  retreat: () => void;
+  /** Abort the flow, same as step-level `abort()`. */
+  abort: (reason?: unknown) => void;
+  /** Always-current history depth of the active flow. 0 = first step.
+   *  Consumers read this to distinguish "retreat" from "abort + fall through". */
+  getHistoryDepth: () => number;
+}
+
 export interface FlowOutletProps {
   children?: ReactNode;
   fallback?: ReactNode;
@@ -66,6 +78,10 @@ export interface FlowOutletProps {
    *  whenever a flow is active. When absent, the outlet performs immediate step
    *  swaps with no dual-mounting. */
   transition?: (props: TransitionSlotProps) => ReactNode;
+  /** Opt-in lifecycle hook. Fires once per flow activation with a controls object
+   *  (retreat, abort, getHistoryDepth). Return value is a cleanup function that
+   *  runs when the flow settles. */
+  onFlowStarted?: (controls: FlowStartedControls) => void | (() => void);
 }
 
 // #region doc:handle
@@ -198,6 +214,19 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
     /** Retains the last consumer context value after a flow resolves, so idle children can read it via `useSequentContext`. */
     const lastConsumerContextRef = useRef<unknown>(undefined);
 
+    // ── onFlowStarted ref mirrors ──────────────────────────────────────
+    // Mirrors of state/handlers so the stable controls object created at
+    // activation time can always read current values. Kept fresh via an
+    // every-render useLayoutEffect (no dependency array) below.
+    /** Mirror of flowState so getHistoryDepth() reads current depth from a stable closure. */
+    const flowStateRef = useRef<FlowState | null>(null);
+    /** Mirror of the active retreat handler (direct or transition-aware). */
+    const retreatHandlerRef = useRef<() => void>(() => {});
+    /** Mirror of a guarded abort closure (flow-id check + settleFlow). */
+    const abortHandlerRef = useRef<(reason?: unknown) => void>(() => {});
+    /** Stores the cleanup function returned by onFlowStarted. */
+    const onFlowStartedCleanupRef = useRef<(() => void) | null>(null);
+
     // #region doc:transition-state
     /** Current transition phase. Only meaningful when `props.transition` is provided. */
     const [phase, setPhase] = useState<"exiting" | "entering" | "exited">("exited");
@@ -268,6 +297,33 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
     );
 
     const activeFlowId = flowIdRef.current;
+
+    // ── onFlowStarted subscription effect ─────────────────────────────
+    // Fires once per activation (idle→active or re-activation via flowId bump).
+    // Builds a stable controls object, invokes onFlowStarted, stores cleanup.
+    // Cleanup runs on settle, unmount, or re-activation.
+    useLayoutEffect(() => {
+      const isActive = flowState !== null;
+      if (!isActive || !props.onFlowStarted) return;
+
+      // Build the stable controls object for this activation.
+      const controls: FlowStartedControls = {
+        retreat: () => retreatHandlerRef.current(),
+        abort: (reason?: unknown) => abortHandlerRef.current(reason),
+        getHistoryDepth: () => flowStateRef.current?.history.length ?? 0,
+      };
+
+      // Invoke the consumer callback and store the cleanup.
+      const cleanup = props.onFlowStarted(controls);
+      onFlowStartedCleanupRef.current = typeof cleanup === "function" ? cleanup : null;
+
+      // Cleanup runs on settle (flowState → null), unmount, or re-activation.
+      return () => {
+        onFlowStartedCleanupRef.current?.();
+        onFlowStartedCleanupRef.current = null;
+      };
+      // biome-ignore lint/correctness/exhaustive-deps: prop identity change mid-flow must be ignored per contract
+    }, [flowState !== null, activeFlowId]);
 
     // #region doc:transition-drain
     /** Begin an exit transition into `nextActiveStep`, applying `update` to the flow state. */
@@ -419,6 +475,20 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
       beginExitTransition(flowState.history[flowState.history.length - 1], retreatState);
     }, [activeFlowId, beginExitTransition, flowState]);
     // #endregion doc:transition-navigate
+
+    // ── Ref-mirroring effect ──────────────────────────────────────────
+    // Runs every render (no dependency array) to keep mirrors fresh.
+    // Layout timing closes the staleness window before browser events dispatch.
+    useLayoutEffect(() => {
+      flowStateRef.current = flowState;
+      retreatHandlerRef.current = props.transition ? transitionRetreat : directRetreat;
+      // Inline flow-id guard: captures the current flowId in this render pass.
+      const currentFlowId = flowIdRef.current;
+      abortHandlerRef.current = (reason?: unknown) => {
+        if (flowIdRef.current !== currentFlowId) return;
+        settleFlow("abort", reason);
+      };
+    });
 
     useImperativeHandle(
       ref,
