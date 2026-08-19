@@ -48,7 +48,9 @@ type InitFn = ReturnType<typeof useSequentFlow>["init"];
 interface LifecycleHostProps {
   children?: ReactNode;
   onCaptureInit?: (init: InitFn) => void;
-  onFlowStarted?: (controls: FlowStartedControls) => void | (() => void);
+  onFlowStarted?:
+    | ((controls: FlowStartedControls) => void)
+    | ((controls: FlowStartedControls) => () => void);
 }
 
 /**
@@ -71,7 +73,9 @@ interface RawLifecycleHostProps {
   children?: ReactNode;
   onCaptureInit?: (init: InitFn) => void;
   onCaptureControls?: (controls: FlowStartedControls) => void;
-  onFlowStarted?: (controls: FlowStartedControls) => void | (() => void);
+  onFlowStarted?:
+    | ((controls: FlowStartedControls) => void)
+    | ((controls: FlowStartedControls) => () => void);
   onAbort?: (reason?: unknown) => void;
 }
 
@@ -130,7 +134,9 @@ interface TransitionLifecycleHostProps {
   children?: ReactNode;
   onCaptureInit?: (init: InitFn) => void;
   onCaptureTransition?: (props: TransitionSlotProps) => void;
-  onFlowStarted?: (controls: FlowStartedControls) => void | (() => void);
+  onFlowStarted?:
+    | ((controls: FlowStartedControls) => void)
+    | ((controls: FlowStartedControls) => () => void);
 }
 
 function TransitionLifecycleHost({
@@ -295,17 +301,17 @@ describeFeature(feature, ({ Scenario }) => {
     });
 
     Then("getHistoryDepth returns 1", () => {
-      expect(controlsRef.current!.getHistoryDepth()).toBe(1);
+      expect(controlsRef.current?.getHistoryDepth()).toBe(1);
     });
 
     When('the user clicks "Retreat"', async () => {
       await act(async () => {
-        controlsRef.current!.retreat();
+        controlsRef.current?.retreat();
       });
     });
 
     Then("getHistoryDepth returns 0", () => {
-      expect(controlsRef.current!.getHistoryDepth()).toBe(0);
+      expect(controlsRef.current?.getHistoryDepth()).toBe(0);
     });
   });
 
@@ -335,7 +341,7 @@ describeFeature(feature, ({ Scenario }) => {
 
     And('the user clicks "Retreat"', async () => {
       await act(async () => {
-        controlsRef.current!.retreat();
+        controlsRef.current?.retreat();
       });
     });
 
@@ -395,7 +401,7 @@ describeFeature(feature, ({ Scenario }) => {
 
     When('the user clicks "Retreat"', async () => {
       await act(async () => {
-        controlsRef.current!.retreat();
+        controlsRef.current?.retreat();
       });
     });
 
@@ -465,8 +471,8 @@ describeFeature(feature, ({ Scenario }) => {
 
       When('the user clicks "Retreat" twice in rapid succession', async () => {
         await act(async () => {
-          controlsRef.current!.retreat();
-          controlsRef.current!.retreat();
+          controlsRef.current?.retreat();
+          controlsRef.current?.retreat();
         });
       });
 
@@ -503,7 +509,7 @@ describeFeature(feature, ({ Scenario }) => {
         init(() => StepA);
       });
       await act(async () => {
-        controlsRef.current!.abort();
+        controlsRef.current?.abort();
       });
     });
 
@@ -542,7 +548,7 @@ describeFeature(feature, ({ Scenario }) => {
     });
 
     When("the user calls retreat on the stale controls", () => {
-      expect(() => controlsRef.current!.retreat()).not.toThrow();
+      expect(() => controlsRef.current?.retreat()).not.toThrow();
     });
 
     Then("no error is thrown", () => {
@@ -550,7 +556,7 @@ describeFeature(feature, ({ Scenario }) => {
     });
 
     When("the user calls abort on the stale controls", () => {
-      expect(() => controlsRef.current!.abort()).not.toThrow();
+      expect(() => controlsRef.current?.abort()).not.toThrow();
     });
 
     Then("abort also does not throw", () => {
@@ -558,7 +564,7 @@ describeFeature(feature, ({ Scenario }) => {
     });
 
     And("getHistoryDepth returns 0", () => {
-      expect(controlsRef.current!.getHistoryDepth()).toBe(0);
+      expect(controlsRef.current?.getHistoryDepth()).toBe(0);
     });
   });
 
@@ -808,7 +814,7 @@ describeFeature(feature, ({ Scenario }) => {
           </StrictMode>,
         );
       });
-      init = capturedInit!;
+      init = capturedInit as unknown as InitFn;
     });
 
     And("a flow is activated", async () => {
@@ -825,7 +831,7 @@ describeFeature(feature, ({ Scenario }) => {
 
     When("the flow settles", async () => {
       await act(async () => {
-        controlsRef.current!.abort();
+        controlsRef.current?.abort();
       });
     });
 
@@ -866,7 +872,7 @@ describeFeature(feature, ({ Scenario }) => {
 
     And("the user presses browser Back", async () => {
       await act(async () => {
-        controlsRef.current!.retreat();
+        controlsRef.current?.retreat();
       });
     });
 
@@ -877,10 +883,10 @@ describeFeature(feature, ({ Scenario }) => {
     When("the user presses browser Back again", async () => {
       // Recipe: at depth 0 retreat is a no-op — abort and let the browser fall through.
       await act(async () => {
-        if (controlsRef.current!.getHistoryDepth() === 0) {
-          controlsRef.current!.abort();
+        if (controlsRef.current?.getHistoryDepth() === 0) {
+          controlsRef.current?.abort();
         } else {
-          controlsRef.current!.retreat();
+          controlsRef.current?.retreat();
         }
       });
     });
@@ -917,9 +923,9 @@ describeFeature(feature, ({ Scenario }) => {
 
     When("the user calls all three controls", () => {
       expect(() => {
-        controlsRef.current!.retreat();
-        controlsRef.current!.abort();
-        controlsRef.current!.getHistoryDepth();
+        controlsRef.current?.retreat();
+        controlsRef.current?.abort();
+        controlsRef.current?.getHistoryDepth();
       }).not.toThrow();
     });
 
@@ -928,7 +934,7 @@ describeFeature(feature, ({ Scenario }) => {
     });
 
     And("getHistoryDepth returns 0", () => {
-      expect(controlsRef.current!.getHistoryDepth()).toBe(0);
+      expect(controlsRef.current?.getHistoryDepth()).toBe(0);
     });
   });
 
@@ -951,7 +957,7 @@ describeFeature(feature, ({ Scenario }) => {
     });
 
     Then("getHistoryDepth returns 0", () => {
-      expect(controlsRef.current!.getHistoryDepth()).toBe(0);
+      expect(controlsRef.current?.getHistoryDepth()).toBe(0);
     });
 
     When("the flow resolves", async () => {
@@ -964,7 +970,7 @@ describeFeature(feature, ({ Scenario }) => {
     });
 
     Then("getHistoryDepth returns 0 after settle", () => {
-      expect(controlsRef.current!.getHistoryDepth()).toBe(0);
+      expect(controlsRef.current?.getHistoryDepth()).toBe(0);
     });
   });
 });

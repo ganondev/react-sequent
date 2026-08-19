@@ -81,7 +81,9 @@ export interface FlowOutletProps {
   /** Opt-in lifecycle hook. Fires once per flow activation with a controls object
    *  (retreat, abort, getHistoryDepth). Return value is a cleanup function that
    *  runs when the flow settles. */
-  onFlowStarted?: (controls: FlowStartedControls) => void | (() => void);
+  onFlowStarted?:
+    | ((controls: FlowStartedControls) => void)
+    | ((controls: FlowStartedControls) => () => void);
 }
 
 // #region doc:handle
@@ -302,6 +304,7 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
     // Fires once per activation (idle→active or re-activation via flowId bump).
     // Builds a stable controls object, invokes onFlowStarted, stores cleanup.
     // Cleanup runs on settle, unmount, or re-activation.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: prop identity change mid-flow must be ignored per contract
     useLayoutEffect(() => {
       const isActive = flowState !== null;
       if (!isActive || !props.onFlowStarted) return;
@@ -322,7 +325,6 @@ export const FlowOutlet = forwardRef<FlowOutletHandle, FlowOutletProps>(
         onFlowStartedCleanupRef.current?.();
         onFlowStartedCleanupRef.current = null;
       };
-      // biome-ignore lint/correctness/exhaustive-deps: prop identity change mid-flow must be ignored per contract
     }, [flowState !== null, activeFlowId]);
 
     // #region doc:transition-drain

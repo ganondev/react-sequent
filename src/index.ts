@@ -1,6 +1,6 @@
 // react-sequent — public API
 
-export type { TransitionSlotProps, FlowStartedControls } from "./components/FlowOutlet";
+export type { FlowStartedControls, TransitionSlotProps } from "./components/FlowOutlet";
 /** @deprecated Use the base hooks directly with manual type annotations instead. */
 export {
   defineSequentFlow,
