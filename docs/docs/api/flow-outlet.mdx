@@ -210,7 +210,7 @@ type FlowStartedControls = {
    * 
    * Behavior:
    * - Does not restore step-local component state
-   * - Throws if called when already at the first step
+   * - No-ops when already at the first step (use `getHistoryDepth()` to check)
    * - Queues during exit transitions (see `controls.retreat`)
    */
   retreat: () => void;
@@ -223,7 +223,7 @@ type FlowStartedControls = {
    * - Runs the cleanup function returned by the onFlowStarted callback
    * - Does not call the resolve callback
    */
-  abort: () => void;
+  abort: (reason?: unknown) => void;
 
   /**
    * Get the current depth of the flow history.

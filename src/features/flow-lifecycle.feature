@@ -27,6 +27,14 @@ Feature: Flow lifecycle hook
     Then  step A is visible in the DOM
     And   step B is no longer in the DOM
 
+  Scenario: controls.retreat at the first step is a no-op
+    Given a host with an onFlowStarted prop
+    And   a flow on the first step
+    When  the user calls retreat
+    Then  no error is thrown
+    And   the step remains rendered
+    And   getHistoryDepth returns 0
+
   Scenario: controls.retreat queues during exit transition
     Given a host with a transition render prop and an onFlowStarted prop
     And   a flow is in the "exiting" phase transitioning from step A to step B

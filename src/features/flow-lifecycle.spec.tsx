@@ -355,6 +355,43 @@ describeFeature(feature, ({ Scenario }) => {
     });
   });
 
+  // ── Scenario: controls.retreat at the first step is a no-op ─────
+
+  Scenario("controls.retreat at the first step is a no-op", ({ Given, And, When, Then }) => {
+    let init: InitFn;
+    let controlsRef: { current: FlowStartedControls | null };
+
+    Given("a host with an onFlowStarted prop", () => {
+      const s = setupLifecycleHost();
+      init = s.init;
+      controlsRef = s.controlsRef;
+    });
+
+    And("a flow on the first step", async () => {
+      await act(async () => {
+        init(() => StepA);
+      });
+    });
+
+    When("the user calls retreat", () => {
+      // Retreat at the first step is a no-op, not a throw.
+      expect(() => controlsRef.current?.retreat()).not.toThrow();
+    });
+
+    Then("no error is thrown", () => {
+      // The flow is still active and unchanged — nothing was retreated.
+      expect(screen.getByText("Step A")).toBeInTheDocument();
+    });
+
+    And("the step remains rendered", () => {
+      expect(screen.getByText("Step A")).toBeInTheDocument();
+    });
+
+    And("getHistoryDepth returns 0", () => {
+      expect(controlsRef.current?.getHistoryDepth()).toBe(0);
+    });
+  });
+
   // ── Scenario: controls.retreat queues during exit transition ────
 
   Scenario("controls.retreat queues during exit transition", ({ Given, When, Then, And }) => {
